@@ -2,12 +2,13 @@
 
 import { useMinuteClock } from "@/lib/useMinuteClock";
 import { HighlightMatch } from "@/lib/requestSearch";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   arrivalWindowText, arrivalWindowEndBefore,
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
+  formatPhoneForDisplay,
   MAX_DEPOSIT_PERCENT,
   MAX_JOB_DAYS,
   formatAppointmentTimeRange,
@@ -58,7 +59,7 @@ import {
   type QuickQuoteService,
   type SimilarQuote,
 } from "@professionisti/shared";
-import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
@@ -83,6 +84,7 @@ import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal"
 import { CardButton } from "@/components/CardButton";
 import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { ContactButton } from "@/components/ContactButton";
+import { ContactTile } from "@/components/ContactTile";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
@@ -433,6 +435,9 @@ export function RequestCard({
   const revealedEmail = booking ? booking.clientEmail : null;
   const revealedAddress = booking ? (formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${gr.city}` : null)) : null;
   const whatsAppLink = buildWhatsAppLink(revealedPhone);
+  // Nome scritto nella richiesta (chi riceve il professionista), altrimenti quello dell'account.
+  const recipientFullName = booking ? [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ").trim() : "";
+  const displayedClientName = !gr.clientAccountDeleted && recipientFullName ? recipientFullName : clientName;
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canResendQuote = lead.quote?.status === "REJECTED" && lead.quote.canResend;
   // Un preventivo nuovo (o rimandato) è fermo per la verifica dell'identità
@@ -453,6 +458,8 @@ export function RequestCard({
   // preventivo inviato, altrimenti la fascia richiesta dal cliente fin
   // dall'invio (se nata da una fascia generica dell'agenda pubblica,
   // stesso campo già mostrato in /le-mie-richieste).
+  // Appuntamento scritto nei "Dettagli cliente" (allora in alto solo a scheda chiusa).
+  const appointmentInDetails = Boolean(booking?.scheduledAt) && (stage === "accettata" || stage === "completata" || stage === "annullata");
   const collapsedDateTime = booking?.scheduledAt
     ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
@@ -1020,7 +1027,10 @@ export function RequestCard({
             (richiesta esplicita dell'utente, con screenshot annotato) —
             prima stava in fondo, appena sopra la freccetta di
             apertura/chiusura scheda. */}
-        {collapsedDateTime ? (
+        {/* A scheda aperta l'appuntamento e l'indirizzo stanno già nei "Dettagli
+            cliente": in alto restano solo a scheda chiusa
+            (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */}
+        {collapsedDateTime && !(isOpen && appointmentInDetails) ? (
           <XStack alignItems="center" gap="1">
             <Icon name="calendar" size={14} color={brand.grafite70} />
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
@@ -1034,9 +1044,13 @@ export function RequestCard({
             <HighlightMatch text={`${gr.categoryLabel} · ${gr.city}`} />
           </Text>
         </XStack>
-        <Text fontSize={16} color={brand.grafite} lineHeight="22px">
-          <HighlightMatch text={gr.description} />
-        </Text>
+        {/* A scheda aperta la descrizione è sotto "Descrizione lavoro": in alto
+            solo a scheda chiusa (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */}
+        {isOpen ? null : (
+          <Text fontSize={16} color={brand.grafite} lineHeight="22px">
+            <HighlightMatch text={gr.description} />
+          </Text>
+        )}
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
             i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
         {stage === "da_quotare" && competitorsLabel ? (
@@ -1047,12 +1061,14 @@ export function RequestCard({
             </Text>
           </XStack>
         ) : null}
-        <XStack alignItems="center" gap="1">
-          <Icon name="map-pin" size={14} color={brand.grafite70} />
-          <Text fontSize={16} color={brand.grafite70}>
-            {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
-          </Text>
-        </XStack>
+        {isOpen ? null : (
+          <XStack alignItems="center" gap="1">
+            <Icon name="map-pin" size={14} color={brand.grafite70} />
+            <Text fontSize={16} color={brand.grafite70}>
+              {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
+            </Text>
+          </XStack>
+        )}
 
         <XStack
           alignSelf="center"
@@ -1180,111 +1196,65 @@ export function RequestCard({
                 </Text>
               ) : (
                 <>
-                  {/* Reso chiaramente cliccabile (richiesta esplicita
-                      dell'utente: "il cliente deve avere ben visibile che
-                      è cliccabile il nome del cliente per visualizzare le
-                      informazioni come il rating") — prima era testo
-                      grigio piatto, indistinguibile da un'etichetta
-                      qualunque. Colore/sottolineatura da link + icona,
-                      stesso principio "affordance visiva" già seguito
-                      altrove nel sito per un controllo cliccabile senza
-                      un bordo/pillola proprio. */}
-                  <XStack
-                    alignItems="center"
-                    gap={4}
-                    cursor="pointer"
-                    alignSelf="flex-start"
-                    role="button"
-                    aria-label={`Vedi il profilo di ${clientName}`}
-                    onPress={() => setShowClientProfile(true)}
-                  >
-                    <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline">
-                      {clientName}
-                    </Text>
-                    <Icon name="chevron-right" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
-                  </XStack>
-                  {/* Data/ora dell'intervento spostata subito sotto il nome
-                      cliccabile (richiesta esplicita dell'utente, con
-                      screenshot annotato) — prima stava in fondo alla
-                      scheda, appena sopra il tasto Chat. */}
-                  {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
-                    <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                      Appuntamento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
-                    </Text>
-                  ) : null}
-                  {/* Nome e cognome del destinatario indicati sulla
-                      richiesta (chi riceverà il professionista sul
-                      lavoro, non necessariamente l'intestatario
-                      dell'account — CLAUDE.md §16). Ordine della sezione
-                      (nome → indirizzo → numero → e-mail, chat spostata
-                      in fondo) e rimozione della dicitura "Riceverà il
-                      professionista" (resta solo il nome): entrambe
-                      richieste esplicite dell'utente. */}
-                  {booking?.recipientName || booking?.recipientSurname ? (
-                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-                      {[booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ")}
-                    </Text>
-                  ) : null}
-                  {/* Indirizzo cliccabile (link Google Maps, stesso
-                      principio già in uso per tel:/mailto:/wa.me —
-                      nessuna API a pagamento, solo un URL di apertura) —
-                      spostato subito sotto il nome, richiesta esplicita
-                      dell'utente. */}
-                  {isOnline ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      Zona: {gr.city} (indirizzo nascosto)
-                    </Text>
-                  ) : revealedAddress ? (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(revealedAddress)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: "none" }}
+                  {/* Riquadro rifatto con un solo stile (docs/changelog/2026-11-18-dettagli-cliente-chiari.md,
+                      richiesta esplicita dell'utente: "vari formati e varie scritte, non si
+                      capiscono"): un nome in grassetto, righe con icona grigia, contatti come
+                      pulsanti tutti uguali. Il nome è quello scritto nella richiesta (chi riceve
+                      il professionista sul lavoro); se l'account ha un altro nome lo dice una riga
+                      grigia sotto. Tutta la riga apre il profilo del cliente (rating), con la freccia. */}
+                  <YStack gap={2}>
+                    <XStack
+                      alignItems="center"
+                      gap={4}
+                      cursor="pointer"
+                      alignSelf="flex-start"
+                      minHeight={32}
+                      role="button"
+                      aria-label={`Vedi il profilo di ${clientName}`}
+                      onPress={() => setShowClientProfile(true)}
                     >
-                      <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
-                        {revealedAddress}
+                      <Text fontSize={18} fontWeight="800" color={brand.grafite}>
+                        {displayedClientName}
                       </Text>
-                    </a>
-                  ) : (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      {gr.city}
-                    </Text>
-                  )}
-                  {/* Numero cliccabile (tel:) con i tasti WhatsApp/Chiama
-                      di fianco, non più in una riga separata più sotto —
-                      richiesta esplicita dell'utente. */}
-                  {revealedPhone ? (
-                    <XStack alignItems="center" gap="2" flexWrap="wrap">
-                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
-                          {revealedPhone}
-                        </Text>
-                      </a>
-                      {whatsAppLink ? (
-                        <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                          {/* Alto 44 per il dito e verde scuro di WhatsApp: il bianco sul verde chiaro si leggeva a 2:1 (collaudo D-07, L-09). */}
-                          <XStack minHeight={44} alignItems="center" paddingHorizontal="3" borderRadius={10} backgroundColor="#075E54">
-                            <Text fontSize={13} fontWeight="700" color="white">
-                              WhatsApp
-                            </Text>
-                          </XStack>
-                        </a>
-                      ) : null}
-                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack minHeight={44} alignItems="center" paddingHorizontal="3" borderRadius={10} backgroundColor={brand.cianografiaPieno}>
-                          <Text fontSize={13} fontWeight="700" color="white">
-                            Chiama
-                          </Text>
-                        </XStack>
-                      </a>
+                      <Icon name="chevron-right" size={16} color={brand.cianografiaScuro} strokeWidth={2.25} />
                     </XStack>
-                  ) : null}
-                  {revealedEmail ? (
-                    <a href={`mailto:${revealedEmail}`} style={{ textDecoration: "none" }}>
-                      <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
-                        {revealedEmail}
+                    {displayedClientName !== clientName ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        Richiesta dall&apos;account di {clientName}
                       </Text>
-                    </a>
+                    ) : null}
+                  </YStack>
+                  {appointmentInDetails && booking?.scheduledAt ? (
+                    <ClientDetailRow icon="calendar">{formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}</ClientDetailRow>
+                  ) : null}
+                  {isOnline ? (
+                    <ClientDetailRow icon="map-pin">Zona: {gr.city} (indirizzo nascosto)</ClientDetailRow>
+                  ) : (
+                    <ClientDetailRow icon="map-pin">{revealedAddress ?? gr.city}</ClientDetailRow>
+                  )}
+                  {revealedPhone || revealedEmail || (!isOnline && revealedAddress) ? (
+                    <YStack gap="2" paddingTop="1">
+                      <XStack gap={6}>
+                        {revealedPhone ? <ContactTile href={`tel:${revealedPhone}`} icon="phone" label="Chiama" /> : null}
+                        {whatsAppLink ? <ContactTile href={whatsAppLink} icon="message-circle" label="WhatsApp" external /> : null}
+                        {revealedEmail ? <ContactTile href={`mailto:${revealedEmail}`} icon="mail" label="Email" /> : null}
+                        {!isOnline && revealedAddress ? (
+                          <ContactTile
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(revealedAddress)}`}
+                            icon="map-pin"
+                            label="Mappa"
+                            external
+                          />
+                        ) : null}
+                      </XStack>
+                      {/* Numero ed email da leggere o copiare, piccoli e senza link: i
+                          pulsanti sopra fanno già chiamare e scrivere. */}
+                      {revealedPhone || revealedEmail ? (
+                        <Text fontSize={13} color={brand.grafite70} style={{ overflowWrap: "anywhere", userSelect: "text" }}>
+                          {[revealedPhone ? formatPhoneForDisplay(revealedPhone) : null, revealedEmail].filter(Boolean).join(" · ")}
+                        </Text>
+                      ) : null}
+                    </YStack>
                   ) : null}
                   {!booking ? (
                     <Text fontSize={13} color={brand.grafite70} fontStyle="italic">
@@ -2327,5 +2297,20 @@ export function RequestCard({
       ) : null}
       {openPhotoIndex !== null ? <PhotoLightbox photos={gr.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
     </Surface>
+  );
+}
+
+/** Riga dei "Dettagli cliente": icona grigia e testo normale, tutte uguali
+ *  (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */
+function ClientDetailRow({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <XStack alignItems="flex-start" gap="2">
+      <YStack paddingTop={3} flexShrink={0}>
+        <Icon name={icon} size={16} color={brand.grafite70} />
+      </YStack>
+      <Text flex={1} minWidth={0} fontSize={16} color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
+        {children}
+      </Text>
+    </XStack>
   );
 }

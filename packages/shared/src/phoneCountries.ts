@@ -133,3 +133,33 @@ export function isPlausiblePhoneNumber(value: string): boolean {
   if (joinPhoneNumber(iso, digits).length > 20) return false;
   return iso === "IT" ? digits.length >= 6 && digits.length <= 11 : digits.length >= 6 && digits.length <= 15;
 }
+
+/**
+ * Numero da leggere a schermo, a gruppi di cifre: "+39 333 444 5555"
+ * (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). Cellulare italiano
+ * Roma e Milano "06"/"02" a parte, poi gruppi da 3 e in fondo da 4
+ * quando avanzano cifre (333 444 5555, 06 1234 5678). Solo per mostrarlo: i link tel: usano il numero salvato.
+ */
+export function formatPhoneForDisplay(value: string): string {
+  if (!value.trim()) return "";
+  const { iso, national } = splitPhoneNumber(value);
+  const digits = national.replace(/\D/g, "");
+  if (!digits) return value.trim();
+  const dial = findPhoneCountry(iso)?.dial ?? "39";
+  const groups: string[] = [];
+  let rest = digits;
+  if (iso === "IT" && /^0[26]/.test(rest)) {
+    groups.push(rest.slice(0, 2));
+    rest = rest.slice(2);
+  }
+  // Gruppi da 3, gli ultimi da 4 quando avanzano cifre: mai un gruppo da 1 o 2 in fondo.
+  const fours = rest.length < 6 ? 0 : (3 - (rest.length % 3)) % 3 === 0 ? 0 : rest.length % 3;
+  const threes = (rest.length - fours * 4) / 3;
+  if (Number.isInteger(threes) && threes >= 0) {
+    for (let i = 0; i < threes; i++) groups.push(rest.slice(i * 3, i * 3 + 3));
+    for (let i = 0; i < fours; i++) groups.push(rest.slice(threes * 3 + i * 4, threes * 3 + i * 4 + 4));
+  } else {
+    groups.push(rest);
+  }
+  return `+${dial} ${groups.join(" ")}`;
+}
