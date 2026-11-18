@@ -51,3 +51,12 @@ ricevuta, posti finiti, senza profilo, aggiunta); test di quotes,
 guided-requests, request-board ed email verdi; tipi e lint di `apps/api` e
 `apps/web`. Pagine guardate da telefono con un'API finta (foto `pr2-*` in
 `anteprime/bacheca-richieste/` della cartella del progetto).
+
+## Avviso per la richiesta tenuta da parte (18/11, "sì" di Luca)
+
+Quando il giro dei "Rispondi" in attesa mette la richiesta nell'elenco del
+professionista, gli arriva la notifica `BOARD_CLAIM_ARRIVED` solo sul sito
+(campanella, suono e popup; niente email né WhatsApp): "La richiesta che avevi
+scelto è nel tuo elenco (Idraulico a Padova): manda il preventivo". Toccandola
+si apre la richiesta in `/dashboard/richieste`. Voce a sé nelle preferenze
+("Richieste scelte da Lavori cercati", argomento "Richieste").
