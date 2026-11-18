@@ -2,17 +2,21 @@ import {
   BOARD_DELAY_HOURS,
   BOARD_LISTING_DAYS,
   BOARD_MAX_QUOTES,
+  BOARD_REPLY_RADIUS_KM,
   PROVINCE_NAMES,
   boardTradeLabel,
   REQUEST_TIMING_LABEL,
   findComuneByName,
   isBoardTrade,
   isWaitingTradeKey,
+  textsMatchWaitingTrade,
+  waitingTradeKeywords,
   type BoardCard,
   type BoardTrade,
   type RequestTiming,
 } from "@professionisti/shared";
 import { anonymizeProblemText } from "../problem-match/problem-match.service";
+import { calculateDistanceKm } from "../common/geo.util";
 import { isLargeComune } from "./large-comuni";
 
 /**
@@ -120,4 +124,39 @@ export function boardCardOf(row: BoardRow): BoardCard | null {
 /** Prima le schede con meno preventivi (scelta di Luca: dove serve di più), poi le più recenti. */
 export function sortBoardCards(cards: BoardCard[]): BoardCard[] {
   return [...cards].sort((a, b) => a.quoteCount - b.quoteCount || b.listedAt.localeCompare(a.listedAt));
+}
+
+/**
+ * Chi può rispondere a una scheda (decisione di Luca): solo chi fa quel
+ * mestiere (categoria del profilo o di una prestazione; per i lavori che il
+ * sito non ha, le parole del lavoro nelle prestazioni, nei patentini o nella
+ * descrizione) ed entro 100 km dalla sua zona. Un lavoro online va solo a
+ * chi offre la consulenza online, a qualunque distanza.
+ */
+export function boardReplyProblem(input: {
+  request: { boardTrade: string; waitingTrade: string | null; waitingTradeKey: string | null; serviceMode: string | null; city: string };
+  profile: {
+    categorySlugs: string[];
+    services: { name: string; categorySlug: string | null }[];
+    certifications: string | null;
+    bio: string | null;
+    latitude: number;
+    longitude: number;
+    remoteAvailable: boolean;
+  };
+}): "other-trade" | "too-far" | "no-online" | null {
+  const { request, profile } = input;
+  if (request.waitingTrade) {
+    const keywords = waitingTradeKeywords({ key: request.waitingTradeKey, name: request.waitingTrade });
+    const texts = [...profile.services.map((service) => service.name), profile.certifications, profile.bio];
+    if (keywords.length === 0 || !textsMatchWaitingTrade(keywords, texts)) return "other-trade";
+  } else {
+    const slugs = new Set([...profile.categorySlugs, ...profile.services.flatMap((service) => (service.categorySlug ? [service.categorySlug] : []))]);
+    if (!slugs.has(request.boardTrade)) return "other-trade";
+  }
+  if (request.serviceMode === "ONLINE") return profile.remoteAvailable ? null : "no-online";
+  if (profile.latitude === 0 && profile.longitude === 0) return "too-far";
+  const comune = findComuneByName(request.city);
+  if (!comune) return "too-far";
+  return calculateDistanceKm(comune.lat, comune.lon, profile.latitude, profile.longitude) > BOARD_REPLY_RADIUS_KM ? "too-far" : null;
 }

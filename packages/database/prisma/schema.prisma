@@ -226,6 +226,7 @@ model User {
   notifications       Notification[]
   savedProfessionals  SavedProfessional[]
   contentReports      ContentReport[]
+  boardClaims         BoardClaim[]
   guidedRequestStates GuidedRequestUserState[]
   profileInvites      ProfileInvite[]
   loginDevices        LoginDevice[]
@@ -1064,6 +1065,7 @@ model GuidedRequest {
   quotes         Quote[]
   timelineEvents ConversationEvent[]
   userStates     GuidedRequestUserState[]
+  boardClaims    BoardClaim[]
 
   @@index([categoryId, city, status])
   @@index([deletedByClientAt])
@@ -1163,6 +1165,9 @@ model Lead {
   // dal database — resta visibile agli admin (/admin, "Richieste eliminate")
   // e conserva prezzo del lead e metriche di risposta.
   hiddenByProfessionalAt DateTime?
+  // Preso con "Rispondi" dalla bacheca "Lavori cercati": vale il tetto di
+  // 5 preventivi per richiesta (docs/changelog/2026-11-17-bacheca-rispondi.md).
+  fromBoardAt            DateTime?
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @default(now()) @updatedAt
 
@@ -1871,6 +1876,42 @@ model ConversationEvent {
 // Intervento" §4.6): cattura l'email di chi vuole essere avvisato quando la
 // sua zona è coperta, invece di un form decorativo che non fa nulla.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Bacheca "Lavori cercati", PR 2 (docs/changelog/2026-11-17-bacheca-rispondi.md)
+// ---------------------------------------------------------------------------
+
+// "Rispondi" toccato da chi non ha ancora il profilo visibile: la richiesta
+// gli arriva nell'elenco appena lo è (giro ogni 10 minuti), poi la riga si
+// cancella. Dopo 30 giorni si cancella comunque.
+model BoardClaim {
+  id              String   @id @default(uuid())
+  userId          String
+  guidedRequestId String
+  createdAt       DateTime @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guidedRequest GuidedRequest @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guidedRequestId])
+  @@index([guidedRequestId])
+  @@map("board_claims")
+}
+
+// "Avvisami alla prima richiesta" su una pagina mestiere + provincia vuota:
+// un'email sola, poi la riga si cancella; dopo 180 giorni senza richieste
+// si cancella comunque. Nessun account.
+model BoardAlert {
+  id        String   @id @default(uuid())
+  email     String
+  trade     String
+  province  String
+  createdAt DateTime @default(now())
+
+  @@unique([email, trade, province])
+  @@index([trade, province])
+  @@map("board_alerts")
+}
 
 model WaitlistSignup {
   id        String   @id @default(uuid())

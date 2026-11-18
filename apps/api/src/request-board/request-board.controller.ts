@@ -1,12 +1,19 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
-import { isBoardTrade, PROVINCE_NAMES } from "@professionisti/shared";
+import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
+import { Throttle } from "@nestjs/throttler";
+import { boardAlertSchema, boardReplySchema, isBoardTrade, PROVINCE_NAMES, type BoardAlertInput, type BoardReplyInput } from "@professionisti/shared";
 import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { assertTurnstile } from "../auth/turnstile";
+import { clientIp } from "../common/client-ip";
 import { RequestBoardService } from "./request-board.service";
 
 /**
- * Bacheca "Lavori cercati", pubblica e senza account
- * (docs/changelog/2026-11-17-bacheca-lavori-cercati.md): solo schede anonime,
- * 20 per pagina, un minuto di memoria breve come gli altri riepiloghi.
+ * Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md
+ * e 2026-11-17-bacheca-rispondi.md): schede anonime per tutti, 20 per pagina,
+ * un minuto di memoria breve come gli altri riepiloghi; "Rispondi" solo per
+ * i professionisti; "Avvisami" senza account.
  */
 @Controller("request-board")
 export class RequestBoardController {
@@ -28,5 +35,24 @@ export class RequestBoardController {
   @Get("summary")
   summary() {
     return this.summaries.get("tutte", () => this.board.summary());
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post("reply")
+  @HttpCode(200)
+  reply(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(boardReplySchema)) body: BoardReplyInput) {
+    return this.board.reply(req.user.userId, body.requestId);
+  }
+
+  // Pubblico, nessun account (stesso limite dei contatti).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("alerts")
+  @HttpCode(200)
+  async alert(@Body(new ZodValidationPipe(boardAlertSchema)) body: BoardAlertInput, @Req() req: Request) {
+    // Honeypot: un bot che compila ogni campo riceve lo stesso "fatto" senza scrivere nulla.
+    if (body.website) return { ok: true as const };
+    await assertTurnstile(body.turnstileToken, clientIp(req));
+    return this.board.addAlert(body);
   }
 }

@@ -6,8 +6,9 @@ import styles from "./BoardCards.module.css";
 /**
  * Schede della bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md):
  * titolo e riassunto senza dati personali, luogo, tempi, quante foto (mai le
- * foto), posti per i preventivi e "Rispondi", che porta all'iscrizione con il
- * mestiere già scelto.
+ * foto), posti per i preventivi e "Rispondi": chi ha già l'account da
+ * professionista prende la richiesta, gli altri si iscrivono con il mestiere
+ * già scelto (docs/changelog/2026-11-17-bacheca-rispondi.md).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,9 +31,9 @@ function photosLabel(count: number): string | null {
 }
 
 export function replyHref(card: BoardCard): string {
-  const params = new URLSearchParams({ ruolo: "professionista", richiesta: card.id });
+  const params = new URLSearchParams({ richiesta: card.id });
   if (isProfessionalCategorySlug(card.trade)) params.set("categoria", card.trade);
-  return `/registrati?${params.toString()}`;
+  return `/rispondi?${params.toString()}`;
 }
 
 export function BoardCards({ cards, now }: { cards: BoardCard[]; now: number }) {

@@ -60,6 +60,8 @@ export type EmailContent = {
    * commercialista di un professionista, docs/CHANGELOG.md §378).
    */
   kind: "notification" | "account" | "external";
+  /** Per "external": perché arriva, se non è un indirizzo dato da un professionista (es. "Avvisami" della bacheca). */
+  externalReason?: string;
   /**
    * "Non ricevere più email come questa" (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
    * link firmato che spegne l'email di quell'avviso senza accedere. Solo per le notifiche.
@@ -161,7 +163,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     content.kind === "notification"
       ? `Ricevi questa email per le notifiche del tuo account. Puoi scegliere quali ricevere dalle <a href="${site}/account/notifiche" style="color:${c.muted};">preferenze di notifica</a>.`
       : content.kind === "external"
-        ? EXTERNAL_FOOTER
+        ? (content.externalReason ?? EXTERNAL_FOOTER)
         : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.";
 
   const emailOff =
@@ -225,7 +227,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     content.kind === "notification"
       ? `Ricevi questa email per le notifiche del tuo account. Preferenze di notifica: ${site}/account/notifiche`
       : content.kind === "external"
-        ? EXTERNAL_FOOTER
+        ? (content.externalReason ?? EXTERNAL_FOOTER)
         : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.",
     `Aiuto: ${EMAIL_BRAND.supportEmail}`,
     ...(company ? [company] : []),

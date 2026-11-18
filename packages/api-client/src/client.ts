@@ -1,6 +1,8 @@
 import type {
   BoardPage,
   BoardSummary,
+  BoardReplyResult,
+  BoardAlertInput,
   ProfessionalClient,
   ReviewHoldReason,
   AgendaAttention,
@@ -1417,6 +1419,11 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       ),
     /** Mestiere e provincia con almeno una scheda, per i link e per Google. */
     getRequestBoardSummary: () => request<BoardSummary>("/request-board/summary", { cache: "no-store" }),
+    /** "Rispondi" dalla bacheca: la richiesta entra nell'elenco, o resta da parte finché il profilo non è visibile. */
+    replyToBoardRequest: (token: string, requestId: string) =>
+      request<BoardReplyResult>("/request-board/reply", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ requestId }) }),
+    /** "Avvisami alla prima richiesta" su una pagina della bacheca vuota, senza account. */
+    addBoardAlert: (input: BoardAlertInput) => request<{ ok: true }>("/request-board/alerts", { method: "POST", body: JSON.stringify(input) }),
     adminPopularJobs: (token: string) =>
       request<PopularJobsAdminView>("/admin/popular-jobs", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminAddPopularJob: (token: string, input: PopularJobInput) =>

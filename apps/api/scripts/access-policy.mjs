@@ -86,6 +86,8 @@ const publicRoutes = [
   "GET /popular-jobs",
   "GET /request-board",
   "GET /request-board/summary",
+  // "Avvisami alla prima richiesta" dalla bacheca vuota, senza account (Turnstile).
+  "POST /request-board/alerts",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",
@@ -184,6 +186,8 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // "Rispondi" dalla bacheca "Lavori cercati": la richiesta entra nell'elenco di chi chiama.
+  "POST /request-board/reply",
   // Rubrica "I miei clienti": solo i clienti di chi chiama (docs/changelog/2026-11-08-rubrica-clienti.md).
   "GET /professional-clients/me",
   "PUT /professional-clients/me/note",

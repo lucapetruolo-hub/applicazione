@@ -15,6 +15,7 @@ import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { BoardCards } from "@/components/requestBoard/BoardCards";
+import { BoardAlertForm } from "@/components/requestBoard/BoardAlertForm";
 import styles from "@/components/requestBoard/BoardPage.module.css";
 
 /**
@@ -136,12 +137,13 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
                 </Link>
               ) : null}
             </>
+          ) : board ? (
+            <div className={styles.empty}>
+              In questo momento nessun cliente in provincia di {found.provinceName} aspetta un {label}. Le richieste nuove della tua zona ti arrivano da sole quando hai il profilo.
+              <BoardAlertForm trade={found.trade} province={found.province} label={label} provinceName={found.provinceName} />
+            </div>
           ) : (
-            <p className={styles.empty}>
-              {board
-                ? `In questo momento nessun cliente in provincia di ${found.provinceName} aspetta un ${label}. Le richieste nuove della tua zona ti arrivano da sole quando hai il profilo.`
-                : "La bacheca non si carica in questo momento. Riprova tra poco."}
-            </p>
+            <p className={styles.empty}>La bacheca non si carica in questo momento. Riprova tra poco.</p>
           )}
           <p className={styles.note}>
             Il nome, i contatti e l&apos;indirizzo del cliente li ricevi solo se accetta il tuo preventivo. Il prezzo lo decidi tu.
