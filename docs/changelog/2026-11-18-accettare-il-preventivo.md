@@ -40,3 +40,14 @@ nessun modo scelto di serie quando sono più di uno.
 `prima-di-accettare`, `preventivo-accettato`, `schede-lavoro`, `tastiera`,
 `confronto-preventivi`, `fascia-in-corso`, `le-mie-richieste-leggera`
 passate su telefono e computer; prova unitaria della riga corta.
+
+## Secondo giro (18/11/2026, ok di Luca)
+
+- "Inviata a" mostra solo i professionisti che non hanno ancora mandato il
+  preventivo: chi l'ha mandato sta solo in "Preventivi ricevuti" (prima lo
+  stesso nome compariva due volte).
+- La riga sotto "Ti serve la fattura?" / "Ti serve la ricevuta?" diventa mezza
+  riga ("La fa il professionista: gli passiamo i tuoi dati."); quali dati, lo
+  dicono i campi che si aprono spuntando.
+- Con acconto al 100%, forbice e saldo diretto (MIXED, dopo #405) la riga corta
+  dice "il resto solo se serve, direttamente a lui".

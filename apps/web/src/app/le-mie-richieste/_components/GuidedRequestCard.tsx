@@ -828,6 +828,7 @@ export function GuidedRequestCard({
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
   const comparable = booking ? [] : comparableQuotes(request.quotes);
+  const sentToWithoutQuote = request.sentTo.filter((professional) => !request.quotes.some((quote) => quote.professionalProfileId === professional.id));
   // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §378).
   const invoiceDefaults = {
     name: [request.recipientName, request.recipientSurname].filter(Boolean).join(" "),
@@ -1204,12 +1205,14 @@ export function GuidedRequestCard({
           ) : null}
 
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
-          {request.professionalProfileId && request.sentTo.length > 0 && !booking ? (
+          {/* Chi ha già mandato il preventivo sta solo in "Preventivi ricevuti": prima lo stesso
+              professionista compariva due volte (docs/changelog/2026-11-18-accettare-il-preventivo.md). */}
+          {request.professionalProfileId && sentToWithoutQuote.length > 0 && !booking ? (
             <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
               <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
               </Text>
-              {request.sentTo.map((professional) => (
+              {sentToWithoutQuote.map((professional) => (
                 <XStack key={professional.id} gap="3" alignItems="center" backgroundColor={brand.gesso} borderRadius="3" padding="3" opacity={professional.declined ? 0.7 : 1}>
                   <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                     <XStack gap="3" alignItems="center">
