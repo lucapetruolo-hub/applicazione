@@ -17,6 +17,15 @@ const EVENING_HOUR = 20;
 const MORNING_LIMIT_HOUR = 11;
 const HOUR_MS = 60 * 60 * 1000;
 
+/** La data proposta sta sul preventivo: della prima visita o della serie (lavoro ricorrente). */
+const PROPOSAL_FIELDS = { id: true, guidedRequestId: true, clientProposedDate: true, clientProposedEndDate: true } as const;
+const WITH_PROPOSAL = {
+  OR: [
+    { quote: { status: "ACCEPTED" as const, clientProposedDate: { not: null } } },
+    { recurringJob: { quote: { status: "ACCEPTED" as const, clientProposedDate: { not: null } } } },
+  ],
+};
+
 /**
  * Fin dove arriva oggi l'ultimo avviso (ora italiana come UTC): le prossime 3
  * ore e, alle 20, anche il mattino dopo fino alle 11, perché di notte non si
@@ -61,7 +70,7 @@ export class DateChangeRemindersService {
         scheduledAt: { gt: wall, lte: lastCallHorizon(wall) },
         rescheduleRequestedAt: { not: null },
         rescheduleLastCallAt: null,
-        quote: { status: "ACCEPTED", clientProposedDate: { not: null } },
+        ...WITH_PROPOSAL,
       },
       select: {
         id: true,
@@ -72,12 +81,13 @@ export class DateChangeRemindersService {
         rescheduleRequestedAt: true,
         clientCantComeAt: true,
         professionalProfile: { select: { userId: true } },
-        quote: { select: { id: true, guidedRequestId: true, clientProposedDate: true, clientProposedEndDate: true } },
+        quote: { select: PROPOSAL_FIELDS },
+        recurringJob: { select: { quote: { select: PROPOSAL_FIELDS } } },
       },
     });
     let warned = 0;
     for (const booking of bookings) {
-      const quote = booking.quote;
+      const quote = booking.quote ?? booking.recurringJob?.quote;
       if (!quote?.clientProposedDate) continue;
       const claimed = await this.prisma.booking.updateMany({
         where: { id: booking.id, rescheduleLastCallAt: null, rescheduleRequestedAt: { not: null } },
@@ -110,7 +120,7 @@ export class DateChangeRemindersService {
     const wall = wallClockNow(now);
     const bookings = await this.prisma.booking.findMany({
       where: { rescheduleRequestedAt: { not: null }, scheduledAt: { lte: wall } },
-      select: { id: true, professionalProfileId: true, quote: { select: { id: true, guidedRequestId: true } } },
+      select: { id: true, professionalProfileId: true, quote: { select: { id: true, guidedRequestId: true } }, recurringJob: { select: { quote: { select: { id: true, guidedRequestId: true } } } } },
     });
     let expired = 0;
     for (const booking of bookings) {
@@ -119,13 +129,14 @@ export class DateChangeRemindersService {
         data: { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null, rescheduleLastCallAt: null, rescheduleRounds: 0 },
       });
       if (cleared.count === 0) continue;
-      if (booking.quote) {
+      const quote = booking.quote ?? booking.recurringJob?.quote;
+      if (quote) {
         await this.prisma.quote.update({
-          where: { id: booking.quote.id },
+          where: { id: quote.id },
           data: { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null, proposedDateAcceptedAt: null },
         });
         await this.timelineService.log(
-          booking.quote.guidedRequestId,
+          quote.guidedRequestId,
           booking.professionalProfileId,
           "SYSTEM",
           "L'altra data proposta non ha avuto risposta prima dell'appuntamento: la proposta è scaduta e vale l'orario di prima.",
@@ -152,7 +163,7 @@ export class DateChangeRemindersService {
           ),
         },
         rescheduleReminderAt: null,
-        quote: { status: "ACCEPTED", clientProposedDate: { not: null } },
+        ...WITH_PROPOSAL,
       },
       select: {
         id: true,
@@ -162,19 +173,13 @@ export class DateChangeRemindersService {
         rescheduleProposedBy: true,
         professionalProfileId: true,
         professionalProfile: { select: { userId: true } },
-        quote: {
-          select: {
-            id: true,
-            guidedRequestId: true,
-            clientProposedDate: true,
-            clientProposedEndDate: true,
-          },
-        },
+        quote: { select: PROPOSAL_FIELDS },
+        recurringJob: { select: { quote: { select: PROPOSAL_FIELDS } } },
       },
     });
     let sent = 0;
     for (const booking of bookings) {
-      const quote = booking.quote;
+      const quote = booking.quote ?? booking.recurringJob?.quote;
       if (!quote?.clientProposedDate) continue;
       // Segnato prima di mandare: un solo promemoria per proposta.
       const claimed = await this.prisma.booking.updateMany({

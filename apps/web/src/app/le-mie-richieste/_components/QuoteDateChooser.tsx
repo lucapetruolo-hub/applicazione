@@ -122,7 +122,9 @@ export function QuoteDateChooser({
     setError(null);
     setIsProposing(true);
     try {
-      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined, isManual: isManual || undefined });
+      // Una sola visita di un lavoro ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+      const bookingId = booking?.recurring ? booking.id : undefined;
+      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined, isManual: isManual || undefined, bookingId });
       setProposeNote("");
       onSent();
     } catch (err) {

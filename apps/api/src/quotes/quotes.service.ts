@@ -73,7 +73,7 @@ type BookedDateChange = {
     clientProposedEndDate: Date | null;
     guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null };
   };
-  booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: "HOME" | "ONLINE" | null };
+  booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: "HOME" | "ONLINE" | null; quoteId: string | null };
   answeredBy: "CLIENT" | "PROFESSIONAL";
   professionalUserId: string;
 };
@@ -81,6 +81,14 @@ type BookedDateChange = {
 /** Nessuna proposta di data in sospeso, sul preventivo e sul lavoro. */
 const NO_PROPOSAL = { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null, proposedDateAcceptedAt: null } as const;
 const NO_DATE_CHANGE = { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null, rescheduleLastCallAt: null, rescheduleRounds: 0 } as const;
+
+/**
+ * I lavori di una serie (lavoro ricorrente) nati da questo preventivo: la
+ * prima visita ha `quoteId`, le altre stanno sulla serie. Una proposta di
+ * data alla volta per serie, perché la data proposta sta sul preventivo
+ * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+ */
+const ofQuote = (quoteId: string) => ({ OR: [{ quoteId }, { recurringJob: { quoteId } }] });
 
 const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
 @Injectable()
@@ -524,7 +532,13 @@ export class QuotesService {
     // passa di qui come ogni altra proposta, e il professionista risponde con
     // gli stessi pulsanti (Luca, 29/10/2026,
     // docs/changelog/2026-10-28-promemoria-whatsapp.md).
-    const booking = quote.booking && quote.status === "ACCEPTED" ? quote.booking : null;
+    // Con una proposta in sospeso su una visita si risponde su quella; si
+    // può anche spostare una sola visita di un lavoro ricorrente
+    // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    const booking =
+      quote.booking && quote.status === "ACCEPTED"
+        ? ((quote.clientProposedDate ? await this.pendingDateChangeBooking(quote.id) : null) ?? (await this.bookingToMove(quote.id, quote.booking, input.bookingId)))
+        : null;
     if (booking) {
       if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
         throw new ForbiddenException("Questo appuntamento non si può più spostare.");
@@ -881,13 +895,31 @@ export class QuotesService {
    * "Modifica" l'ha proposta il professionista. `null` se non c'è: vale il
    * percorso di sempre del preventivo.
    */
+  /** Il lavoro della serie con una proposta di data in sospeso, se c'è. */
+  private pendingDateChangeBooking(quoteId: string) {
+    return this.prisma.booking.findFirst({ where: { ...ofQuote(quoteId), status: "CONFIRMED", rescheduleRequestedAt: { not: null } } });
+  }
+
+  /**
+   * Quale lavoro si sposta: quello indicato (una sola visita di un lavoro
+   * ricorrente) o il lavoro del preventivo.
+   */
+  private async bookingToMove<T extends { id: string }>(quoteId: string, ownBooking: T, bookingId: string | undefined) {
+    if (!bookingId || bookingId === ownBooking.id) return ownBooking;
+    const visit = await this.prisma.booking.findFirst({ where: { id: bookingId, recurringJob: { quoteId } } });
+    if (!visit) throw new NotFoundException("Visita non trovata.");
+    return visit;
+  }
+
   private async bookedDateChangeToAnswer(userId: string, quoteId: string): Promise<BookedDateChange | null> {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: { guidedRequest: true, booking: true, professionalProfile: { select: { userId: true } } },
     });
-    const booking = quote?.booking;
-    if (!quote || !booking || quote.status !== "ACCEPTED" || !booking.rescheduleRequestedAt || !quote.clientProposedDate) return null;
+    if (!quote || quote.status !== "ACCEPTED" || !quote.clientProposedDate) return null;
+    // Anche una sola visita di un lavoro ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    const booking = quote.booking?.rescheduleRequestedAt ? quote.booking : await this.pendingDateChangeBooking(quote.id);
+    if (!booking || !booking.rescheduleRequestedAt) return null;
     const proposedBy = booking.rescheduleProposedBy === "PROFESSIONAL" ? "PROFESSIONAL" : "CLIENT";
     const answeredBy = proposedBy === "CLIENT" ? "PROFESSIONAL" : "CLIENT";
     const answererId = answeredBy === "PROFESSIONAL" ? quote.professionalProfile.userId : quote.guidedRequest.clientId;
@@ -973,9 +1005,11 @@ export class QuotesService {
             },
           });
           if (moved.count === 0) throw new ConflictException("La proposta è cambiata: ricarica la pagina.");
+          // Una visita di un lavoro ricorrente si sposta da sola: il preventivo tiene la data della prima.
+          const ownBooking = booking.quoteId === quote.id;
           await tx.quote.update({
             where: { id: quote.id },
-            data: { estimatedStartDate: scheduledAt, estimatedEndDate: scheduledEndAt, arrivalTime: null, ...NO_PROPOSAL },
+            data: ownBooking ? { estimatedStartDate: scheduledAt, estimatedEndDate: scheduledEndAt, arrivalTime: null, ...NO_PROPOSAL } : NO_PROPOSAL,
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -1168,20 +1202,18 @@ export class QuotesService {
     }
     // Appuntamento già fissato: "Modifica" propone un'altra data al cliente,
     // che la accetta o la rifiuta come una qualsiasi proposta.
-    if (quote.booking && quote.status === "ACCEPTED" && quote.booking.rescheduleRequestedAt && quote.clientProposedDate) {
-      if (quote.booking.rescheduleProposedBy === "PROFESSIONAL") {
+    const pending = quote.booking && quote.status === "ACCEPTED" && quote.clientProposedDate ? await this.pendingDateChangeBooking(quote.id) : null;
+    if (quote.booking && pending) {
+      if (pending.rescheduleProposedBy === "PROFESSIONAL") {
         throw new ForbiddenException("Hai proposto tu questa data: aspetta la risposta del cliente.");
       }
-      return this.counterProposeBookedDate(professionalProfile.id, quote, quote.booking, input);
+      return this.counterProposeBookedDate(professionalProfile.id, quote, pending, input);
     }
     // Anche senza una proposta del cliente: "Proponi un'altra data" sul lavoro
-    // fissato, stesso percorso (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    // fissato, stesso percorso, anche per una sola visita di un lavoro
+    // ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
     if (quote.booking && quote.status === "ACCEPTED") {
-      // Lavoro ricorrente: le visite si saltano dalla serie, non si spostano da qui.
-      if (quote.booking.recurringJobId) {
-        throw new ForbiddenException("Per un lavoro ricorrente usa \"Salta questa volta\" e scrivi al cliente.");
-      }
-      return this.counterProposeBookedDate(professionalProfile.id, quote, quote.booking, input);
+      return this.counterProposeBookedDate(professionalProfile.id, quote, await this.bookingToMove(quote.id, quote.booking, input.bookingId), input);
     }
     if (quote.status !== "MODIFICATION_REQUESTED") {
       throw new ForbiddenException("Nessuna data proposta da modificare per questo preventivo.");

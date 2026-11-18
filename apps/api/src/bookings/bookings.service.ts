@@ -2085,7 +2085,7 @@ export class BookingsService implements OnModuleInit {
       // Tolto se il cliente non ha mai avuto il tempo di annullare gratis (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
       lateCancelKeepsDeposit: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
       // Altra data proposta sul preventivo accettato, in attesa del professionista.
-      dateChange: bookingDateChange(booking, booking.ownQuote),
+      dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       recurring: recurringVisitInfo(booking),

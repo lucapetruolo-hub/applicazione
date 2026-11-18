@@ -2440,7 +2440,7 @@ export class ProfessionalsService {
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       clientReminder: clientReminder(booking),
       // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      dateChange: bookingDateChange(booking, booking.ownQuote),
+      dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],

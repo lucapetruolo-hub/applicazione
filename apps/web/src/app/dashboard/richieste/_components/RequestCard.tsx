@@ -316,6 +316,8 @@ export function RequestCard({
   })();
 
   const [showCounterForm, setShowCounterForm] = useState(false);
+  // "Sposta" su una sola visita di un lavoro ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  const [moveVisitId, setMoveVisitId] = useState<string | null>(null);
   const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
   // Data/orario libera anche qui (richiesta esplicita dell'utente: "ogni
   // volta che il professionista clicca su proponi un'altra data gli si
@@ -654,7 +656,22 @@ export function RequestCard({
     }
     setCounterNote("");
     setCounterError(null);
+    setMoveVisitId(null);
     setShowCounterForm((v) => !v);
+  }
+  /** "Sposta" su una visita della serie: la solita proposta, da vuota, per quella visita. */
+  function openMoveVisit(visitId: string) {
+    setCounterSlotKey("");
+    setUseManualCounterDateTime(false);
+    setManualCounterDate("");
+    setManualCounterStartTime("");
+    setManualCounterEndTime("");
+    setCounterNote("");
+    setCounterError(null);
+    setMoveVisitId(visitId);
+    setShowCounterForm(true);
+    // Il modulo sta più in basso nella scheda: lo si porta in vista.
+    requestAnimationFrame(() => document.getElementById(`move-visit-form-${lead.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
   }
   async function handleCounterPropose() {
     if (!lead.quote) return;
@@ -672,8 +689,9 @@ export function RequestCard({
     setCounterError(null);
     setIsCountering(true);
     try {
-      await apiClient.counterProposeQuoteDate(token, lead.quote.id, { ...payload, note: counterNote.trim() || undefined });
+      await apiClient.counterProposeQuoteDate(token, lead.quote.id, { ...payload, note: counterNote.trim() || undefined, bookingId: moveVisitId ?? undefined });
       setShowCounterForm(false);
+      setMoveVisitId(null);
       onChanged();
     } catch (err) {
       setCounterError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -851,13 +869,18 @@ export function RequestCard({
   // proposta arriva allo stesso modo, sul preventivo: stessi riquadro e
   // pulsanti, e accettandola l'appuntamento si sposta
   // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-  const bookedDateChange = booking?.dateChange?.proposedBy === "CLIENT";
+  // La proposta può stare su una sola visita di un lavoro ricorrente
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  const seriesVisits = booking?.recurring ? bookings.filter((visit) => visit.recurring?.seriesId === booking.recurring?.seriesId) : [];
+  const dateChangeBooking = seriesVisits.find((visit) => visit.dateChange) ?? booking;
+  const movingVisit = moveVisitId ? (seriesVisits.find((visit) => visit.id === moveVisitId) ?? null) : null;
+  const bookedDateChange = dateChangeBooking?.dateChange?.proposedBy === "CLIENT";
   // Con "Modifica" hai proposto tu un'altra data: aspetta il cliente.
-  const myBookedDateChange = booking?.dateChange?.proposedBy === "PROFESSIONAL" ? booking.dateChange : null;
+  const myBookedDateChange = dateChangeBooking?.dateChange?.proposedBy === "PROFESSIONAL" ? dateChangeBooking.dateChange : null;
   const dateChangePending = (stage === "modifica_richiesta" || bookedDateChange) && Boolean(lead.quote?.clientProposedDate);
   const proposalChange = lead.quote?.clientProposedDate
     ? scheduleChangeBetween(
-        bookedDateChange && booking ? { start: booking.scheduledAt, end: booking.scheduledEndAt } : { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+        bookedDateChange && dateChangeBooking ? { start: dateChangeBooking.scheduledAt, end: dateChangeBooking.scheduledEndAt } : { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
         { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
       )
     : null;
@@ -1179,7 +1202,7 @@ export function RequestCard({
                 marginTop="3"
                 title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
                 beforeLabel="Data originale"
-                beforeText={bookedDateChange && booking ? formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) : formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                beforeText={bookedDateChange && dateChangeBooking ? formatSlotRange(dateChangeBooking.scheduledAt, dateChangeBooking.scheduledEndAt) : formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
                 afterLabel="Nuova data richiesta"
                 afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
                 note={lead.quote.clientProposedNote}
@@ -1206,18 +1229,18 @@ export function RequestCard({
               note={lead.quote.clientNote}
             />
           ) : null}
-          {myBookedDateChange && booking ? (
+          {myBookedDateChange && dateChangeBooking ? (
             <ScheduleChangeBox
               marginTop="3"
               title="Hai proposto un'altra data: in attesa del cliente"
               beforeLabel="Appuntamento di adesso"
-              beforeText={formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+              beforeText={formatSlotRange(dateChangeBooking.scheduledAt, dateChangeBooking.scheduledEndAt)}
               afterLabel="Nuova data proposta"
               afterText={formatSlotRange(myBookedDateChange.start, myBookedDateChange.end)}
               note={myBookedDateChange.note}
             />
           ) : null}
-          {booking?.dateChange ? <DateRoundsHint rounds={booking.dateChange.rounds} onMessage={myProfileId ? openTimeline : null} /> : null}
+          {dateChangeBooking?.dateChange ? <DateRoundsHint rounds={dateChangeBooking.dateChange.rounds} onMessage={myProfileId ? openTimeline : null} /> : null}
 
           <XStack flexWrap="wrap" gap="4" paddingTop="3">
             {/* Sezione 1 — Descrizione lavoro: prima il lavoro, poi chi lo chiede
@@ -1728,12 +1751,7 @@ export function RequestCard({
             {/* Lavoro ricorrente: prossime visite, "Salta questa volta" e
                 "Interrompi" (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
             {booking?.recurring ? (
-              <RecurringVisitsBox
-                side="PROFESSIONAL"
-                visits={bookings.filter((visit) => visit.recurring?.seriesId === booking.recurring?.seriesId)}
-                token={token}
-                onChanged={onChanged}
-              />
+              <RecurringVisitsBox side="PROFESSIONAL" visits={seriesVisits} token={token} onChanged={onChanged} onMove={lead.quote ? openMoveVisit : undefined} />
             ) : null}
             {/* Chi deve fare ancora cosa (collaudo A-17). */}
             {booking?.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
@@ -2252,7 +2270,12 @@ export function RequestCard({
 
           {/* Form "proponi altra data" (contro-proposta) */}
           {showCounterForm ? (
-            <YStack gap="3" padding="3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+            <YStack id={`move-visit-form-${lead.id}`} gap="3" padding="3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              {movingVisit ? (
+                <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                  Sposta la visita di {formatSlotRange(movingVisit.scheduledAt, movingVisit.scheduledEndAt)}
+                </Text>
+              ) : null}
               {/* Lavoro su più giorni (§310): la durata resta quella del preventivo. */}
               {lead.quote && jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) > 1 ? (
                 <Text fontSize={12} color={brand.grafite70}>
@@ -2305,7 +2328,7 @@ export function RequestCard({
                 </YStack>
               )}
               <BusyTimeNotice bookings={counterBusy.bookings} roomLeft={counterBusy.roomLeft} />
-              {canProposeBookedDate ? (
+              {canProposeBookedDate || movingVisit ? (
                 <Text fontSize={13} color={brand.grafite70}>
                   Il cliente accetta o rifiuta: fino ad allora resta l&apos;appuntamento di adesso. Se nessuna data gli va bene, può annullare senza perdere l&apos;acconto.
                 </Text>
@@ -2320,7 +2343,14 @@ export function RequestCard({
                 <CardButton waitingLabel={isCountering ? "Invio in corso…" : undefined} tone="primary" disabled={isCountering} opacity={1} onPress={handleCounterPropose}>
                   Invia nuova proposta
                 </CardButton>
-                <CardButton onPress={() => setShowCounterForm(false)}>Annulla</CardButton>
+                <CardButton
+                  onPress={() => {
+                    setShowCounterForm(false);
+                    setMoveVisitId(null);
+                  }}
+                >
+                  Annulla
+                </CardButton>
               </XStack>
             </YStack>
           ) : null}

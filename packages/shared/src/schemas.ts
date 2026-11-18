@@ -644,6 +644,11 @@ export const proposeQuoteDateSchema = z.object({
   /** Dettagli facoltativi sulla data proposta (es. "posso solo dopo le 17"), mostrati al professionista. */
   note: z.string().max(1000).optional(),
   /**
+   * Una sola visita di un lavoro ricorrente da spostare; senza, il lavoro del
+   * preventivo (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+   */
+  bookingId: z.guid().optional(),
+  /**
    * Richiesta esplicita dell'utente: quando il professionista usa
    * "Proponi un'altra data" (counter-propose-date) o il cliente sceglie
    * "Altro" nel menu a tendina data/ora (propose-date) deve poter inserire
