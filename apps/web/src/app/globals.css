@@ -2381,6 +2381,23 @@ html.site-menu-open .profile-cta-bar {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* Spostamento in sospeso sull'appuntamento in "Oggi e domani"
+   (docs/changelog/2026-11-18-spostamento-in-oggi.md): ambra se lo chiede il
+   cliente e serve una risposta, grigio se aspetti il cliente. */
+.today-move {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1eee9;
+  color: #5e5a54;
+  font-size: 13px;
+  font-weight: 700;
+}
+.today-move.is-asked {
+  background: #fdf0dc;
+  color: #7a4f0e;
+}
 .today-empty {
   padding: 14px 16px;
   border-radius: 20px;
