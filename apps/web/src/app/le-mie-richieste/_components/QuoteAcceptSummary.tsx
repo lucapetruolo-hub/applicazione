@@ -118,7 +118,9 @@ export function QuoteAcceptSummary({
                       ? split.nowIsMinimum
                         ? "Solo se il prezzo finale è più alto, in automatico sulla stessa carta"
                         : "In automatico, sulla stessa carta"
-                      : "Direttamente al professionista",
+                      : split.nowIsMinimum
+                        ? "Solo se il prezzo finale è più alto, direttamente al professionista"
+                        : "Direttamente al professionista",
                     quotePaymentRestText(split),
                   )
                 : null}

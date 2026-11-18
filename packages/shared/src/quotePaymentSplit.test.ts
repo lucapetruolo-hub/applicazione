@@ -61,5 +61,6 @@ test("riga corta del pagamento con la carta", () => {
   assert.equal(short("MIXED", fifty, 20), "10,00 € subito, il resto a lavoro finito direttamente a lui");
   assert.equal(short("ONLINE", fifty, 100), "50,00 € subito, tutto il prezzo");
   assert.equal(short("ONLINE", { totalMinEurCents: 15000, totalMaxEurCents: 25000 }, 100), "150,00 € subito, il resto solo se serve");
+  assert.equal(short("MIXED", { totalMinEurCents: 15000, totalMaxEurCents: 25000 }, 100), "150,00 € subito, il resto solo se serve, direttamente a lui");
   assert.equal(short("DIRECT", fifty, 20), null);
 });

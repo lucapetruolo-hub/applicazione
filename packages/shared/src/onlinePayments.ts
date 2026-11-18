@@ -373,7 +373,7 @@ export function quotePaymentShortLine(choice: JobPaymentChoice, totals: { totalM
   if (!split) return null;
   const now = `${formatEurCents(split.nowEurCents)} subito`;
   if (split.restMaxEurCents === 0) return split.restIsRange ? `${now}, la differenza ti torna se costa meno` : `${now}, tutto il prezzo`;
-  if (split.nowIsMinimum) return `${now}, il resto solo se serve`;
+  if (split.nowIsMinimum) return `${now}, il resto solo se serve${split.restOnline ? "" : ", direttamente a lui"}`;
   return `${now}, il resto a lavoro finito${split.restOnline ? "" : " direttamente a lui"}`;
 }
 
