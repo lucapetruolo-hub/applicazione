@@ -42,7 +42,7 @@ describe("bacheca: numero delle richieste in /cerca", () => {
   it("dalla soglia in su si mostra il numero, solo per i comuni della provincia", async () => {
     const { service: s, prisma } = service(BOARD_CLIENT_COUNT_MIN);
     expect(await s.demand("idraulico", "RM", NOW)).toEqual({ count: BOARD_CLIENT_COUNT_MIN });
-    const where = prisma.guidedRequest.count.mock.calls[0][0].where;
+    const [[{ where }]] = prisma.guidedRequest.count.mock.calls as unknown as [[{ where: { city: { in: string[] }; waitingTrade: unknown } }]];
     expect(where.city.in).toContain("Roma");
     expect(where.city.in).not.toContain("Milano");
     expect(where.waitingTrade).toBeNull();
