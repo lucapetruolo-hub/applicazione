@@ -67,7 +67,7 @@ export class QuotePdfService {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: {
-        items: { orderBy: { id: "asc" } },
+        items: { orderBy: { position: "asc" } },
         guidedRequest: { select: { clientId: true, description: true, city: true, serviceMode: true, category: { select: { label: true } } } },
         professionalProfile: {
           select: {

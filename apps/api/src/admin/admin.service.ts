@@ -1664,7 +1664,7 @@ export class AdminService {
         client: { select: { id: true, name: true, surname: true, deletedAt: true } },
         quote: {
           select: {
-            items: true,
+            items: { orderBy: { position: "asc" } },
             guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } },
           },
         },

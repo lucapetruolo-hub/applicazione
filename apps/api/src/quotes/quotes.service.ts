@@ -134,7 +134,7 @@ export class QuotesService {
 
     const existingQuote = await this.prisma.quote.findFirst({
       where: { guidedRequestId: input.requestId, professionalProfileId: professionalProfile.id },
-      include: { items: true },
+      include: { items: { orderBy: { position: "asc" } } },
     });
     // Modificabile solo finché il cliente non ha ancora agito (richiesta
     // esplicita dell'utente: "Modifica preventivo" nella dashboard) — un

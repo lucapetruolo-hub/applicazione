@@ -940,7 +940,7 @@ export class AuthService {
       await Promise.all([
         this.prisma.guidedRequest.findMany({
           where: { clientId: userId },
-          include: { quotes: { include: { items: true, invoiceRequest: true } } },
+          include: { quotes: { include: { items: { orderBy: { position: "asc" } }, invoiceRequest: true } } },
           orderBy: { createdAt: "desc" },
         }),
         this.prisma.booking.findMany({
@@ -987,7 +987,7 @@ export class AuthService {
           this.prisma.lead.findMany({ where: { professionalProfileId: professionalProfile.id }, orderBy: { createdAt: "desc" } }),
           this.prisma.quote.findMany({
             where: { professionalProfileId: professionalProfile.id },
-            include: { items: true },
+            include: { items: { orderBy: { position: "asc" } } },
             orderBy: { createdAt: "desc" },
           }),
           // Qui `professionalNote` resta inclusa: è contenuto scritto dal

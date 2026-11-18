@@ -776,7 +776,7 @@ export class GuidedRequestsService {
                 },
               },
             },
-            items: true,
+            items: { orderBy: { position: "asc" } },
             booking: { select: { status: true } },
             // Fattura chiesta al professionista (docs/CHANGELOG.md §378).
             invoiceRequest: true,

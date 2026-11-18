@@ -41,7 +41,7 @@ const JOB_INCLUDE = {
       professionalProfile: { select: { businessName: true, city: true, userId: true, user: { select: { name: true, surname: true } } } },
       finalItems: true,
       issue: { select: { type: true, status: true, createdAt: true } },
-      quote: { include: { items: true, guidedRequest: { select: { id: true, description: true, createdAt: true, category: { select: { label: true } } } } } },
+      quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { select: { id: true, description: true, createdAt: true, category: { select: { label: true } } } } } },
     },
   },
 } as const;

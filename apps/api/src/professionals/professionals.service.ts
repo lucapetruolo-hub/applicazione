@@ -365,7 +365,7 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
     include: {
       review: true,
       client: { select: { name: true, surname: true } },
-      quote: { select: { items: { select: { name: true }, orderBy: { id: "asc" }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
+      quote: { select: { items: { select: { name: true }, orderBy: { position: "asc" }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
     },
   },
   visibilityBoosts: { where: { status: "ACTIVE" } },
@@ -1909,7 +1909,7 @@ export class ProfessionalsService {
           include: {
             category: true,
             client: true,
-            quotes: { where: { professionalProfileId }, include: { items: true, booking: true } },
+            quotes: { where: { professionalProfileId }, include: { items: { orderBy: { position: "asc" } }, booking: true } },
             // Stato personale del professionista sulla scheda (docs/CHANGELOG.md §130).
             userStates: { where: { userId } },
           },
@@ -2280,7 +2280,7 @@ export class ProfessionalsService {
         // tutti questi campi restano null/[] in quel caso.
         quote: {
           include: {
-            items: true,
+            items: { orderBy: { position: "asc" } },
             guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
             invoiceRequest: true,
           },
@@ -2295,7 +2295,7 @@ export class ProfessionalsService {
           include: {
             quote: {
               include: {
-                items: true,
+                items: { orderBy: { position: "asc" } },
                 guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
                 invoiceRequest: true,
               },
