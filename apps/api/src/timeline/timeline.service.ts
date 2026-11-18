@@ -244,7 +244,7 @@ export class TimelineService {
    */
   async listAwaitingReplyForProfessional(userId: string, now: Date = new Date()): Promise<ChatAwaitingReply[]> {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
-    if (!profile) return [];
+    if (!profile) throw new ForbiddenException("Solo i professionisti possono farlo.");
     const since = new Date(now.getTime() - CHAT_AWAITING_DAYS * 24 * 60 * 60 * 1000);
     const events = await this.prisma.conversationEvent.findMany({
       where: { professionalProfileId: profile.id, createdAt: { gte: since } },
