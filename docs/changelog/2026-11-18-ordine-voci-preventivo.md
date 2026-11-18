@@ -22,6 +22,9 @@ scritte.
   `position` (cliente, professionista, admin, PDF, export dei dati, prima voce
   in "I miei clienti" e nell'agenda). Le letture che fanno solo la somma degli
   importi restano com'erano.
+- Stessa correzione per le voci scritte a fine lavoro (`BookingFinalItem`,
+  `booking_final_items.position`, stessa migrazione), che avevano lo stesso
+  difetto (Luca: "si").
 - La prova resta com'è.
 
 **Verifica**: typecheck di `apps/api`; `prisma migrate diff` dà lo stesso SQL

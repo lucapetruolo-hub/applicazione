@@ -1869,7 +1869,7 @@ export class BookingsService implements OnModuleInit {
       include: {
         professionalProfile: { include: { user: true } },
         review: true,
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         issue: true,
         jobPayment: true,
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare

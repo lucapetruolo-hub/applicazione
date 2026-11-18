@@ -39,7 +39,7 @@ const JOB_INCLUDE = {
     include: {
       client: { select: { name: true, surname: true, email: true } },
       professionalProfile: { select: { businessName: true, city: true, userId: true, user: { select: { name: true, surname: true } } } },
-      finalItems: true,
+      finalItems: { orderBy: { position: "asc" } },
       issue: { select: { type: true, status: true, createdAt: true } },
       quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { select: { id: true, description: true, createdAt: true, category: { select: { label: true } } } } } },
     },

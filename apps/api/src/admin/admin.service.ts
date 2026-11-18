@@ -1657,7 +1657,7 @@ export class AdminService {
       orderBy: { updatedAt: "desc" },
       take: 200,
       include: {
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         jobPayment: true,
         courtesyDocument: { select: { kind: true, receiptNumber: true } },
         professionalProfile: { select: { id: true, userId: true, businessName: true } },

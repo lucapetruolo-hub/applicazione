@@ -960,7 +960,7 @@ export class AuthService {
             city: true,
             province: true,
             finalAmountEurCents: true,
-            finalItems: true,
+            finalItems: { orderBy: { position: "asc" } },
             cancellationNote: true,
             canceledBy: true,
             meetingLink: true,

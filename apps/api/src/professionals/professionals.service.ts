@@ -2285,7 +2285,7 @@ export class ProfessionalsService {
             invoiceRequest: true,
           },
         },
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         issue: true,
         jobPayment: true,
         courtesyDocument: { select: COURTESY_DOCUMENT_FIELDS },
