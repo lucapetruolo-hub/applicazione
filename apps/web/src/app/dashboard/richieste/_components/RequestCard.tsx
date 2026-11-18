@@ -1044,9 +1044,13 @@ export function RequestCard({
             <HighlightMatch text={`${gr.categoryLabel} · ${gr.city}`} />
           </Text>
         </XStack>
-        <Text fontSize={16} color={brand.grafite} lineHeight="22px">
-          <HighlightMatch text={gr.description} />
-        </Text>
+        {/* A scheda aperta la descrizione è sotto "Descrizione lavoro": in alto
+            solo a scheda chiusa (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */}
+        {isOpen ? null : (
+          <Text fontSize={16} color={brand.grafite} lineHeight="22px">
+            <HighlightMatch text={gr.description} />
+          </Text>
+        )}
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
             i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
         {stage === "da_quotare" && competitorsLabel ? (

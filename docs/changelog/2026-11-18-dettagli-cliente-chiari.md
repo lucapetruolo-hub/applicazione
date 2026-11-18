@@ -49,3 +49,9 @@ diverso dal nome dell'account; `tsc` e `eslint` del sito verdi.
 **Verifica**: foto `dopo2-*` in `anteprime/dettagli-cliente/` (scheda aperta e
 chiusa del professionista, scheda del cliente, telefono e computer); `tsc`,
 `pnpm lint` del sito e prova del numero verdi.
+
+## Terzo giro (sì di Luca)
+
+A scheda aperta anche la descrizione del lavoro non si ripete più in alto: resta
+solo sotto "Descrizione lavoro" (con le parole cercate evidenziate). A scheda
+chiusa si vede in alto come prima.
