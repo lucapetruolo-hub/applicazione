@@ -57,7 +57,8 @@ class TooLongError extends Error {}
 /** Durata del video in secondi, o null se il browser non la sa leggere entro 4 secondi. */
 function videoDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
+    // localPreviewUrl: stesso indirizzo blob: delle anteprime, già passato da encodeURI (CodeQL).
+    const url = localPreviewUrl(file);
     const video = document.createElement("video");
     const finish = (value: number | null) => {
       clearTimeout(timer);
