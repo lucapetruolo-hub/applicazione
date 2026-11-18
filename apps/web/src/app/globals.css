@@ -10303,6 +10303,19 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: none;
   }
 }
+/* Senza IA (professionisti scelti, attesa di un mestiere): niente luce, bordo
+   come gli altri campi del modulo e verde pieno mentre si scrive
+   (docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */
+.guided-description-input.guided-description-input--semplice {
+  border: 1px solid #8e867c !important;
+  background: #ffffff !important;
+  animation: none;
+}
+.guided-description-input.guided-description-input--semplice:focus {
+  outline: none;
+  border-color: #1e6b6e !important;
+  box-shadow: 0 0 0 1px #1e6b6e;
+}
 /* Sagoma di una pagina o del modulo di richiesta mentre arriva (collaudo
    08/11 E8-02, components/PageLoading.tsx): HTML semplice e sagome ferme,
    stessa tinta delle altre sagome (.skeleton-shimmer). La riga in fondo dice

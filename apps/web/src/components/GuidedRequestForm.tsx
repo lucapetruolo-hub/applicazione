@@ -1595,11 +1595,14 @@ export function GuidedRequestForm({
         <YStack gap="2">
           <FieldLabel>Descrivi il lavoro</FieldLabel>
           {/* Primo campo, con la stessa luce del campo della home: due giri
-              all'apertura, verde pieno mentre si scrive. */}
+              all'apertura, verde pieno mentre si scrive. La luce dice "qui
+              lavora l'IA": con professionisti scelti (o in attesa di un
+              mestiere) l'IA è spenta e il campo è semplice come gli altri
+              (richiesta di Luca, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */}
           <div className="guided-description-wrap">
             <textarea aria-label="Descrivi il lavoro"
               ref={descriptionRef}
-              className="guided-description-input"
+              className={suggestionsOn ? "guided-description-input" : "guided-description-input guided-description-input--semplice"}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => checkDescription()}
