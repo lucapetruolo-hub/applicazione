@@ -106,9 +106,23 @@ test("il telefono manda la foto e arriva da sola sul computer", async ({ browser
     await expect(tel.getByText(n === 1 ? "1 foto è arrivata sul computer" : `${n} foto sono arrivate sul computer`)).toBeVisible();
     await expect(page.getByText(n === 1 ? "1 foto arrivata" : `${n} foto arrivate`)).toBeVisible({ timeout: 10_000 });
   }
-  await page.getByRole("button", { name: "Fatto", exact: true }).click();
+  // Dal 18/11 (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md) le foto
+  // arrivate si vedono con la X: togliendone una il posto torna libero.
+  await expect(page.getByRole("list", { name: "Foto arrivate dal telefono" }).getByRole("img")).toHaveCount(2);
+  await page.getByRole("button", { name: "Togli la foto 2" }).click();
+  await expect(page.getByText("1 foto arrivata")).toBeVisible();
+  // Dal telefono due foto insieme dalla galleria, un solo invio.
+  await expect(tel.getByRole("button", { name: "Scegli dalla galleria" })).toBeEnabled({ timeout: 10_000 });
+  await tel.locator("input[multiple]").setInputFiles([
+    { name: "guasto-3.png", mimeType: "image/png", buffer: PNG },
+    { name: "guasto-4.png", mimeType: "image/png", buffer: PNG },
+  ]);
+  await tel.getByRole("button", { name: "Manda 2 foto al computer" }).click();
+  await expect(tel.getByText("3 foto sono arrivate sul computer")).toBeVisible();
+  await expect(page.getByText("3 foto arrivate")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Aggiungi 3 foto" }).click();
   await expect(page.locator(".photo-sheet")).toHaveCount(0);
-  await expect(page.locator(".guided-photo img, .guided-photo video")).toHaveCount(2);
+  await expect(page.locator(".guided-photo img, .guided-photo video")).toHaveCount(3);
 
   // Chiusa la finestra sul computer, lo stesso link non vale più.
   await tel.reload();
