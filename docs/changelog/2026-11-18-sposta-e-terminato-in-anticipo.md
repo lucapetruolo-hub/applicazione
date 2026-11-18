@@ -21,7 +21,8 @@ addebitato prima del lavoro.
   nessuna strada nuova): il cliente accetta, rifiuta o
   propone un'altra data, come già per "Modifica". Finché non risponde resta la
   data di adesso. Niente proposta per le visite di un lavoro ricorrente (si
-  saltano dalla serie) né con un'altra proposta già in sospeso.
+  saltano dalla serie; dal secondo giro si spostano anche una alla volta,
+  vedi sotto) né con un'altra proposta già in sospeso.
 - **Il cliente non perde l'acconto per uno spostamento chiesto dal
   professionista**: finché la proposta aspetta la sua risposta, annullare non è
   "tardivo" (`proposedByProfessionalFirst`, `BookingDateChange.clientCancelsFree`).
@@ -53,7 +54,39 @@ addebitato prima del lavoro.
   "Spostati all'ultimo momento": quelli chiesti dal professionista nel periodo,
   con quelli dei clienti sotto.
 
-**Migrazione**: solo una colonna (`bookings.earlyCompletionAskedAt`) e una
+## Secondo giro: quattro aggiunte (stesso giorno)
+
+**Richiesta** (Luca, 18/11/2026, sera): "cos'altro c'è da valutare che non ho
+valutato da massimo esperto del settore?". Proposte quattro aggiunte, Luca ha
+risposto "si" a tutte.
+
+- **Proposta senza risposta vicino all'appuntamento**: prima partiva un solo
+  promemoria dopo 12 ore, che poteva arrivare dopo l'orario. Ora, se la
+  proposta aspetta ancora risposta 3 ore prima dell'appuntamento, arriva a
+  tutti e due l'avviso nuovo `BOOKING_DATE_CHANGE_UNANSWERED` (argomento
+  "Preventivi e date", niente WhatsApp): vale l'orario di adesso; al
+  professionista che aveva proposto si dice di annullare se non riesce a
+  venire. Mai di notte: alle 20 si avvisa già per gli appuntamenti del
+  mattino dopo fino alle 11 (`lastCallHorizon`). Passato l'orario la proposta
+  scade da sola, con una riga nella cronologia
+  (`DateChangeRemindersService.lastCallAndExpire`, `Booking.rescheduleLastCallAt`).
+- **"Il lavoro è già finito?" senza risposta**: un promemoria al cliente dopo
+  24 ore, uno solo, solo prima del giorno fissato
+  (`CompletionDeadlineService`, `Booking.earlyCompletionReminderAt`).
+- **Proposte che rimbalzano**: `Booking.rescheduleRounds` conta le proposte di
+  fila senza accordo (si azzera ad accordo, rifiuto o scadenza). Dal terzo
+  giro, cliente e professionista leggono "Non riuscite a trovare una data?
+  Scrivetevi in chat" con "Scrivi in chat" (`DateRoundsHint`).
+- **Spostare una sola visita di un lavoro ricorrente**: "Sposta" accanto a
+  "Salta questa volta" nel riquadro del lavoro ricorrente, per cliente e
+  professionista. Apre la solita "Proponi un'altra data" per quella visita
+  (`bookingId` nella proposta), e l'altro risponde con gli stessi pulsanti.
+  Una proposta alla volta per serie, perché la data proposta sta sul
+  preventivo; le altre visite e il preventivo restano com'erano. Cade il
+  blocco "Per un lavoro ricorrente usa Salta questa volta".
+
+**Migrazione**: solo colonne (`bookings.earlyCompletionAskedAt`,
+`earlyCompletionReminderAt`, `rescheduleLastCallAt`, `rescheduleRounds`) e una
 tabella (`booking_reschedules`) nuove.
 
 **Verifica**: prove dell'API (`booked-date-change.test.ts`,

@@ -141,3 +141,91 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await again.context().close();
   });
 }
+
+/**
+ * Seconda parte (stesso changelog): una sola visita di un lavoro ricorrente
+ * si sposta con "Sposta", sullo stesso percorso della proposta di data, e dal
+ * terzo giro senza accordo compare l'invito a scriversi in chat.
+ */
+async function weeklySeries(name: string) {
+  const pro = await createProfessional(prisma, name, "pulizie");
+  const client = await createClient(prisma);
+  const description = `Pulizie di casa ogni settimana (${name}).`;
+  const { request, quotes } = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(2, "09:00"), end: wallDay(2, "12:00"), description });
+  const pulizie = await prisma.category.findFirstOrThrow({ where: { slug: "pulizie" } });
+  await prisma.guidedRequest.update({ where: { id: request.id }, data: { categoryId: pulizie.id } });
+  await prisma.quote.update({ where: { id: quotes[0]!.id }, data: { repeatEvery: "WEEKLY" } });
+  expect((await acceptQuote(client.id, quotes[0]!.id)).status).toBe(201);
+  const series = await prisma.recurringJob.findUniqueOrThrow({ where: { quoteId: quotes[0]!.id }, include: { bookings: { orderBy: { recurringNumber: "asc" } } } });
+  const owner = await prisma.professionalProfile.findUniqueOrThrow({ where: { id: pro.id } });
+  return { owner, client, request, quote: quotes[0]!, series, description };
+}
+
+for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as const) {
+  test(`si sposta una sola visita del lavoro ricorrente, il cliente accetta (${device})`, async ({ browser }) => {
+    const { owner, client, request, quote, series, description } = await weeklySeries(`Pulizie Sposta ${device}`);
+    const third = series.bookings[2]!;
+
+    const page = await pageAsClient(browser, owner.userId, size);
+    await page.goto("/dashboard/richieste");
+    await page.getByText(description, { exact: false }).first().click();
+    const box = page.getByRole("region", { name: "Lavoro ricorrente" }).first();
+    await box.getByRole("listitem").nth(2).getByRole("button", { name: /^Sposta questa visita/ }).click();
+    await expect(page.getByText(/^Sposta la visita di/)).toBeVisible();
+    if (await page.getByText("Inserisci data e orario manualmente").count()) await page.getByText("Inserisci data e orario manualmente").first().click();
+    const day = new Date(third.scheduledAt.getTime() + 86_400_000).toISOString().slice(0, 10);
+    await page.getByLabel("Nuova data").fill(`${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`);
+    await page.getByLabel("Ora di inizio").fill("14:00");
+    await page.getByLabel("Ora di fine").fill("17:00");
+    await page.getByText(/^Sposta la visita di/).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/sposta-visita-modulo-${device}.png` });
+    await page.getByRole("button", { name: "Invia nuova proposta" }).click();
+    await expect(box.getByTestId("recurring-visit-date-change")).toBeVisible();
+    await box.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/sposta-visita-in-attesa-${device}.png` });
+    await page.context().close();
+
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: third.id } });
+    expect(row.rescheduleProposedBy).toBe("PROFESSIONAL");
+    expect(row.scheduledAt.toISOString()).toBe(third.scheduledAt.toISOString());
+
+    const clientPage = await pageAsClient(browser, client.id, size);
+    await clientPage.goto(`/le-mie-richieste?tab=lavori&open=${request.id}`);
+    await expect(clientPage.getByText("Il professionista propone un'altra data")).toBeVisible();
+    await clientPage.getByText("Il professionista propone un'altra data").scrollIntoViewIfNeeded();
+    await clientPage.screenshot({ path: `test-results/sposta-visita-cliente-${device}.png` });
+    await clientPage.getByRole("button", { name: "Accetta nuova data" }).click();
+    await expect.poll(async () => (await prisma.booking.findUniqueOrThrow({ where: { id: third.id } })).scheduledAt.toISOString()).toBe(`${day}T14:00:00.000Z`);
+    await clientPage.context().close();
+    // Le altre visite e il preventivo restano com'erano.
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: series.bookings[0]!.id } })).scheduledAt.toISOString()).toBe(series.bookings[0]!.scheduledAt.toISOString());
+    expect((await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })).estimatedStartDate.toISOString()).toBe(series.bookings[0]!.scheduledAt.toISOString());
+  });
+}
+
+test("dal terzo giro senza accordo si invita a scriversi in chat (telefono e computer)", async ({ browser }) => {
+  const { owner, client, booking, quote } = await bookedJob("Tre Giri", "Tapparella bloccata in cucina.");
+  const { testToken } = await import("../fixtures/preventivi");
+  const { API_URL } = await import("../fixtures/env");
+  const propose = (who: string, path: string, date: string) =>
+    fetch(`${API_URL}/quotes/${quote.id}/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(who)}` },
+      body: JSON.stringify({ date, startTime: "09:00", endTime: "11:00", isManual: true }),
+    });
+  expect((await propose(owner.userId, "counter-propose-date", wallDay(6, "09:00").toISOString().slice(0, 10))).status).toBe(201);
+  expect((await propose(client.id, "propose-date", wallDay(7, "09:00").toISOString().slice(0, 10))).status).toBe(201);
+  expect((await propose(owner.userId, "counter-propose-date", wallDay(8, "09:00").toISOString().slice(0, 10))).status).toBe(201);
+  expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).rescheduleRounds).toBe(3);
+
+  for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as const) {
+    const page = await pageAsClient(browser, client.id, size);
+    await page.goto(`/le-mie-richieste?open=${booking.guidedRequestId}`);
+    const hint = page.getByTestId("date-rounds-hint");
+    await expect(hint).toBeVisible();
+    await expect(hint.getByRole("button", { name: "Scrivi in chat" })).toBeVisible();
+    await hint.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/tre-giri-chat-${device}.png` });
+    await page.context().close();
+  }
+});
