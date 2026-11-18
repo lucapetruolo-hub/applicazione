@@ -18,6 +18,8 @@ import {
 import { anonymizeProblemText } from "../problem-match/problem-match.service";
 import { calculateDistanceKm } from "../common/geo.util";
 import { isLargeComune } from "./large-comuni";
+import type { Prisma } from "@professionisti/database";
+import { COUNTED_USER } from "../site-counts/counted";
 
 /**
  * Regole della bacheca "Lavori cercati" senza database, per le prove
@@ -159,4 +161,19 @@ export function boardReplyProblem(input: {
   const comune = findComuneByName(request.city);
   if (!comune) return "too-far";
   return calculateDistanceKm(comune.lat, comune.lon, profile.latitude, profile.longitude) > BOARD_REPLY_RADIUS_KM ? "too-far" : null;
+}
+
+/** Richieste che stanno in bacheca adesso: le stesse regole per la pagina, i conteggi e l'Admin. */
+export function boardListedWhere(now: Date): Prisma.GuidedRequestWhereInput {
+  return {
+    boardAt: { not: null, gte: boardListingCutoff(now) },
+    boardOptOut: false,
+    status: { in: ["OPEN", "MATCHED"] },
+    closedReason: null,
+    hiddenAt: null,
+    deletedByClientAt: null,
+    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    quotes: { none: { status: "ACCEPTED" } },
+    client: { ...COUNTED_USER, deletedAt: null, suspendedAt: null },
+  };
 }

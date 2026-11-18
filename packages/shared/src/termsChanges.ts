@@ -77,11 +77,16 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     notify: false,
   },
   {
-    // Acconto sul prezzo minimo (Luca, docs/changelog/2026-11-18-importo-acconto.md).
+    // Acconto sul prezzo minimo (Luca, docs/changelog/2026-11-18-importo-acconto.md) e bacheca
+    // "Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md): stesso giorno, una versione sola.
     version: "2026-11-18",
     publishedAt: "2026-11-18",
     effectiveAt: "2026-11-18",
-    summary: ["La percentuale dell'acconto online si calcola sul prezzo minimo del preventivo, non più sul massimo."],
+    summary: [
+      "La percentuale dell'acconto online si calcola sul prezzo minimo del preventivo, non più sul massimo.",
+      "Le richieste rimaste senza preventivi possono comparire, senza dati personali, nella pagina pubblica \"Lavori cercati\": il cliente le può togliere quando vuole.",
+      "Dalla pagina \"Lavori cercati\" un professionista risponde solo alle richieste del suo mestiere entro 100 km; al massimo 5 preventivi per richiesta.",
+    ],
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },

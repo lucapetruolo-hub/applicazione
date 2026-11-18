@@ -4,13 +4,18 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
+  BOARD_CLIENT_COUNT_MIN,
   BOARD_MAX_QUOTES,
   BOARD_PAGE_SIZE,
+  italianComuni,
   PROVINCE_NAMES,
+  BOARD_REPLY_RADIUS_KM,
   boardTradeLabel,
+  findComuneByName,
   isBoardTrade,
   provinceSlug,
   type BoardAlertInput,
+  type BoardCard,
   type BoardPage,
   type BoardReplyResult,
   type BoardSummary,
@@ -20,17 +25,21 @@ import { PRISMA } from "../prisma/prisma.module";
 import { DailyBudget } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { ScheduledJob } from "../common/scheduled-job";
-import { COUNTED_USER } from "../site-counts/counted";
+import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
 import { EmailService } from "../email/email.service";
-import { boardAlertEmail } from "../email/templates/board-emails";
+import { boardAlertEmail, boardWeeklyEmail } from "../email/templates/board-emails";
+import { publicRealProfilesWhere } from "../professionals/searchable-profiles";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
   ACTIVE_QUOTE_STATUSES,
   boardCardOf,
   boardDelayCutoff,
   boardListingCutoff,
+  boardListedWhere,
   boardPlaceOf,
+  boardReplyProblem,
   boardSourceText,
   boardTextIsClean,
   boardTradeOf,
@@ -100,19 +109,8 @@ export class RequestBoardService {
     return process.env.REQUEST_BOARD_ENABLED?.trim() === "true";
   }
 
-  /** Richieste che stanno in bacheca adesso: le stesse regole per la pagina e per i conteggi. */
   private listedWhere(now: Date): Prisma.GuidedRequestWhereInput {
-    return {
-      boardAt: { not: null, gte: boardListingCutoff(now) },
-      boardOptOut: false,
-      status: { in: ["OPEN", "MATCHED"] },
-      closedReason: null,
-      hiddenAt: null,
-      deletedByClientAt: null,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-      quotes: { none: { status: "ACCEPTED" } },
-      client: { ...COUNTED_USER, deletedAt: null, suspendedAt: null },
-    };
+    return boardListedWhere(now);
   }
 
   /** Il giro orario: mette in bacheca le richieste nuove che ne hanno diritto. */
@@ -273,7 +271,47 @@ export class RequestBoardService {
     } else {
       await this.prisma.boardClaim.deleteMany({ where: { userId, guidedRequestId: requestId } });
     }
+    // Troppo lontano: le richieste dello stesso mestiere più vicine alla sua zona ("sì" di Luca del 18/11).
+    if (status === "too-far" && profileId && isBoardTrade(request.boardTrade)) {
+      return { status, requestId, tradeLabel, nearby: await this.nearbyCards(profileId, request.boardTrade, requestId, now) };
+    }
     return { status, requestId, tradeLabel };
+  }
+
+  /** Fino a 3 schede dello stesso mestiere entro 100 km dal profilo, le più vicine prima. */
+  private async nearbyCards(profileId: string, trade: BoardTrade, excludeId: string, now: Date): Promise<BoardCard[]> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: profileId }, select: { latitude: true, longitude: true } });
+    if (!profile || (profile.latitude === 0 && profile.longitude === 0)) return [];
+    const rows = await this.prisma.guidedRequest.findMany({
+      where: { ...this.listedWhere(now), boardTrade: trade, id: { not: excludeId }, serviceMode: { not: "ONLINE" } },
+      orderBy: { boardAt: "desc" },
+      take: PAGE_SCAN_LIMIT,
+      select: {
+        id: true,
+        city: true,
+        boardTrade: true,
+        boardTitle: true,
+        boardSummary: true,
+        boardPlace: true,
+        boardProvince: true,
+        boardAt: true,
+        serviceMode: true,
+        timing: true,
+        photoUrls: true,
+        _count: { select: { quotes: { where: { status: { in: [...ACTIVE_QUOTE_STATUSES] } } } } },
+      },
+    });
+    return rows
+      .flatMap((row) => {
+        const comune = findComuneByName(row.city);
+        const card = boardCardOf({ ...row, photoCount: row.photoUrls.length, quoteCount: row._count.quotes });
+        if (!comune || !card) return [];
+        const km = calculateDistanceKm(comune.lat, comune.lon, profile.latitude, profile.longitude);
+        return km <= BOARD_REPLY_RADIUS_KM ? [{ card, km }] : [];
+      })
+      .sort((a, b) => a.km - b.km)
+      .slice(0, 3)
+      .map((entry) => entry.card);
   }
 
   /**
@@ -308,6 +346,115 @@ export class RequestBoardService {
       }
     }
     return { added };
+  }
+
+  /**
+   * Lavori cercati della settimana ("sì" di Luca del 18/11/2026,
+   * docs/changelog/2026-11-18-bacheca-cliente.md): il lunedì alle 9, a ogni
+   * professionista visibile, un'email con le richieste entrate in bacheca
+   * negli ultimi 7 giorni a cui potrebbe rispondere (stesso mestiere, entro
+   * 100 km, le stesse regole di "Rispondi") e che non gli sono arrivate. Le
+   * più vicine prima; nessuna email se non ce n'è. Si spegne dalle notifiche.
+   */
+  @ScheduledJob("0 9 * * 1")
+  async sendWeeklyDigest(now: Date = new Date()): Promise<{ sent: number }> {
+    if (!RequestBoardService.enabled()) return { sent: 0 };
+    const rows = await this.prisma.guidedRequest.findMany({
+      where: { AND: [this.listedWhere(now), { boardAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } }] },
+      orderBy: { boardAt: "desc" },
+      take: PAGE_SCAN_LIMIT,
+      select: {
+        id: true,
+        city: true,
+        boardTrade: true,
+        boardTitle: true,
+        boardSummary: true,
+        boardPlace: true,
+        boardProvince: true,
+        boardAt: true,
+        serviceMode: true,
+        timing: true,
+        photoUrls: true,
+        waitingTrade: true,
+        waitingTradeKey: true,
+        leads: { select: { professionalProfileId: true } },
+        _count: { select: { quotes: { where: { status: { in: [...ACTIVE_QUOTE_STATUSES] } } } } },
+      },
+    });
+    const requests = rows.flatMap((row) => {
+      const card = boardCardOf({ ...row, photoCount: row.photoUrls.length, quoteCount: row._count.quotes });
+      const comune = findComuneByName(row.city);
+      return card && row.boardTrade ? [{ row: { ...row, boardTrade: row.boardTrade }, card, comune, received: new Set(row.leads.map((lead) => lead.professionalProfileId)) }] : [];
+    });
+    if (requests.length === 0) return { sent: 0 };
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { AND: [publicRealProfilesWhere(now), { user: { deletedAt: null, suspendedAt: null } }] },
+      take: 5000,
+      select: {
+        id: true,
+        userId: true,
+        category: { select: { slug: true } },
+        extraCategories: { select: { slug: true } },
+        services: { select: { name: true, categorySlug: true } },
+        certifications: true,
+        bio: true,
+        latitude: true,
+        longitude: true,
+        remoteAvailable: true,
+        user: { select: { name: true } },
+      },
+    });
+    let sent = 0;
+    for (const profile of profiles) {
+      const facts = {
+        categorySlugs: [profile.category.slug, ...profile.extraCategories.map((category) => category.slug)],
+        services: profile.services,
+        certifications: profile.certifications,
+        bio: profile.bio,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        remoteAvailable: profile.remoteAvailable,
+      };
+      const matches = requests
+        .filter((request) => !request.received.has(profile.id) && boardReplyProblem({ request: request.row, profile: facts }) === null)
+        .map((request) => ({
+          card: request.card,
+          km: request.row.serviceMode === "ONLINE" || !request.comune ? 0 : calculateDistanceKm(request.comune.lat, request.comune.lon, profile.latitude, profile.longitude),
+        }))
+        .sort((a, b) => a.km - b.km);
+      if (matches.length === 0) continue;
+      try {
+        if (!(await this.guidedRequests.receivesRequests(profile.id))) continue;
+        const content = boardWeeklyEmail({ name: profile.user.name, cards: matches.map((match) => match.card), total: matches.length });
+        if (await this.notifications.sendOwnEmail(profile.userId, "BOARD_WEEKLY_DIGEST", content)) sent += 1;
+      } catch (error) {
+        this.logger.warn(`Lavori cercati della settimana non inviati a un professionista. ${error instanceof Error ? error.message : ""}`);
+      }
+    }
+    if (sent > 0) this.logger.log(`Lavori cercati della settimana: ${sent} email.`);
+    return { sent };
+  }
+
+  /**
+   * Richieste degli ultimi 30 giorni per un mestiere in una provincia, per
+   * le pagine /cerca (decisione 10 di Luca): solo da 10 in su, altrimenti
+   * null ("sotto sembrano poche"). Dal lancio e senza account di prova.
+   */
+  async demand(categorySlug: string, province: string, now: Date = new Date()): Promise<{ count: number | null }> {
+    const cities = italianComuni()
+      .filter((comune) => comune.province === province)
+      .map((comune) => comune.name);
+    if (cities.length === 0) return { count: null };
+    const count = await this.prisma.guidedRequest.count({
+      where: {
+        createdAt: { gte: sinceLaunch(new Date(now.getTime() - 30 * DAY_MS), countingFrom(now)) },
+        category: { slug: categorySlug },
+        city: { in: cities, mode: "insensitive" },
+        waitingTrade: null,
+        client: COUNTED_USER,
+      },
+    });
+    return { count: count >= BOARD_CLIENT_COUNT_MIN ? count : null };
   }
 
   /** "Avvisami alla prima richiesta": un'email sola per mestiere e provincia. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   NOTIFICATION_DIGEST_HOURS,
@@ -40,7 +40,24 @@ const CHANNELS = [
 export default function NotifichePage() {
   const { user, token, isLoading, notificationPrefs, setNotificationPrefs } = useAuth();
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [openTopics, setOpenTopics] = useState<NotificationTopic[]>([]);
+  // Link da un'email ("Spegni o riaccendi questa email", docs/changelog/2026-11-18-bacheca-cliente.md):
+  // ?avviso=<chiave> apre i singoli avvisi del suo argomento e porta la riga in vista. La lista si
+  // disegna solo dopo il caricamento dell'account, quindi leggere l'indirizzo qui non cambia l'HTML del server.
+  const [targetItem] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const key = new URLSearchParams(window.location.search).get("avviso");
+    const topic = key?.split(".")[0];
+    return key && topic && (NOTIFICATION_TOPICS as readonly string[]).includes(topic) ? key : null;
+  });
+  const [openTopics, setOpenTopics] = useState<NotificationTopic[]>(() => (targetItem ? [targetItem.split(".")[0] as NotificationTopic] : []));
+  useEffect(() => {
+    if (!targetItem || isLoading || !user) return;
+    // Dopo il primo disegno: il sito riporta la pagina in cima all'apertura.
+    const timer = window.setTimeout(() => {
+      document.getElementById(`avviso-${targetItem.replace(/\./g, "-")}`)?.scrollIntoView({ block: "center" });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [targetItem, isLoading, user]);
 
   if (isLoading) return <PageLoading />;
   if (!user || !token) {
@@ -49,7 +66,7 @@ export default function NotifichePage() {
         <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
           Accedi per gestire le notifiche
         </Text>
-        <Link href="/accedi?redirect=/account/notifiche" style={{ textDecoration: "none" }}>
+        <Link href={`/accedi?redirect=${encodeURIComponent(targetItem ? `/account/notifiche?avviso=${targetItem}` : "/account/notifiche")}`} style={{ textDecoration: "none" }}>
           <Button tabIndex={-1} variant="primary">Accedi</Button>
         </Link>
       </YStack>
@@ -262,7 +279,7 @@ export default function NotifichePage() {
                               <ul className="nt-items">
                                 {topicOff ? <li className="nt-items-note">Accendi Sito o Email qui sopra per scegliere i singoli avvisi.</li> : null}
                                 {items.map((item) => (
-                                  <li key={item.key}>
+                                  <li key={item.key} id={`avviso-${item.key.replace(/\./g, "-")}`} className={item.key === targetItem ? "is-target" : undefined}>
                                     <span className="nt-item-text">
                                       <strong>{item.copy.label}</strong>
                                       {item.copy.description ? <small>{item.copy.description}</small> : null}

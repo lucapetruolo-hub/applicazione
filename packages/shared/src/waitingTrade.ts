@@ -105,6 +105,23 @@ export type WaitingRequestsAdmin = {
   rows: WaitingRequestAdminRow[];
   /** Contatore dei mestieri più richiesti (decisione di Luca del 17/11/2026). */
   mostRequested: MostRequestedTrade[];
+  /** Misure della bacheca "Lavori cercati" negli stessi 90 giorni (docs/changelog/2026-11-18-bacheca-cliente.md). */
+  board?: BoardAdminCounts;
+};
+
+export type BoardAdminCounts = {
+  /** Richieste che oggi si vedono nella bacheca. */
+  listed: number;
+  /** Richieste tolte dal cliente con "Togli dai lavori cercati". */
+  optedOut: number;
+  /** Professionisti che hanno ricevuto una richiesta toccando "Rispondi". */
+  replies: number;
+  /** Preventivi mandati per quelle richieste. */
+  quotes: number;
+  /** Richieste tenute da parte per chi deve ancora finire il profilo. */
+  claimsPending: number;
+  /** Persone che aspettano l'email "Avvisami". */
+  alertsPending: number;
 };
 
 /**
