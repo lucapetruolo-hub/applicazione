@@ -27,6 +27,7 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
     rescheduleRequestedAt: null,
     rescheduleProposedBy: null,
     rescheduleReminderAt: null,
+    rescheduleRounds: 0,
     reminderSentAt: new Date("2099-03-09T08:00:00.000Z"),
     clientDepositReminderAt: null,
     clientReplyChannel: "WHATSAPP",
@@ -66,7 +67,13 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
           : null,
         quote: { lateCancelKeepsDeposit: !!options.depositKept, items: [{ priceMinEurCents: 12000, priceMaxEurCents: 12000 }] },
       })),
-      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => Object.assign(booking, data)),
+      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        // `{ increment: n }` di Prisma, per i giri di proposte.
+        for (const [key, value] of Object.entries(data)) {
+          booking[key] = value && typeof value === "object" && "increment" in value ? Number(booking[key] ?? 0) + Number((value as { increment: number }).increment) : value;
+        }
+        return booking;
+      }),
       updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (booking.status !== where.status || booking.rescheduleRequestedAt === null) return { count: 0 };
         Object.assign(booking, data);
@@ -249,6 +256,18 @@ describe("Altra data per un appuntamento già fissato, dalla proposta standard",
     await expect(service.counterProposeDate("pro1", "q1", { date: "2099-03-10", startTime: "10:00", endTime: "12:00", isManual: true })).rejects.toThrow("scegline un'altra");
     booking.recurringJobId = "serie1";
     await expect(service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", isManual: true })).rejects.toThrow("lavoro ricorrente");
+  });
+
+  it("conta i giri di proposte senza accordo e li azzera all'accordo", async () => {
+    const { service, booking } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    expect(booking.rescheduleRounds).toBe(1);
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", isManual: true });
+    expect(booking.rescheduleRounds).toBe(2);
+    await service.proposeDate("c1", "q1", { ...PROPOSAL, date: "2099-03-14" });
+    expect(booking.rescheduleRounds).toBe(3);
+    await service.confirmProposedDate("pro1", "q1");
+    expect(booking.rescheduleRounds).toBe(0);
   });
 
   it("la proposta del cliente resta segnata per le Statistiche", async () => {

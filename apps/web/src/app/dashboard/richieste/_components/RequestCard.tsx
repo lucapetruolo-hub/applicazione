@@ -87,6 +87,7 @@ import { CardButton } from "@/components/CardButton";
 import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { ContactButton } from "@/components/ContactButton";
 import { ContactTile } from "@/components/ContactTile";
+import { DateRoundsHint } from "@/components/DateRoundsHint";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
@@ -1216,6 +1217,7 @@ export function RequestCard({
               note={myBookedDateChange.note}
             />
           ) : null}
+          {booking?.dateChange ? <DateRoundsHint rounds={booking.dateChange.rounds} onMessage={myProfileId ? openTimeline : null} /> : null}
 
           <XStack flexWrap="wrap" gap="4" paddingTop="3">
             {/* Sezione 1 — Descrizione lavoro: prima il lavoro, poi chi lo chiede

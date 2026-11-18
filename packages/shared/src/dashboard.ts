@@ -642,4 +642,9 @@ export type BookingDateChange = {
    * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
    */
   clientCancelsFree: boolean;
+  /**
+   * Proposte di fila senza accordo, questa compresa: dal terzo giro si invita
+   * a scriversi in chat (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+   */
+  rounds: number;
 };

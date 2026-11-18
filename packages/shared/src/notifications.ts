@@ -62,6 +62,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_WITHDRAWN",
       "QUOTE_DATE_PROPOSED",
       "QUOTE_DATE_CHANGED",
+      // Proposta di data senza risposta a poche ore dall'appuntamento (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+      "BOOKING_DATE_CHANGE_UNANSWERED",
       // Preventivo aggiornato senza cambio di data (docs/CHANGELOG.md §196).
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
@@ -392,7 +394,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "preventivi.date",
     topic: "preventivi",
-    types: ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT"],
+    types: ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "BOOKING_DATE_CHANGE_UNANSWERED", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT"],
     professional: { label: "Date proposte dal cliente" },
     client: { label: "Data confermata o cambiata" },
   },

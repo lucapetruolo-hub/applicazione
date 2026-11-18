@@ -1,8 +1,11 @@
 -- Spostamento chiesto dal professionista e lavoro terminato in anticipo
 -- (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
--- Solo una colonna e una tabella nuove.
+-- Solo colonne e una tabella nuove.
 -- AlterTable
-ALTER TABLE "bookings" ADD COLUMN     "earlyCompletionAskedAt" TIMESTAMP(3);
+ALTER TABLE "bookings" ADD COLUMN     "earlyCompletionAskedAt" TIMESTAMP(3),
+ADD COLUMN     "earlyCompletionReminderAt" TIMESTAMP(3),
+ADD COLUMN     "rescheduleLastCallAt" TIMESTAMP(3),
+ADD COLUMN     "rescheduleRounds" INTEGER NOT NULL DEFAULT 0;
 
 -- CreateTable
 CREATE TABLE "booking_reschedules" (

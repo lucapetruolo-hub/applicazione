@@ -233,12 +233,11 @@ model User {
   problemTakeovers    ProblemTakeover[]
   outboundMessages    OutboundMessage[]
 
-  @@map("users")
-
   @@index([deletedEmailHash])
   @@index([closureScheduledAt])
   @@index([invitedByProfessionalId])
   @@index([invitedByPartnerId])
+  @@map("users")
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
@@ -505,13 +504,13 @@ model ProfessionalProfile {
   // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
   identityVerifications  IdentityVerification[]
   // Colleghi iscritti dal suo link d'invito (docs/changelog/2026-11-09-passaparola.md).
-  invitedColleagues      User[]                  @relation("ColleagueInvites")
+  invitedColleagues      User[]                     @relation("ColleagueInvites")
   // Stelle e numero di recensioni salvati nel profilo
   // (docs/changelog/2026-11-16-stelle-nel-profilo.md): li tiene aggiornati il
   // database con un trigger a ogni recensione nuova, nascosta, ripubblicata o
   // cancellata, così la ricerca ordina senza contarle. Stesse regole di
   // loadReviewStats: recensioni non nascoste, media arrotondata a un decimale.
-  reviewCount            Int                     @default(0)
+  reviewCount            Int                        @default(0)
   reviewRating           Float?
 
   @@index([categoryId, city])
@@ -633,7 +632,6 @@ model ProfessionalService {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@index([professionalProfileId])
-
   @@map("professional_services")
 }
 
@@ -698,7 +696,6 @@ model AvailabilitySlot {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@index([professionalProfileId])
-
   @@map("availability_slots")
 }
 
@@ -1299,9 +1296,7 @@ model Quote {
   recurringJob   RecurringJob?
 
   @@index([guidedRequestId])
-
   @@index([professionalProfileId])
-
   @@map("quotes")
 }
 
@@ -1352,7 +1347,6 @@ model QuoteItem {
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@index([quoteId])
-
   @@map("quote_items")
 }
 
@@ -1378,72 +1372,81 @@ enum BookingCanceledBy {
 }
 
 model Booking {
-  id                      String        @id @default(uuid())
-  quoteId                 String?       @unique
+  id                        String        @id @default(uuid())
+  quoteId                   String?       @unique
   // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §346): la compila un
   // trigger del database dal preventivo (quoteId), mai il codice. Un indice
   // unico parziale ("bookings_one_active_job_per_request", solo nella
   // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
   // lavoro non annullato sulla stessa richiesta, anche se il codice sbagliasse.
-  guidedRequestId         String?
-  clientId                String
-  professionalProfileId   String
-  scheduledAt             DateTime
+  guidedRequestId           String?
+  clientId                  String
+  professionalProfileId     String
+  scheduledAt               DateTime
   // Preavviso per annullare valido per questo lavoro, copiato dal profilo
   // quando nasce (docs/CHANGELOG.md §347): null per i lavori di prima, che
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
-  cancellationNoticeHours Int?
-  canceledLate            Boolean       @default(false)
+  cancellationNoticeHours   Int?
+  canceledLate              Boolean       @default(false)
   // Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08, docs/changelog/2026-10-30-collaudo-soldi-online.md).
-  reopenRequestedAt       DateTime?
-  reopenRequestedBy       String?
+  reopenRequestedAt         DateTime?
+  reopenRequestedBy         String?
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le
   // prenotazioni dirette da agenda pubblica (bookAgendaSlot, che già
   // conosce la fascia esatta ma non passa da questo campo) o per date
   // indicate a mano senza agenda impostata.
-  scheduledEndAt          DateTime?
+  scheduledEndAt            DateTime?
   // Ora indicativa di arrivo copiata dal preventivo, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md).
-  arrivalTime             String?
-  status                  BookingStatus @default(PENDING)
+  arrivalTime               String?
+  status                    BookingStatus @default(PENDING)
   // Promemoria automatico anti no-show (CEO, tattico — CLAUDE.md §1: "core,
   // non accessoria"): email inviata via BookingRemindersService quando
   // scheduledAt è entro ~24 ore, null finché non è ancora partito. Evita
   // di reinviarlo a ogni passaggio del cron (EVERY_30_MINUTES) sulla
   // stessa prenotazione.
-  reminderSentAt          DateTime?
+  reminderSentAt            DateTime?
   // Risposta del cliente ai pulsanti del promemoria WhatsApp, "Ci sarò" e
   // "Non posso più" (docs/changelog/2026-10-28-promemoria-whatsapp.md):
   // il professionista viene avvisato una volta sola per ciascuna.
-  clientConfirmedAt       DateTime?
-  clientCantComeAt        DateTime?
+  clientConfirmedAt         DateTime?
+  clientCantComeAt          DateTime?
   // Da dove è arrivata l'ultima risposta: "WHATSAPP" o "EMAIL" (pulsanti
   // dell'email del giorno prima), per i numeri in Admin → WhatsApp.
-  clientReplyChannel      String?
+  clientReplyChannel        String?
   // Email al cliente con la scadenza per annullare e riavere l'acconto,
   // mandata prima che inizi il preavviso (come il promemoria WhatsApp).
-  clientDepositReminderAt DateTime?
+  clientDepositReminderAt   DateTime?
   // "Non posso più" → "Proponi un'altra data": la data proposta sta sul
   // preventivo (clientProposedDate), come ogni proposta; qui quando il
   // cliente l'ha chiesta, finché il professionista non risponde.
-  rescheduleRequestedAt   DateTime?
+  rescheduleRequestedAt     DateTime?
   // Chi aspetta la risposta: "CLIENT" (la propone il cliente) o
   // "PROFESSIONAL" (con "Modifica" il professionista ne propone un'altra).
-  rescheduleProposedBy    String?
+  rescheduleProposedBy      String?
   // Promemoria a chi deve rispondere, dopo 12 ore senza risposta.
-  rescheduleReminderAt    DateTime?
+  rescheduleReminderAt      DateTime?
+  // Avviso a tutti e due poche ore prima dell'appuntamento, se la proposta
+  // aspetta ancora risposta: vale l'orario di adesso
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  rescheduleLastCallAt      DateTime?
+  // Proposte di fila senza accordo (si azzera ad accordo, rifiuto o
+  // scadenza): dal terzo giro si invita a scriversi in chat.
+  rescheduleRounds          Int           @default(0)
   // "Lavoro terminato" premuto dal professionista prima del giorno fissato
   // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): si chiede
   // al cliente di confermare, e solo dopo la sua conferma il lavoro si chiude.
-  earlyCompletionAskedAt  DateTime?
+  earlyCompletionAskedAt    DateTime?
+  // Promemoria al cliente dopo 24 ore senza risposta, uno solo.
+  earlyCompletionReminderAt DateTime?
   // Cosa ha letto il cliente su annullare e acconto accettando il preventivo
   // (docs/changelog/2026-11-13-annullare-pagina-aperta.md): frasi, cifre, ora
   // di lettura e di accettazione (tipo AcceptedTerms di packages/shared).
   // null per i lavori nati prima e per quelli senza preventivo.
-  acceptedTerms           Json?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  acceptedTerms             Json?
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
 
   // Indirizzo di lavoro strutturato, raccolto in una schermata dedicata
   // all'accettazione del preventivo (richiesta esplicita dell'utente: nome,
@@ -1652,7 +1655,6 @@ model BookingFinalItem {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
-
   @@map("booking_final_items")
 }
 
@@ -1786,7 +1788,6 @@ model Payment {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@index([professionalProfileId])
-
   @@map("payments")
 }
 
@@ -2589,7 +2590,6 @@ model JobPayment {
   feeEntries     PlatformFeeEntry[]
 
   @@index([appliedFeeRuleId])
-
   @@map("job_payments")
 }
 
@@ -2952,7 +2952,6 @@ model Refund {
   jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
 
   @@index([jobPaymentId])
-
   @@map("refunds")
 }
 
@@ -2977,7 +2976,6 @@ model Dispute {
   jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
 
   @@index([jobPaymentId])
-
   @@map("disputes")
 }
 
@@ -3509,37 +3507,37 @@ model SiteAdviceDone {
 /// telefono, indirizzo tolti prima di salvare) né chi le ha scritte: servono
 /// alla pagina admin "Mestieri richiesti". Cancellate dopo 12 mesi.
 model ProblemDescription {
-  id           String   @id @default(uuid())
-  text         String
-  city         String?
+  id             String    @id @default(uuid())
+  text           String
+  city           String?
   /// Mestieri proposti, in ordine (slug di categoria).
-  categories   String[]
-  safety       String?
-  outOfService String?
+  categories     String[]
+  safety         String?
+  outOfService   String?
   /// "dizionario", "parola" (insegnata in admin) o "ia".
-  source       String
+  source         String
   /// Prestazione indicata per il primo mestiere (docs/changelog/2026-11-06-dizionario-prestazioni.md).
-  service      String?
+  service        String?
   /// Mestiere che il sito non ha, scritto dall'IA quando nessun mestiere va bene
   /// (docs/changelog/2026-11-11-mestieri-che-mancano.md).
-  missingTrade String?
+  missingTrade   String?
   /// Millisecondi della risposta dell'IA; null se l'IA non è stata chiesta (o risposta già in memoria).
-  aiMs         Int?
+  aiMs           Int?
   /// Esito della domanda all'IA: "ok", "tardi" (oltre l'attesa), "errore" o "tetto" (limite del giorno)
   /// (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
-  aiOutcome    String?
+  aiOutcome      String?
   /// Mestiere toccato dal cliente fra quelli proposti, quando non è il primo:
   /// in "Mestieri richiesti" come "proposto X, scelto Y", solo da leggere
   /// (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
   chosenCategory String?
   /// Ricerca partita da una foto del problema (docs/changelog/2026-11-13-ricerca-con-foto.md).
-  withPhoto    Boolean  @default(false)
+  withPhoto      Boolean   @default(false)
   /// Il cliente ha segnalato la proposta dell'IA: "mestiere", "prestazione" o "altro",
   /// con una nota facoltativa senza contatti (docs/changelog/2026-11-13-segnala-risposta-ia.md).
-  reportedAt   DateTime?
-  reportReason String?
-  reportNote   String?
-  createdAt    DateTime @default(now())
+  reportedAt     DateTime?
+  reportReason   String?
+  reportNote     String?
+  createdAt      DateTime  @default(now())
 
   @@index([createdAt])
   @@index([reportedAt])

@@ -80,7 +80,7 @@ type BookedDateChange = {
 
 /** Nessuna proposta di data in sospeso, sul preventivo e sul lavoro. */
 const NO_PROPOSAL = { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null, proposedDateAcceptedAt: null } as const;
-const NO_DATE_CHANGE = { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null } as const;
+const NO_DATE_CHANGE = { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null, rescheduleLastCallAt: null, rescheduleRounds: 0 } as const;
 
 const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
 @Injectable()
@@ -623,6 +623,9 @@ export class QuotesService {
             rescheduleRequestedAt: now,
             rescheduleProposedBy: "CLIENT",
             rescheduleReminderAt: null,
+            rescheduleLastCallAt: null,
+            // Risponde con un'altra data a una proposta: un giro in più.
+            rescheduleRounds: booking.rescheduleRequestedAt ? { increment: 1 } : 1,
             clientConfirmedAt: null,
             ...(booking.clientCantComeAt ? {} : { clientCantComeAt: now }),
           },
@@ -1039,7 +1042,7 @@ export class QuotesService {
   private async counterProposeBookedDate(
     professionalProfileId: string,
     quote: { id: string; guidedRequestId: string; estimatedStartDate: Date; estimatedEndDate: Date | null; clientProposedDate: Date | null; clientProposedEndDate: Date | null; guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null } },
-    booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; cancellationNoticeHours: number | null },
+    booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; cancellationNoticeHours: number | null; rescheduleRequestedAt: Date | null },
     input: ProposeQuoteDateInput,
   ) {
     if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
@@ -1076,7 +1079,13 @@ export class QuotesService {
       }),
       this.prisma.booking.update({
         where: { id: booking.id },
-        data: { rescheduleRequestedAt: now, rescheduleProposedBy: "PROFESSIONAL", rescheduleReminderAt: null },
+        data: {
+          rescheduleRequestedAt: now,
+          rescheduleProposedBy: "PROFESSIONAL",
+          rescheduleReminderAt: null,
+          rescheduleLastCallAt: null,
+          rescheduleRounds: booking.rescheduleRequestedAt ? { increment: 1 } : 1,
+        },
       }),
       this.prisma.bookingReschedule.create({
         data: { bookingId: booking.id, professionalProfileId, proposedBy: "PROFESSIONAL", late: isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours, now) },

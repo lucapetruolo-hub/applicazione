@@ -1019,7 +1019,7 @@ export function GuidedRequestCard({
       ) : null}
       {/* Con "Modifica" il professionista propone un'altra data: stessi pulsanti di una proposta. */}
       {acceptedQuote && booking.dateChange?.proposedBy === "PROFESSIONAL" && !showReschedule ? (
-        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={booking} dateChange={booking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} />
+        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={booking} dateChange={booking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null} />
       ) : null}
       {acceptedQuote && showReschedule ? (
         <QuoteDateChooser
