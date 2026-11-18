@@ -13,6 +13,26 @@ function travelLabel(minutes: number): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
+const SKIP_STORAGE_KEY = "giro-tappe-tolte";
+
+/** Tappe tolte salvate su questo dispositivo, solo da oggi in poi (i giorni passati si dimenticano). */
+function readSavedSkips(todayStr: string): Record<string, string[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const saved: unknown = JSON.parse(window.localStorage.getItem(SKIP_STORAGE_KEY) ?? "{}");
+    if (!saved || typeof saved !== "object") return {};
+    const result: Record<string, string[]> = {};
+    for (const [date, keys] of Object.entries(saved as Record<string, unknown>)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayStr || !Array.isArray(keys)) continue;
+      const valid = keys.filter((key): key is string => typeof key === "string" && /^(booking|external)-[A-Za-z0-9_-]{1,64}$/.test(key));
+      if (valid.length > 0) result[date] = valid.slice(0, 60);
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
 /** Mattina, pomeriggio o sera dall'ora d'inizio della fascia (ora di parete in UTC). */
 function dayPartLabel(startIso: string): string {
   const hour = Number(startIso.slice(11, 13));
@@ -62,8 +82,15 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
   // Risposta insieme al giorno a cui si riferisce: cambiando giorno si torna
   // al caricamento finché non arriva quella nuova.
   // Tappe tolte dal giro, per giorno (docs/changelog/2026-11-18-orari-oggi-e-giro.md,
-  // richiesta di Luca): tornando su un giorno la scelta resta finché la pagina è aperta.
-  const [skipByDate, setSkipByDate] = useState<Record<string, string[]>>({});
+  // richiesta di Luca): restano anche chiudendo la pagina, su questo telefono o computer.
+  const [skipByDate, setSkipByDate] = useState<Record<string, string[]>>(() => readSavedSkips(toIsoDate(today)));
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify(skipByDate));
+    } catch {
+      // Memoria del browser non disponibile (navigazione privata): la scelta vale finché la pagina è aperta.
+    }
+  }, [skipByDate]);
   const skip = skipByDate[dateStr] ?? [];
   const skipKey = skip.join(",");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -263,10 +290,12 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
                       {index + 1}
                     </span>
                     <span style={{ minWidth: 0 }}>
-                      <b style={{ display: "block", fontSize: 14.5 }}>
-                        {formatAppointmentTimeRange(stop.start, stop.end)} · {stop.title}
+                      {/* Orario e "Arrivo" sulla stessa riga, il nome sotto: da telefono la pillola non va più a capo da sola. */}
+                      <span className="ag-rt-when">
+                        {formatAppointmentTimeRange(stop.start, stop.end)}
                         {stop.arrivalTime ? <span className="ag-rt-arrival">Arrivo {stop.arrivalTime}</span> : null}
-                      </b>
+                      </span>
+                      <b style={{ display: "block", fontSize: 14.5 }}>{stop.title}</b>
                       <span className="ag-muted" style={{ fontSize: 13 }}>
                         {stop.address ?? "Indirizzo non indicato"}
                         {stop.approximate ? " (posizione del comune)" : ""}

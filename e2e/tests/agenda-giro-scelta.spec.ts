@@ -61,6 +61,12 @@ test("fascia e ora di arrivo in Oggi e domani, tappe del giro scelte per fascia"
   await expect(page.locator("ol").getByText(/Luigi Bianchi/)).toBeVisible();
   await expect(page.locator("ol").getByText(/Giulia Bianchi/)).toHaveCount(0);
 
+  // La scelta resta anche ricaricando la pagina (memoria di questo dispositivo).
+  await page.reload();
+  await page.getByRole("button", { name: "Giorno successivo" }).click();
+  await expect(toggle).toContainText("1 di 3");
+  await toggle.click();
+
   // Un solo lavoro rimesso: la casella della fascia diventa "a metà".
   await page.locator(".ag-rt-stop", { hasText: "Giulia Bianchi" }).click();
   await expect(page.getByRole("checkbox", { name: "Tutta la fascia Mattina · 08:00–13:00" })).toHaveJSProperty("indeterminate", true);
