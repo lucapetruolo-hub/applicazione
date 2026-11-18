@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { findComuneByName, jobOccurrenceOn, type DayRoute, type DayRouteLeg, type DayRouteStop } from "@professionisti/shared";
+import { findComuneByName, jobOccurrenceOn, parseDayRouteSkip, type DayRoute, type DayRouteLeg, type DayRouteStop } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService, type GeocodedPoint } from "../geocoding/geocoding.service";
 import { touchingWindow } from "./commitments";
@@ -100,7 +100,7 @@ export class DayRouteService {
     private readonly geocodingService: GeocodingService,
   ) {}
 
-  async dayRoute(userId: string, date: string): Promise<DayRoute> {
+  async dayRoute(userId: string, date: string, skip?: string): Promise<DayRoute> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException("Data non valida.");
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true } });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
@@ -155,14 +155,18 @@ export class DayRouteService {
       // A parità di orario e di distanza, in ordine di nome come in agenda.
       .sort((a, b) => a.start.getTime() - b.start.getTime() || a.title.localeCompare(b.title, "it"));
 
+    // Tappe tolte dal professionista (caselle per fascia, docs/changelog/2026-11-18-orari-oggi-e-giro.md):
+    // tornano a parte, per poterle rimettere, e il giro si calcola senza.
+    const skipKeys = parseDayRouteSkip(skip);
     const located: (DayRouteStop & { order: number })[] = [];
+    const skipped: DayRouteStop[] = [];
     for (const candidate of candidates) {
       const place = await this.locate(candidate.address, candidate.city);
       if (!place) continue;
       // L'ora di arrivo vale solo dentro la fascia di quel giorno (come in agenda).
       const arrival = candidate.arrivalTime ? new Date(`${date}T${candidate.arrivalTime}:00.000Z`) : null;
       const useArrival = arrival && arrival >= candidate.start && (!candidate.end || arrival < candidate.end);
-      located.push({
+      const stop: DayRouteStop = {
         key: candidate.key,
         start: candidate.start.toISOString(),
         end: candidate.end?.toISOString() ?? null,
@@ -171,8 +175,10 @@ export class DayRouteService {
         latitude: place.point.latitude,
         longitude: place.point.longitude,
         approximate: place.approximate,
-        order: (useArrival ? arrival : candidate.start).getTime(),
-      });
+        arrivalTime: useArrival ? candidate.arrivalTime : null,
+      };
+      if (skipKeys.has(candidate.key)) skipped.push(stop);
+      else located.push({ ...stop, order: (useArrival ? arrival : candidate.start).getTime() });
     }
     const home = profile.city ? findComuneByName(profile.city) : undefined;
     const stops: DayRouteStop[] = orderStops(located, home ? { latitude: home.lat, longitude: home.lon } : null).map(({ order: _order, ...stop }) => stop);
@@ -186,7 +192,7 @@ export class DayRouteService {
       const sameBand = previous.start === next.start && previous.end === next.end;
       legs.push({ ...travel, ...(sameBand ? { gapMinutes: 0, tight: false } : legTiming(previous, next, travel.minutes)) });
     }
-    return { date, stops, legs };
+    return { date, stops, legs, skipped };
   }
 
   /** Coordinate dell'indirizzo, o del centro del comune se non si trova. */

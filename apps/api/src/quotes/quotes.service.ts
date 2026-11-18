@@ -219,11 +219,11 @@ export class QuotesService {
     // docs/changelog/2026-10-28-tetto-pagamenti-online.md): solo la parte
     // chiesta online, il diretto resta libero.
     if (onlinePaymentsEnabled() && offer.paymentOptions.some(paymentChoiceIsOnline)) {
-      const { totalMaxEurCents } = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const { totalMinEurCents, totalMaxEurCents } = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfile.id);
       const problem =
-        onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents }) ??
-        onlineDepositTooLowProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents });
+        onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMinEurCents, totalMaxEurCents, limitEurCents }) ??
+        onlineDepositTooLowProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMinEurCents });
       if (problem) throw new BadRequestException(problem);
     }
 

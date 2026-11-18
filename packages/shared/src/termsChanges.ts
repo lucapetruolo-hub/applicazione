@@ -76,6 +76,15 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Acconto sul prezzo minimo (Luca, docs/changelog/2026-11-18-importo-acconto.md).
+    version: "2026-11-18",
+    publishedAt: "2026-11-18",
+    effectiveAt: "2026-11-18",
+    summary: ["La percentuale dell'acconto online si calcola sul prezzo minimo del preventivo, non più sul massimo."],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

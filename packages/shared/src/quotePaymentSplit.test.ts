@@ -16,7 +16,7 @@ test("saldo diretto: il resto al professionista", () => {
 });
 
 test("forbice di prezzo: il resto da… a…", () => {
-  assert.equal(quotePaymentSplitLine("ONLINE", { totalMinEurCents: 4000, totalMaxEurCents: 6000 }, 20, true), "12,00 € adesso con la carta, il resto (da 28,00 € a 48,00 €) a lavoro finito con la stessa carta");
+  assert.equal(quotePaymentSplitLine("ONLINE", { totalMinEurCents: 4000, totalMaxEurCents: 6000 }, 20, true), "8,00 € adesso con la carta, il resto (da 32,00 € a 52,00 €) a lavoro finito con la stessa carta");
 });
 
 test("tutto ora con il 100%", () => {
@@ -40,12 +40,13 @@ test("tutto online con la forbice: il prezzo minimo adesso, il resto solo se ser
     restOnline: true,
   });
   assert.equal(quoteDepositEurCents(totals, 100), 25000);
-  // Con un acconto in percentuale non cambia niente: la percentuale del massimo.
-  assert.equal(quoteDepositEurCents(totals, 20), 23000);
+  // Con un acconto in percentuale: la percentuale del minimo (Luca, 18/11/2026,
+  // docs/changelog/2026-11-18-importo-acconto.md), mai più di quanto il lavoro costa almeno.
+  assert.equal(quoteDepositEurCents(totals, 20), 5000);
   // Prezzo unico al 100%: tutto il prezzo.
   assert.equal(quoteDepositEurCents({ totalMinEurCents: 5000, totalMaxEurCents: 5000 }, 100), 5000);
-  // Solo il massimo (minimo 0): il massimo, come prima.
-  assert.equal(quoteDepositEurCents({ totalMinEurCents: 0, totalMaxEurCents: 5000 }, 100), 5000);
+  // Minimo 0 ("da 0 a 50 €"): acconto 0, quindi niente pagamento online (sotto il minimo di Stripe).
+  assert.equal(quoteDepositEurCents({ totalMinEurCents: 0, totalMaxEurCents: 5000 }, 100), 0);
 });
 
 test("pagamento diretto o senza prezzo: nessuna cifra", () => {

@@ -75,20 +75,20 @@ describe("onlineLimitProblem", () => {
   const base = { depositPercent: 20, limitEurCents: 200_000 };
 
   it("sotto il tetto va tutto bene, e senza tetto sempre", () => {
-    expect(onlineLimitProblem({ ...base, paymentOptions: ["ONLINE", "DIRECT"], totalMaxEurCents: 200_000 })).toBeNull();
-    expect(onlineLimitProblem({ ...base, limitEurCents: null, paymentOptions: ["ONLINE"], totalMaxEurCents: 900_000 })).toBeNull();
+    expect(onlineLimitProblem({ ...base, paymentOptions: ["ONLINE", "DIRECT"], totalMinEurCents: 200_000, totalMaxEurCents: 200_000 })).toBeNull();
+    expect(onlineLimitProblem({ ...base, limitEurCents: null, paymentOptions: ["ONLINE"], totalMinEurCents: 900_000, totalMaxEurCents: 900_000 })).toBeNull();
   });
 
   it("sopra il tetto con tutto online indica l'acconto online con saldo diretto", () => {
-    expect(onlineLimitProblem({ ...base, paymentOptions: ["ONLINE", "DIRECT"], totalMaxEurCents: 250_000 })).toMatch(
+    expect(onlineLimitProblem({ ...base, paymentOptions: ["ONLINE", "DIRECT"], totalMinEurCents: 250_000, totalMaxEurCents: 250_000 })).toMatch(
       /^Online puoi chiedere fino a 2\.000\u00A0€ per lavoro: scegli "Acconto online e saldo diretto"/,
     );
     // Con il saldo diretto passa solo l'acconto (20% di 2.500 € = 500 €): va bene.
-    expect(onlineLimitProblem({ ...base, paymentOptions: ["MIXED", "DIRECT"], totalMaxEurCents: 250_000 })).toBeNull();
+    expect(onlineLimitProblem({ ...base, paymentOptions: ["MIXED", "DIRECT"], totalMinEurCents: 250_000, totalMaxEurCents: 250_000 })).toBeNull();
   });
 
   it("acconto troppo alto anche col saldo diretto", () => {
-    expect(onlineLimitProblem({ ...base, depositPercent: 100, paymentOptions: ["MIXED"], totalMaxEurCents: 250_000 })).toMatch(/abbassa l'acconto online/);
+    expect(onlineLimitProblem({ ...base, depositPercent: 100, paymentOptions: ["MIXED"], totalMinEurCents: 250_000, totalMaxEurCents: 250_000 })).toMatch(/abbassa l'acconto online/);
   });
 });
 

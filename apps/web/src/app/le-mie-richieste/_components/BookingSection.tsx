@@ -7,12 +7,13 @@ import dynamic from "next/dynamic";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { bookingCancellationMoney, cancellationPhase, cancellationTerms, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { bookingCancellationMoney, cancellationPhase, cancellationTerms, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatPhoneForDisplay, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
 import { CancellationTermsLines } from "@/components/CancellationTermsLines";
 import { UnreadDot } from "@/components/UnreadDot";
+import { ContactTile } from "@/components/ContactTile";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -219,7 +220,7 @@ export function BookingSection({
   const phone = booking.professionalAccountDeleted ? null : booking.professionalPhone;
   const totals = quotePriceTotals(booking.quoteItems);
   const priceText = totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0 ? formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents) : null;
-  // Un solo pulsante pieno per momento: quando tocca al cliente confermare o recensire, "Chiama" passa in secondo piano.
+  // Un solo pulsante pieno per momento: quando tocca al cliente confermare o recensire, la videochiamata passa in secondo piano.
   const stripAction = canConfirmDone || canWriteReview;
 
   return (
@@ -331,38 +332,32 @@ export function BookingSection({
 
         {booking.status !== "CANCELED" ? (
           <YStack flex={1} flexBasis={300} minWidth={0} gap="3" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
-            <XStack gap="2" flexWrap="wrap">
-              {phone ? (
-                <a href={`tel:${phone.replace(/\s+/g, "")}`} style={{ textDecoration: "none", flex: 1, minWidth: 130, display: "flex" }}>
-                  <CardButton tone={stripAction ? "outline" : "primary"} flex={1}>
-                    <XStack alignItems="center" gap="2">
-                      <Icon name="phone" size={18} color={stripAction ? brand.grafite : "white"} />
-                      <Text fontFamily="body" fontWeight="600" fontSize="3" color={stripAction ? brand.grafite : "white"}>
-                        Chiama
-                      </Text>
-                    </XStack>
-                  </CardButton>
-                </a>
-              ) : null}
-              {booking.guidedRequestId && !proGone ? (
-                <CardButton
-                  flex={1}
-                  minWidth={130}
-                  onPress={() => {
-                    setShowTimeline(true);
-                    dismissUnread();
-                  }}
-                >
-                  <XStack alignItems="center" gap="2">
-                    <Icon name="message-circle" size={18} color={brand.grafite} />
-                    <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
-                      Messaggi
-                    </Text>
-                    <UnreadDot count={effectiveUnreadCount} />
-                  </XStack>
-                </CardButton>
-              ) : null}
-            </XStack>
+            {/* Stessi pulsanti dei "Dettagli cliente" del professionista: icona sopra,
+                scritta sotto, tutti uguali; il numero in piccolo sotto
+                (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */}
+            {phone || (booking.guidedRequestId && !proGone) ? (
+              <YStack gap="2">
+                <XStack gap={6}>
+                  {phone ? <ContactTile href={`tel:${phone.replace(/\s+/g, "")}`} icon="phone" label="Chiama" /> : null}
+                  {booking.guidedRequestId && !proGone ? (
+                    <ContactTile
+                      icon="message-circle"
+                      label="Messaggi"
+                      badge={<UnreadDot count={effectiveUnreadCount} />}
+                      onPress={() => {
+                        setShowTimeline(true);
+                        dismissUnread();
+                      }}
+                    />
+                  ) : null}
+                </XStack>
+                {phone ? (
+                  <Text fontSize={13} color={brand.grafite70} style={{ userSelect: "text" }}>
+                    {formatPhoneForDisplay(phone)}
+                  </Text>
+                ) : null}
+              </YStack>
+            ) : null}
             {priceText || booking.payment ? <YStack height={1} backgroundColor={brand.filetto} /> : null}
             {priceText && booking.status !== "COMPLETED" ? (
               <XStack justifyContent="space-between" alignItems="baseline" gap="2" flexWrap="wrap">

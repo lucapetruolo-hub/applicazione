@@ -2291,8 +2291,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
-    agendaDayRoute: (token: string, date: string) =>
-      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    /** `skip`: chiavi delle tappe tolte dal giro (caselle per fascia). */
+    agendaDayRoute: (token: string, date: string, skip: string[] = []) =>
+      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}${skip.length > 0 ? `&skip=${encodeURIComponent(skip.join(","))}` : ""}`, { headers: { Authorization: `Bearer ${token}` } }),
     calendarFeedStatus: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { headers: { Authorization: `Bearer ${token}` } }),
     enableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     disableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
