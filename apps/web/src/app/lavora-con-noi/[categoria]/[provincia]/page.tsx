@@ -17,6 +17,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { BoardCards } from "@/components/requestBoard/BoardCards";
 import { BoardAlertForm } from "@/components/requestBoard/BoardAlertForm";
 import styles from "@/components/requestBoard/BoardPage.module.css";
+import { BoardWeeklySwitch } from "@/components/requestBoard/BoardWeeklySwitch";
 
 /**
  * Bacheca "Lavori cercati" per mestiere e provincia
@@ -106,6 +107,7 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
       </h1>
       <p className={styles.lead}>Clienti che aspettano ancora un preventivo. Scegli tu a chi rispondere: per farlo crea il tuo profilo.</p>
 
+      <BoardWeeklySwitch />
       {otherTrades.length > 0 ? (
         <ul className={styles.chips} aria-label="Altri lavori cercati in questa provincia">
           <li>
@@ -140,6 +142,11 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
           ) : board ? (
             <div className={styles.empty}>
               In questo momento nessun cliente in provincia di {found.provinceName} aspetta un {label}. Le richieste nuove della tua zona ti arrivano da sole quando hai il profilo.
+              <div className={styles.emptyActions}>
+                <Link className={styles.cta} href={register}>
+                  Iscriviti: le richieste ti arrivano da sole
+                </Link>
+              </div>
               <BoardAlertForm trade={found.trade} province={found.province} label={label} provinceName={found.provinceName} />
             </div>
           ) : (

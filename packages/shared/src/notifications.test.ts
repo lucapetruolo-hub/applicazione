@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  BOARD_WEEKLY_ITEM,
   NOTIFICATION_ITEMS,
   NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
@@ -107,4 +108,11 @@ test("il suono scelto si tiene, uno sconosciuto torna a quello di serie (docs/ch
   assert.equal(resolveNotificationPreferences({ soundName: "vetro" }).soundName, "vetro");
   assert.equal(resolveNotificationPreferences({ soundName: "sirena" }).soundName, "dolce");
   assert.equal(resolveNotificationPreferences({ sound: false }).sound, false);
+});
+
+test("l'email del lunedì si sceglie in Lavori cercati, non in Notifiche, e conta solo la sua scelta", () => {
+  const item = NOTIFICATION_ITEMS.find((entry) => entry.key === BOARD_WEEKLY_ITEM);
+  assert.ok(item?.elsewhere);
+  assert.deepEqual(item?.types, ["BOARD_WEEKLY_DIGEST"]);
+  assert.deepEqual(item?.channels, ["email"]);
 });

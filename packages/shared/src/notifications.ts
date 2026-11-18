@@ -320,7 +320,15 @@ export type NotificationItem = {
   locked?: boolean;
   /** Canali in cui l'avviso esiste davvero, se non sono sia sito sia email. */
   channels?: ItemChannel[];
+  /**
+   * Si accende e si spegne solo in un'altra pagina (questo indirizzo), non in
+   * Notifiche, e non dipende dall'argomento: conta solo la sua scelta.
+   */
+  elsewhere?: string;
 };
+
+/** Email del lunedì "Lavori cercati della settimana" (docs/changelog/2026-11-18-email-settimana-in-bacheca.md). */
+export const BOARD_WEEKLY_ITEM = "richieste.settimana";
 
 export type ItemChannel = "inApp" | "email";
 
@@ -353,6 +361,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     types: ["BOARD_WEEKLY_DIGEST"],
     // Solo email, una volta a settimana ("sì" di Luca del 18/11, docs/changelog/2026-11-18-bacheca-cliente.md).
     channels: ["email"],
+    // Si sceglie nella pagina "Lavori cercati", non in Notifiche (Luca, docs/changelog/2026-11-18-email-settimana-in-bacheca.md).
+    elsewhere: "/lavora-con-noi",
     professional: { label: "Lavori cercati della settimana", description: "Il lunedì, le richieste nuove del tuo mestiere entro 100 km che non ti sono ancora arrivate." },
   },
   {
