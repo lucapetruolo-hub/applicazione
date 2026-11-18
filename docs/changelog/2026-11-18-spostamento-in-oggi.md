@@ -21,3 +21,14 @@ Agenda e in Richieste: in Oggi, la prima pagina che apre, non compariva niente.
 professionista di prova e due appuntamenti (oggi con spostamento chiesto dal
 cliente, domani proposto dal professionista): foto
 `collaudo/2026-11-17-giro-cliente-professionista/foto/oggi-spostamento-*`.
+
+## La stessa pillola in Agenda (sì di Luca, 18/11/2026)
+
+Nella Settimana e nel Giorno dell'Agenda l'appuntamento confermato con
+un'altra data proposta ha la sua pillola corta, per stare nel riquadro: "Da
+spostare" (ambra, la chiede il cliente) o "Nuova data" (grigia, in attesa del
+cliente). Il testo intero ("Il cliente chiede di spostarlo") si legge nel
+foglio che si apre toccando il riquadro e dal lettore di schermo; sul telefono,
+dove la colonna della settimana è stretta, c'è un pallino dello stesso colore
+(`move` di `AgendaGridEvent`). Foto `agenda-spostamento-*` nella cartella del
+giro di prova.

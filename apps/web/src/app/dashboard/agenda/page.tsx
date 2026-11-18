@@ -1659,6 +1659,8 @@ function DashboardAgendaContent() {
                     : b.address
                   : null,
               recurring: Boolean(b.recurring),
+              // Stessa pillola di Oggi (docs/changelog/2026-11-18-spostamento-in-oggi.md).
+              move: b.status === "CONFIRMED" && b.dateChange ? (b.dateChange.proposedBy === "CLIENT" ? ("asked" as const) : ("waiting" as const)) : undefined,
               onPress: () => setSelectedBooking(b),
             })),
           )
