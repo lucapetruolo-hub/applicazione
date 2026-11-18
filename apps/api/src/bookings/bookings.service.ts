@@ -632,7 +632,7 @@ export class BookingsService implements OnModuleInit {
     });
 
     // Metodo di pagamento scelto dal cliente (§168, §237): acconto online
-    // con la percentuale del professionista sull'importo massimo, saldo
+    // con la percentuale del professionista sul prezzo minimo, saldo
     // online o diretto; oppure tutto diretto al professionista.
     await this.jobPaymentsService.createAtAcceptance({
       bookingId: booking.id,

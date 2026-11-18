@@ -20,6 +20,7 @@ import {
   jobPaymentChoices,
   onlineLimitHint,
   onlineDepositTooLowProblem,
+  depositPreviewLine,
   onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -476,6 +477,25 @@ export function RequestCard({
           }
         : null;
 
+  // Totali delle voci mentre si scrivono, per l'importo dell'acconto sotto la percentuale:
+  // un prezzo non valido conta zero, l'errore lo dà l'invio.
+  const draftTotals = quotePriceTotals(
+    items.map((item) => {
+      const cents = (value: string) => {
+        const n = Math.round(Number(value.trim().replace(",", ".")) * 100);
+        return value.trim() && Number.isFinite(n) && n >= 0 ? n : null;
+      };
+      return { priceMinEurCents: cents(item.priceMin), priceMaxEurCents: cents(item.priceMax) };
+    }),
+  );
+  const liveOffered = paymentOptions.filter((choice) => !(repeatChosen && choice === "MIXED"));
+  const liveDepositPercent = Number(depositPercentDraft.trim() || "x");
+  const liveLimitProblem =
+    onlinePayments && Number.isInteger(liveDepositPercent) && liveDepositPercent >= MIN_DEPOSIT_PERCENT && liveDepositPercent <= MAX_DEPOSIT_PERCENT
+      ? onlineLimitProblem({ paymentOptions: liveOffered, depositPercent: liveDepositPercent, totalMinEurCents: draftTotals.totalMinEurCents, totalMaxEurCents: draftTotals.totalMaxEurCents, limitEurCents: onlineLimitEurCents })
+      : null;
+  const depositPreview = depositPreviewLine(draftTotals, liveDepositPercent, { perVisit: repeatChosen });
+
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   }
@@ -542,10 +562,10 @@ export function RequestCard({
     }
     // Tetto ai pagamenti online: stesso controllo dell'API, detto prima di inviare.
     if (offered.some(paymentChoiceIsOnline)) {
-      const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
-      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
+      const { totalMinEurCents, totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMinEurCents, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
       if (limitProblem) return setQuoteError(limitProblem);
-      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents });
+      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMinEurCents });
       if (lowProblem) return setQuoteError(lowProblem);
     }
 
@@ -1986,25 +2006,44 @@ export function RequestCard({
                           onChange={(e) => setDepositPercentDraft(e.target.value)}
                           style={{ ...smallInputStyle, width: 72 }}
                         />
+                        {/* Solo "%": la spiegazione la dà la riga sotto, così da telefono non va a capo da sola. */}
                         <Text fontSize={16} color={brand.grafite}>
-                          % dell&apos;importo massimo
+                          %
                         </Text>
                       </XStack>
                     ) : null}
+                    {/* L'importo in euro mentre scrive (docs/changelog/2026-11-18-importo-acconto.md). */}
+                    {paymentOptions.some(paymentChoiceIsOnline) && depositPreview ? (
+                      <Text
+                        fontSize={14}
+                        fontWeight={depositPreview.tooLow ? "600" : "400"}
+                        color={depositPreview.tooLow ? brand.ottoneScuro : brand.grafite}
+                        aria-live="polite"
+                      >
+                        {depositPreview.text}
+                      </Text>
+                    ) : null}
+                    {/* Tetto dei pagamenti online detto mentre si scrive, non solo a Invia. */}
+                    {liveLimitProblem ? (
+                      <Text fontSize={14} fontWeight="600" color={brand.ottoneScuro} aria-live="polite">
+                        {liveLimitProblem}
+                      </Text>
+                    ) : null}
                     {/* Al 100% "acconto e saldo diretto" coincide con "tutto online": al cliente si mostra solo quello
                         (docs/changelog/2026-11-13-annullare-data-passata.md). */}
-                    {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 ? (
+                    {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 && draftTotals.totalMaxEurCents > 0 && draftTotals.totalMinEurCents >= draftTotals.totalMaxEurCents ? (
                       <Text fontSize={13} color={brand.grafite70}>
-                        Con l&apos;acconto al 100% il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
+                        Con l&apos;acconto al 100% e un prezzo unico il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
                       </Text>
                     ) : null}
                     {/* "Tutto online" con la forbice: il minimo subito (decisione di Luca, docs/changelog/2026-11-13-tutto-online-forbice.md). */}
-                    {paymentOptions.some(paymentChoiceIsOnline) && Number(depositPercentDraft) >= 100 ? (
+                    {paymentOptions.some(paymentChoiceIsOnline) && Number(depositPercentDraft) >= 100 && draftTotals.totalMaxEurCents <= 0 ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         Con una forbice di prezzo il cliente paga subito il minimo e il resto, se serve, a lavoro finito con la stessa carta.
                       </Text>
                     ) : null}
-                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
+                    {/* Con l'avviso del tetto in vista la riga grigia lo ripeterebbe. */}
+                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint && !liveLimitProblem ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         {limitHint}
                       </Text>

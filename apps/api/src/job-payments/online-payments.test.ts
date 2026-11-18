@@ -14,7 +14,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const now = new Date("2026-10-10T10:00:00Z");
 
 describe("pagamento online: acconto, saldo, accredito (§168)", () => {
-  it("acconto del 20% dell'importo massimo del preventivo", () => {
+  it("acconto del 20% del prezzo minimo del preventivo", () => {
     expect(onlineDepositEurCents(50000)).toBe(10000);
     expect(onlineDepositEurCents(12345)).toBe(2469);
   });

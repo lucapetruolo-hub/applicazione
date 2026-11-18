@@ -215,7 +215,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
 
     expect(result).toEqual({ bookingId: null, paymentMethod: "ONLINE", checkoutUrl: "https://checkout.stripe.com/c/pay" });
     expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(
-      expect.objectContaining({ quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE", amountEurCents: 6000 }),
+      expect.objectContaining({ quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE", amountEurCents: 4000 }),
     );
     expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(notificationsService.notify).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
 
     await service.createFromQuote("client-1", "quote-1", "MIXED");
 
-    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "MIXED", amountEurCents: 10500 }));
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "MIXED", amountEurCents: 7000 }));
     delete process.env.STRIPE_SECRET_KEY;
   });
 
@@ -416,7 +416,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
 
     await service.confirmQuoteDeposit({
       payment_intent: "pi_1",
-      amount_total: 6000,
+      amount_total: 4000,
       metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
     } as never);
 
@@ -427,7 +427,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
   function session(overrides: Record<string, unknown> = {}) {
     return {
       payment_intent: "pi_1",
-      amount_total: 6000,
+      amount_total: 4000,
       metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
       ...overrides,
     } as never;
@@ -442,7 +442,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
 
     expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
     expect(prisma.booking.create).not.toHaveBeenCalled();
-    expect(jobPaymentsService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_STRIPE_UNKNOWN_PAYMENT", { paymentIntentId: "pi_1", amountEurCents: 6000, stripeAccount: "acct_pro" });
+    expect(jobPaymentsService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_STRIPE_UNKNOWN_PAYMENT", { paymentIntentId: "pi_1", amountEurCents: 4000, stripeAccount: "acct_pro" });
   });
 
   it("crea la prenotazione, sblocca i contatti al professionista e registra l'acconto", async () => {
@@ -481,14 +481,14 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String), null, { clientUserId: expect.any(String), guidedRequestId: expect.anything() });
-    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "QUOTE_DEPOSIT_REFUNDED", expect.objectContaining({ amountEurCents: 6000 }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "QUOTE_DEPOSIT_REFUNDED", expect.objectContaining({ amountEurCents: 4000 }));
   });
 
   it("rimborsa l'acconto se l'importo del preventivo è cambiato", async () => {
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ items: [{ priceMinEurCents: 20000, priceMaxEurCents: 40000 }] }));
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ items: [{ priceMinEurCents: 25000, priceMaxEurCents: 40000 }] }));
 
     await service.confirmQuoteDeposit(session());
 
@@ -614,7 +614,7 @@ describe("Acconto pagato senza webhook (collaudo 08/11, E3-06)", () => {
   const paid = (overrides: Record<string, unknown> = {}) =>
     ({
       payment_intent: "pi_1",
-      amount_total: 6000,
+      amount_total: 4000,
       created: Math.floor(Date.now() / 1000) - 60 * 60,
       metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
       ...overrides,
@@ -769,7 +769,7 @@ describe("Accetta: controllo sul server e testo salvato (docs/changelog/2026-11-
     prisma.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "b-new", ...data }));
     await service.confirmQuoteDeposit({
       payment_intent: "pi_1",
-      amount_total: 6000,
+      amount_total: 4000,
       metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE", seenCancellationPhase: "free", seenTermsAt: "2037-09-30T07:59:00.000Z" },
     } as never);
     expect((prisma.booking.create.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data.acceptedTerms).toMatchObject({ phaseSeen: "free", phaseAtAcceptance: "late", depositRefundedIfLate: true });

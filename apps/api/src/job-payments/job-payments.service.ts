@@ -40,7 +40,7 @@ export class JobPaymentsService {
 
   /**
    * Metodo di pagamento scelto dal cliente accettando il preventivo
-   * (docs/CHANGELOG.md §168). Online: acconto del 20% dell'importo massimo
+   * (docs/CHANGELOG.md §168). Online: acconto del 20% del prezzo minimo
    * da pagare subito con Stripe. Diretto: nessun movimento sul sito, il
    * pagamento si conferma a lavoro terminato come prima.
    */

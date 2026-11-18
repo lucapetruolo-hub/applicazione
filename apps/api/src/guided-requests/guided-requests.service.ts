@@ -951,7 +951,7 @@ export class GuidedRequestsService {
           // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di
           // serie per i preventivi vecchi; senza la verifica su Stripe del
           // professionista l'acconto online non si può scegliere (§241).
-          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile), quotePriceTotals(quote.items).totalMaxEurCents),
+          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile), quotePriceTotals(quote.items).totalMinEurCents),
           // Preavviso per annullare scelto nel preventivo (docs/CHANGELOG.md §347, §348), detto prima di Accetta.
           cancellationNoticeHours: quote.cancellationNoticeHours ?? quote.professionalProfile.cancellationNoticeHours,
           lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,

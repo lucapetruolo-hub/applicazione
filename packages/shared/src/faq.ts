@@ -124,7 +124,7 @@ export const FAQ: readonly FaqItem[] = [
     audience: "cliente",
     topic: "Pagamenti",
     question: "Cos'è l'acconto?",
-    answer: `È la parte che paghi online quando accetti il preventivo: la percentuale la sceglie il professionista (${ONLINE_DEPOSIT_PERCENT}% se non la indica). Il lavoro è confermato quando l'acconto è pagato; il resto, il saldo, si paga a lavoro finito.`,
+    answer: `È la parte che paghi online quando accetti il preventivo: è una percentuale del prezzo minimo del preventivo, scelta dal professionista (${ONLINE_DEPOSIT_PERCENT}% se non la indica). Il lavoro è confermato quando l'acconto è pagato; il resto, il saldo, si paga a lavoro finito.`,
     onlineOnly: true,
   },
   {
