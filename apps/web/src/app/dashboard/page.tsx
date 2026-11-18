@@ -332,7 +332,8 @@ export default function DashboardTodayPage() {
     }
   }
 
-  const loading = leads === null || bookings === null || externalJobs === null;
+  // Anche le chat in attesa: "Ti stanno aspettando" compare insieme alle richieste, non dopo (CLS).
+  const loading = leads === null || bookings === null || externalJobs === null || chatsWaiting === null;
   const arrivalBands = tomorrowBandsWithoutArrival(bookings ?? []);
   // Tutto quello che sta sotto "Oggi e domani" compare insieme, quando sono
   // arrivati richieste, appuntamenti e percorso del profilo: arrivando in
@@ -350,8 +351,8 @@ export default function DashboardTodayPage() {
   // (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md).
   const quietStart = Boolean(heroJourney) && !loading && !error && upcoming.length === 0 && toAnswer.length === 0 && waitingCount === 0 && toClose.length === 0;
   const greetingName = user.businessName ?? user.name ?? "";
-  const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
-  const showWaitingOnTop = !loading && !error && waitingCount > 0;
+  const showToAnswerOnTop = ready && !error && toAnswer.length > 0;
+  const showWaitingOnTop = ready && !error && waitingCount > 0;
   // Niente da rispondere, nessuno che aspetta e nessun lavoro da chiudere: lo si dice, in verde.
   const allDone = ready && !error && !quietStart && chatsWaiting !== null && toAnswer.length === 0 && waitingCount === 0 && toClose.length === 0;
 
@@ -360,7 +361,7 @@ export default function DashboardTodayPage() {
   // docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
   const soonLimit = wallNow.getTime() + JOB_SOON_MS;
   const jobSoon =
-    !loading &&
+    ready &&
     !error &&
     upcoming.some((row) => {
       if (row.closeBookingId) return false;
@@ -368,9 +369,11 @@ export default function DashboardTodayPage() {
       const end = row.end ? new Date(row.end).getTime() : start + 60 * 60_000;
       return start <= soonLimit && end > wallNow.getTime();
     });
-  const todayAndTomorrow = (error ? null : loading ? (
-                  <Skeletons />
-                ) : (
+  // Finché manca qualcosa (anche il percorso del profilo) lo scheletro sta in cima, nel
+  // posto della prima sezione che comparirà: sotto, "Completa il profilo", le richieste
+  // o le attese arrivate sopra lo spingevano giù (CLS della prova Lighthouse,
+  // docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+  const todayAndTomorrow = (error || !ready ? null : (
                 <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
                   {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
                   {upcoming.length === 0 ? (
@@ -471,6 +474,7 @@ export default function DashboardTodayPage() {
             sopra meteo e lavori, a tutta larghezza anche sul computer
             (docs/CHANGELOG.md §403, Luca: "è la cosa più importante"). Senza
             nulla a cui rispondere la pagina resta com'era. */}
+        {!ready && !error ? <Skeletons /> : null}
         {showToAnswerOnTop ? (
           <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
             {/* Da telefono le prime 3, dal computer le prime 5: sotto restano
@@ -653,11 +657,11 @@ export default function DashboardTodayPage() {
                 {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
                     senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
                 {/* Finché richieste e lavori non arrivano solo uno scheletro senza
-                    titolo: con le richieste in cima, "Oggi e domani" già disegnato
+                    titolo, in cima alla pagina: "Oggi e domani" già disegnato
                     sarebbe poi scivolato giù (CLS, §334, §403). */}
                 {jobSoon ? null : todayAndTomorrow}
                 {/* Domani più lavori nella stessa fascia lunga senza ora: si chiede verso che ora passa (docs/changelog/2026-11-11-fasce-ampie.md). */}
-                {!loading && !error ? (
+                {ready && !error ? (
                   <ArrivalTimesNotice
                     token={token}
                     bands={arrivalBands}
@@ -666,7 +670,7 @@ export default function DashboardTodayPage() {
                 ) : null}
                 {/* Lavori finiti ma non chiusi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
                     da "Lavoro terminato" partono saldo, recensione e conteggio dei lavori. */}
-                {!loading && !error && toClose.length > 0 ? (
+                {ready && !error && toClose.length > 0 ? (
                   <TodaySection title="Lavori da chiudere" count={toClose.length}>
                     {toClose.slice(0, WAITING_SHOWN_COMPUTER).map((booking, index) => (
                       <Link

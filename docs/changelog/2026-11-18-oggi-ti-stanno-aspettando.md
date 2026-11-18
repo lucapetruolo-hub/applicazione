@@ -75,3 +75,9 @@ restano dopo il ricaricamento; la chat torna con un messaggio nuovo;
 "Lavoro terminato" apre la finestra). Tutte le prove dell'API (1653) e di
 `packages/shared` passate. Foto in `anteprime/oggi-ti-stanno-aspettando/`
 nella cartella del progetto.
+
+**Correzione (prova Lighthouse, CLS 0,33):** mentre la pagina carica resta un solo
+scheletro in cima, finché non sono arrivati richieste, lavori, chat in attesa e
+percorso del profilo; poi compare tutto insieme. Prima lo scheletro stava sotto e
+"Completa il profilo", le richieste o le attese arrivavano sopra spingendolo giù.
+Misura in locale scesa a 0,00.
