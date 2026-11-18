@@ -3,6 +3,7 @@
 import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Icon, brand } from "@professionisti/ui";
 import { isVideoUrl, isDocumentUrl, documentTypeLabel } from "@/lib/media";
+import { noSaveProps } from "@/lib/noSaveMedia";
 
 const DEFAULT_STYLE: CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
 
@@ -115,7 +116,7 @@ export function MediaPreview({
 
   if (forceVideo || isVideoUrl(url)) {
     return (
-      <video src={url} muted playsInline role={role} aria-label={onClick ? alt || "Apri il video" : undefined} tabIndex={tabIndex} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />
+      <video src={url} muted playsInline {...noSaveProps} controlsList="nodownload" disablePictureInPicture role={role} aria-label={onClick ? alt || "Apri il video" : undefined} tabIndex={tabIndex} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />
     );
   }
   // `<img>` grezzo deliberato, non `next/image`: `url` può essere un
@@ -126,8 +127,8 @@ export function MediaPreview({
   // diversi passati via `style`, mai una dimensione nota in anticipo.
   if (onClick) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={alt || "Apri la foto"} role="button" tabIndex={0} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />;
+    return <img src={url} alt={alt || "Apri la foto"} {...noSaveProps} role="button" tabIndex={0} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />;
   }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt={alt} style={mergedStyle} onError={() => setBroken(true)} />;
+  return <img src={url} alt={alt} {...noSaveProps} style={mergedStyle} onError={() => setBroken(true)} />;
 }

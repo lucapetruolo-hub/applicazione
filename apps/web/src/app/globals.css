@@ -11306,6 +11306,17 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .photo-sheet-option svg {
   color: #1e6b6e;
 }
+/* Riga piccola sotto una voce, es. "Massimo 1 minuto" sotto "Fai un video". */
+.photo-sheet-option-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.photo-sheet-option-hint {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5560;
+}
 .photo-sheet-option:active,
 .photo-sheet-cancel:active {
   background: #f3efe9;
@@ -12003,4 +12014,11 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .portfolio-thumb-mini {
   width: 64px;
   height: 64px;
+}
+
+/* Foto e video degli utenti: niente menu "Salva" tenendo premuto su iPhone (lib/noSaveMedia.ts). */
+.no-save-media {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }

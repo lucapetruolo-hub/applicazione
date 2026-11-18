@@ -22,6 +22,7 @@ import { WebcamCapture } from "./WebcamCapture";
 export function PhotoPicker({
   accept,
   allowVideo = false,
+  videoHint,
   disabled = false,
   maxPhotos = 1,
   onFile,
@@ -34,6 +35,12 @@ export function PhotoPicker({
   /** Tipi ammessi dalla galleria. */
   accept: string;
   allowVideo?: boolean;
+  /**
+   * Riga piccola sotto "Fai un video", per esempio "Massimo 1 minuto": la
+   * fotocamera del telefono non si ferma da sola, così il cliente lo sa prima
+   * di girare (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+   */
+  videoHint?: string;
   disabled?: boolean;
   /**
    * Quante foto può mandare il telefono con "Scatta dal telefono" (posti ancora
@@ -157,7 +164,14 @@ export function PhotoPicker({
                       {allowVideo ? (
                         <button type="button" className="photo-sheet-option" onClick={() => pick(videoRef.current)}>
                           <Video size={22} strokeWidth={2} aria-hidden="true" />
-                          Fai un video
+                          {videoHint ? (
+                            <span className="photo-sheet-option-text">
+                              Fai un video
+                              <span className="photo-sheet-option-hint">{videoHint}</span>
+                            </span>
+                          ) : (
+                            "Fai un video"
+                          )}
                         </button>
                       ) : null}
                       <button type="button" className="photo-sheet-option" onClick={() => pick(galleryRef.current)}>

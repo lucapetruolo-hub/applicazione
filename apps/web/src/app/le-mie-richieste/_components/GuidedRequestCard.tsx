@@ -688,7 +688,7 @@ export function GuidedRequestCard({
 
           <YStack gap="1">
             <Text fontSize={13} color={brand.grafite70}>
-              Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS})
+              Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS}; i video al massimo 1 minuto)
             </Text>
             <div ref={photoReorderRef} className="portfolio-thumbs">
               {photoUrls.map((url, index) => (
