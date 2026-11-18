@@ -485,7 +485,7 @@ export function RequestCard({
   const liveDepositPercent = Number(depositPercentDraft.trim() || "x");
   const liveLimitProblem =
     onlinePayments && Number.isInteger(liveDepositPercent) && liveDepositPercent >= MIN_DEPOSIT_PERCENT && liveDepositPercent <= MAX_DEPOSIT_PERCENT
-      ? onlineLimitProblem({ paymentOptions: liveOffered, depositPercent: liveDepositPercent, totalMaxEurCents: draftTotals.totalMaxEurCents, limitEurCents: onlineLimitEurCents })
+      ? onlineLimitProblem({ paymentOptions: liveOffered, depositPercent: liveDepositPercent, totalMinEurCents: draftTotals.totalMinEurCents, totalMaxEurCents: draftTotals.totalMaxEurCents, limitEurCents: onlineLimitEurCents })
       : null;
   const depositPreview = depositPreviewLine(draftTotals, liveDepositPercent, { perVisit: repeatChosen });
 
@@ -555,10 +555,10 @@ export function RequestCard({
     }
     // Tetto ai pagamenti online: stesso controllo dell'API, detto prima di inviare.
     if (offered.some(paymentChoiceIsOnline)) {
-      const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
-      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
+      const { totalMinEurCents, totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMinEurCents, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
       if (limitProblem) return setQuoteError(limitProblem);
-      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents });
+      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMinEurCents });
       if (lowProblem) return setQuoteError(lowProblem);
     }
 

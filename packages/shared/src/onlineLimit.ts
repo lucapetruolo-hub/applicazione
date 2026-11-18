@@ -45,10 +45,13 @@ export function onlineLimitEurCents(input: { cleanJobs: number; firstCleanJobAt:
   return input.cleanJobs >= ONLINE_LIMIT_FREE_JOBS && enoughDays ? null : ONLINE_LIMIT_EUR_CENTS;
 }
 
-/** Quanto passa online con un modo di pagamento: tutto con ONLINE, l'acconto con MIXED, niente con DIRECT. */
-export function quoteOnlineAmountEurCents(choice: JobPaymentChoice, depositPercent: number, totalMaxEurCents: number): number {
-  if (choice === "ONLINE") return totalMaxEurCents;
-  if (choice === "MIXED") return onlineDepositEurCents(totalMaxEurCents, depositPercent);
+/**
+ * Quanto passa online con un modo di pagamento: fino al prezzo massimo con
+ * ONLINE, l'acconto (percentuale del minimo) con MIXED, niente con DIRECT.
+ */
+export function quoteOnlineAmountEurCents(choice: JobPaymentChoice, depositPercent: number, totals: { totalMinEurCents: number; totalMaxEurCents: number }): number {
+  if (choice === "ONLINE") return totals.totalMaxEurCents;
+  if (choice === "MIXED") return onlineDepositEurCents(totals.totalMinEurCents, depositPercent);
   return 0;
 }
 
@@ -56,12 +59,13 @@ export function quoteOnlineAmountEurCents(choice: JobPaymentChoice, depositPerce
 export function onlineLimitProblem(input: {
   paymentOptions: JobPaymentChoice[];
   depositPercent: number;
+  totalMinEurCents: number;
   totalMaxEurCents: number;
   limitEurCents: number | null;
 }): string | null {
   const limit = input.limitEurCents;
   if (limit === null) return null;
-  const over = input.paymentOptions.filter((choice) => quoteOnlineAmountEurCents(choice, input.depositPercent, input.totalMaxEurCents) > limit);
+  const over = input.paymentOptions.filter((choice) => quoteOnlineAmountEurCents(choice, input.depositPercent, input) > limit);
   if (over.length === 0) return null;
   const amount = formatEur(limit);
   if (over.includes("ONLINE") && !over.includes("MIXED")) {

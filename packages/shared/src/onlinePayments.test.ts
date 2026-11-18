@@ -36,9 +36,9 @@ test("un rimborso prima della chiusura abbassa il prezzo, non si ripaga a fine l
   assert.equal(toJobPaymentSummary(job({ depositEurCents: 2000, paidEurCents: 2000, refundedEurCents: 1000, onlineStage: "AWAITING_BALANCE" }), 10000)?.balanceDueEurCents, 8000);
 });
 
-test("depositPreviewLine: percentuale sul massimo, al centesimo", async () => {
+test("depositPreviewLine: percentuale sul minimo, al centesimo", async () => {
   const { depositPreviewLine } = await import("./onlinePayments");
-  assert.equal(depositPreviewLine({ totalMinEurCents: 15000, totalMaxEurCents: 25000 }, 20)?.text, "Il cliente paga subito 50,00 € con la carta (20% di 250 €, il prezzo massimo).");
+  assert.equal(depositPreviewLine({ totalMinEurCents: 15000, totalMaxEurCents: 25000 }, 20)?.text, "Il cliente paga subito 30,00 € con la carta (20% di 150 €, il prezzo minimo).");
   assert.equal(depositPreviewLine({ totalMinEurCents: 15500, totalMaxEurCents: 15500 }, 33)?.text, "Il cliente paga subito 51,15 € con la carta (33% di 155 €).");
   assert.equal(depositPreviewLine({ totalMinEurCents: 8000, totalMaxEurCents: 8000 }, 30, { perVisit: true })?.text, "Il cliente paga subito 24,00 € a visita con la carta (30% di 80 €).");
 });

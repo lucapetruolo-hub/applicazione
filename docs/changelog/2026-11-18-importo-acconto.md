@@ -43,3 +43,29 @@ ai pulsanti veloci 20/30/50%):
   calcolo (`quoteDepositEurCents`) e stesse parole ("subito", "il resto, se
   serve"), nessun conflitto tra i due rami.
 - Foto: `anteprime/importo-acconto/dopo2-*.png`.
+
+**Terzo giro: acconto sul prezzo minimo** (decisione di Luca, 18/11: "facciamo
+tutto sul minimo, correggi dappertutto"; motivo: chiedendo il 70% sul massimo
+il lavoro poteva costare meno dell'acconto e serviva un rimborso al cliente,
+di cui Stripe non restituisce la commissione).
+- `quoteDepositEurCents` e `onlineDepositEurCents` (packages/shared) ora
+  calcolano la percentuale sul **prezzo minimo** di tutte le voci. Al 100% resta
+  il minimo, come già deciso il 13/11. Con un minimo di 0 € l'acconto è 0 e il
+  pagamento online non si offre (sotto lo 0,50 € di Stripe).
+- Stesso calcolo ovunque, perché tutti usano queste funzioni: modulo del
+  professionista, scheda e riepilogo del cliente, pagamento su Stripe
+  all'accettazione (`bookings.service`), PDF del preventivo, email, controllo
+  "acconto sotto 0,50 €" (`onlineDepositTooLowProblem`, `clientPaymentOffer`).
+  Il tetto dei 2.000 € conta l'acconto sul minimo per "Acconto online e saldo
+  diretto" e il prezzo massimo per "tutto online" (il saldo può arrivare lì).
+- Scritte: modulo ("70% di 180 €, il prezzo minimo"), testo del cliente "Paghi
+  ora un acconto del 20% del prezzo minimo", FAQ "Cos'è l'acconto?", pagina
+  /per-professionisti/pagamenti ("da 1 a 100% del prezzo minimo"), Termini
+  (sezione pagamenti) con la nuova versione 2026-11-18 in `termsChanges.ts`
+  (senza avviso: prima del lancio), docs/prodotto.md.
+- Preventivi già accettati: l'acconto è già salvato in `JobPayment`, non cambia.
+  Preventivi inviati e non ancora accettati: il cliente paga il nuovo importo
+  (più basso o uguale); il controllo "il preventivo è cambiato durante il
+  pagamento" protegge chi era già su Stripe.
+- Prove aggiornate: shared (224), API (1632), più typecheck e lint.
+- Foto: `anteprime/importo-acconto/minimo-*.png`.

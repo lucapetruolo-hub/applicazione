@@ -100,7 +100,7 @@ export class QuotePdfService {
     const fiscal = pro.fiscalProfile;
     const totals = quotePriceTotals(quote.items);
     const hasPrice = totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0;
-    const offer = clientPaymentOffer(quote, stripeVerified(fiscal), totals.totalMaxEurCents);
+    const offer = clientPaymentOffer(quote, stripeVerified(fiscal), totals.totalMinEurCents);
     const executor = quoteExecutor(fiscal);
     const isPrivate = professionalKindOf(fiscal?.entityType) === "PRIVATE";
     const taxNote = quotePriceTaxNote(professionalChargesVat(fiscal?.entityType, fiscal?.chargesVat));

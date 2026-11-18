@@ -119,7 +119,7 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   §168): nel preventivo il professionista offre uno o più modi (§237: diretto,
   acconto online con percentuale sua 1-100% e saldo online o diretto) e
   accettando il cliente sceglie tra questi: **online con Stripe**
-  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi addebitati
+  (acconto, 20% del prezzo minimo se non cambiato, dal 18/11/2026; prima del massimo, saldo a lavoro chiuso, soldi addebitati
   sul conto Stripe del professionista meno la **trattenuta unica del 7% + IVA**,
   tutto compreso (carta e bonifici di Stripe a carico nostro, docs/CHANGELOG.md
   §378, prima 5% più i costi di Stripe), mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
