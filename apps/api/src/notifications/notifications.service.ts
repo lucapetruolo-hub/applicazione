@@ -18,7 +18,7 @@ import {
   wallClockNow,
   withNotificationItemChannel,
 } from "@professionisti/shared";
-import { renderEmail } from "../email/email-layout";
+import { renderEmail, type EmailContent } from "../email/email-layout";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar, withCalendar, type BookingCalendar } from "../email/booking-calendar";
 import { adminNewReportEmail, contactReportReceivedEmail, requestSentEmail } from "../email/templates/job-emails";
 import { frontendUrl } from "../email/email-brand";
@@ -288,6 +288,20 @@ export class NotificationsService {
     })().catch((err: unknown) => {
       this.logger.error(`Email ${type} non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
+  }
+
+  /**
+   * Email di un avviso scritta da chi chiama (il riassunto settimanale di
+   * "Lavori cercati", docs/changelog/2026-11-18-bacheca-cliente.md): parte solo
+   * con l'email di quell'avviso accesa, con "Non ricevere più email come questa".
+   */
+  async sendOwnEmail(userId: string, type: string, content: Omit<EmailContent, "kind" | "emailOff">): Promise<boolean> {
+    if (!notificationChannelEnabled(await this.preferencesOf(userId), type, "email")) return false;
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: EMAIL_USER_SELECT });
+    if (!user?.email || user.deletedAt) return false;
+    const emailOff = emailOffFor(userId, type, user);
+    await this.emailService.send({ to: user.email, ...renderEmail({ ...content, kind: "notification", emailOff }), ...unsubscribeHeaders(emailOff) });
+    return true;
   }
 
   /**

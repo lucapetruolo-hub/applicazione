@@ -1152,6 +1152,17 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
+          {/* In bacheca: il cliente sa che la vedono anche i professionisti non iscritti ("sì" di Luca del 18/11,
+              docs/changelog/2026-11-18-bacheca-cliente.md). Si toglie dal menu della scheda. */}
+          {request.onBoard && !booking ? (
+            <XStack alignItems="center" gap="2">
+              <Icon name="eye" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize={16} color={brand.grafite70}>
+                La vedono anche i professionisti non ancora iscritti, senza nome, foto e indirizzo.
+              </Text>
+            </XStack>
+          ) : null}
+
           {!request.professionalProfileId && priceSpan !== null && !booking ? (
             <XStack alignItems="center" gap="2" backgroundColor={brand.cianografiaVelo} borderRadius="3" padding="3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />

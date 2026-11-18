@@ -49,6 +49,20 @@ oltre i 100 km.
   adesso" sono le stesse della pagina pubblica (`boardListedWhere` in
   `board-rules.ts`).
 
+**Migliorie ("sì" di Luca del 18/11, stessa PR)**
+- *Riga per il cliente:* nella scheda in "Le mie richieste", finché la
+  richiesta è in bacheca, "La vedono anche i professionisti non ancora
+  iscritti, senza nome, foto e indirizzo."
+- *Lavori cercati della settimana:* il lunedì alle 9 (`sendWeeklyDigest`,
+  `@ScheduledJob`) un'email a ogni professionista visibile con le richieste
+  entrate in bacheca negli ultimi 7 giorni a cui può rispondere (stesse
+  regole di "Rispondi": mestiere ed entro 100 km) e che non gli sono
+  arrivate, le più vicine prima, al massimo 5 con il link a `/rispondi`.
+  Nessuna email se non ce n'è. Tipo `BOARD_WEEKLY_DIGEST`, avviso
+  "Lavori cercati della settimana" solo email nelle Notifiche, con "Non
+  ricevere più email come questa" (`NotificationsService.sendOwnEmail`).
+  Spenta finché `REQUEST_BOARD_ENABLED` non è `true`.
+
 **Motivo:** la bacheca si accende (`REQUEST_BOARD_ENABLED=true` su Render)
 solo con il cliente libero di toglierla, i testi legali aggiornati e un modo
 per vedere se porta preventivi.
@@ -56,7 +70,8 @@ per vedere se porta preventivi.
 **Verifica:** typecheck di API e sito, `pnpm lint` (anche frasi vietate),
 `request-board-client.test.ts` (soglia del numero, provincia sconosciuta,
 richieste più vicine al massimo 3 ed entro 100 km, interruttore solo del
-proprio cliente), prove della bacheca e dei termini già esistenti.
+proprio cliente, email della settimana solo a chi fa il mestiere entro 100 km
+e mai per una richiesta già ricevuta), prove della bacheca e dei termini già esistenti.
 
 **Dopo l'unione:** Luca imposta `REQUEST_BOARD_ENABLED=true` su Render per
 accendere il giro orario.

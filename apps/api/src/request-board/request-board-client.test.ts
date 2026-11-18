@@ -103,3 +103,61 @@ describe("bacheca: interruttore del cliente", () => {
     await expect(s.setBoardAllowed("c2", "req", true)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe("bacheca: lavori cercati della settimana", () => {
+  const profile = (id: string, slug: string, lat: number, lon: number) => ({
+    id,
+    userId: `u-${id}`,
+    category: { slug },
+    extraCategories: [],
+    services: [],
+    certifications: null,
+    bio: null,
+    latitude: lat,
+    longitude: lon,
+    remoteAvailable: false,
+    user: { name: "Mario" },
+  });
+
+  function setup(options: { enabled?: boolean; received?: string[] } = {}) {
+    if (options.enabled === false) delete process.env.REQUEST_BOARD_ENABLED;
+    else process.env.REQUEST_BOARD_ENABLED = "true";
+    const rows = [boardRow("tivoli", "Tivoli"), boardRow("milano", "Milano")].map((row) => ({
+      ...row,
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: (row.id === "tivoli" ? (options.received ?? []) : []).map((professionalProfileId) => ({ professionalProfileId })),
+    }));
+    const prisma = {
+      guidedRequest: { findMany: vi.fn().mockResolvedValue(rows) },
+      professionalProfile: {
+        findMany: vi.fn().mockResolvedValue([profile("roma", "idraulico", 41.9028, 12.4964), profile("elettricista", "elettricista", 41.9028, 12.4964), profile("bari", "idraulico", 41.1171, 16.8719)]),
+      },
+    };
+    const guidedRequests = { receivesRequests: vi.fn().mockResolvedValue(true) };
+    const notifications = { sendOwnEmail: vi.fn().mockResolvedValue(true) };
+    return { service: new RequestBoardService(prisma as never, guidedRequests as never, {} as never, notifications as never), notifications };
+  }
+
+  it("solo a chi fa quel mestiere entro 100 km, con le richieste vicine", async () => {
+    const { service, notifications } = setup();
+    expect(await service.sendWeeklyDigest(NOW)).toEqual({ sent: 1 });
+    const [userId, type, content] = notifications.sendOwnEmail.mock.calls[0] as [string, string, { details: { url: string }[] }];
+    expect(userId).toBe("u-roma");
+    expect(type).toBe("BOARD_WEEKLY_DIGEST");
+    expect(content.details).toHaveLength(1);
+    expect(content.details[0]?.url).toContain("richiesta=tivoli");
+  });
+
+  it("niente email per una richiesta che gli è già arrivata", async () => {
+    const { service, notifications } = setup({ received: ["roma"] });
+    expect(await service.sendWeeklyDigest(NOW)).toEqual({ sent: 0 });
+    expect(notifications.sendOwnEmail).not.toHaveBeenCalled();
+  });
+
+  it("con la bacheca spenta non parte nulla", async () => {
+    const { service, notifications } = setup({ enabled: false });
+    expect(await service.sendWeeklyDigest(NOW)).toEqual({ sent: 0 });
+    expect(notifications.sendOwnEmail).not.toHaveBeenCalled();
+  });
+});
