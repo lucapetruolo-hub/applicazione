@@ -6863,6 +6863,22 @@ a.admin-kpi:hover {
 }
 /* Orari una settimana alla volta, un giorno per riga (WeekSlotPicker,
    docs/changelog/2026-11-10-date-del-preventivo.md). */
+/* Elenco aperto da "Cambia": compare scendendo appena (200 ms, ease-out),
+   come il pannello di "Chi ti serve"; con riduzione del movimento è
+   istantaneo per la regola globale in cima al file. */
+@keyframes slot-picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.slot-picker-in {
+  animation: slot-picker-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 .week-slots {
   display: flex;
   flex-direction: column;

@@ -169,6 +169,8 @@ test.describe("richiesta del cliente", () => {
       const slot = group.getByRole("radio", { name: "14:00–20:00" });
       await expect(slot).toBeVisible();
       await expect(slot).toHaveAttribute("aria-checked", "true");
+      // Il fuoco non si perde con la scheda: va sull'orario scelto.
+      await expect(slot).toBeFocused();
       expect(await page.locator(".week-slots-day").count()).toBeLessThanOrEqual(7);
       await page.locator(".slot-picker").scrollIntoViewIfNeeded();
       await page.screenshot({ path: `test-results/date-richiesta-cliente-${device}.png` });

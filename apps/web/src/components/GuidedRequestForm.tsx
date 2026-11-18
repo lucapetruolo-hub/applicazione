@@ -362,6 +362,14 @@ export function GuidedRequestForm({
   const [slotListOpen, setSlotListOpen] = useState(!(preferredDate && preferredTimeSlot));
   // Orario tolto (cambio A domicilio/Online o orario non più libero): torna l'elenco e ci resta.
   if (!slotListOpen && !selectedSlotValue) setSlotListOpen(true);
+  // Aperto da "Cambia": l'elenco entra con un'animazione leggera (come il pannello
+  // di "Chi ti serve") e il fuoco va sull'orario scelto, non si perde con la scheda.
+  const [slotListFromChange, setSlotListFromChange] = useState(false);
+  const slotListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!slotListFromChange) return;
+    slotListRef.current?.querySelector<HTMLElement>('.week-slots [aria-checked="true"]')?.focus({ preventScroll: true });
+  }, [slotListFromChange]);
   // "Altri orari": quanti giorni dell'agenda sono aperti sotto i primi tre
   // orari liberi (0 = chiusi, docs/CHANGELOG.md §349).
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
@@ -1960,7 +1968,10 @@ export function GuidedRequestForm({
                     <span className="cat-choice-name">{`${shortDayLabel(finalPreferredDate)} · ${finalPreferredTimeSlot.replace("-", "–")}`}</span>
                     <span className="cat-choice-note">{serviceMode === "HOME" ? "A domicilio" : "Online"} · scelto dall&apos;agenda</span>
                   </span>
-                  <button type="button" className="cat-choice-change" aria-expanded={false} onClick={() => setSlotListOpen(true)}>
+                  <button type="button" className="cat-choice-change" aria-expanded={false} onClick={() => {
+                      setSlotListOpen(true);
+                      setSlotListFromChange(true);
+                    }}>
                     Cambia
                   </button>
                 </div>
@@ -1969,7 +1980,7 @@ export function GuidedRequestForm({
               /* Stesso elenco del preventivo, con l'aspetto dell'agenda del
                  profilo: sette giorni alla volta da oggi, un giorno per riga
                  (docs/changelog/2026-11-18-scelta-data-come-profilo.md). */
-              <div className="slot-picker">
+              <div ref={slotListRef} className={`slot-picker${slotListFromChange ? " slot-picker-in" : ""}`}>
                 <div className="slot-pills" role="radiogroup" aria-label="Preferenza di orario">
                   <button type="button" role="radio" aria-checked={selectedSlotValue === ""} className={`slot-pill${selectedSlotValue === "" ? " is-on" : ""}`} onClick={() => setSelectedSlotValue("")}>
                     Nessuna preferenza
