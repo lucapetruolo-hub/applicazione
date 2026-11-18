@@ -2400,16 +2400,25 @@ html.site-menu-open .profile-cta-bar {
 }
 /* Stessa pillola nei riquadri della Settimana in Agenda: più piccola, e un
    pallino sul telefono dove il riquadro è stretto. */
-.ag-ev-move {
+.ag-ev .ag-ev-move {
   display: inline-block;
   max-width: 100%;
   margin-top: 3px;
-  padding: 1px 6px;
+  padding: 2px 6px;
+  border-radius: 10px;
   overflow: hidden;
+  color: #7a4f0e;
   font-size: 11px;
+  font-weight: 700;
   line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.ag-ev .ag-ev-move small {
+  display: block;
+  color: #7a4f0e;
+  font-size: 10px;
+  font-weight: 600;
 }
 .ag-ev-move-dot {
   display: inline-block;
@@ -2417,11 +2426,8 @@ html.site-menu-open .profile-cta-bar {
   height: 7px;
   margin-left: 3px;
   border-radius: 4px;
-  background: #8a857e;
-  vertical-align: middle;
-}
-.ag-ev-move-dot.is-asked {
   background: #c27a12;
+  vertical-align: middle;
 }
 .today-empty {
   padding: 14px 16px;
