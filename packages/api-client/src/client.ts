@@ -2793,6 +2793,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       if ((response.headers.get("content-type") ?? "").startsWith("image/")) return { status: "sent", photo: await response.blob() };
       return (await response.json()) as { status: "waiting" | "opened" | "expired" | "done" };
     },
+    /** Il computer toglie una foto arrivata: il posto torna libero per il telefono (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md). */
+    releasePhotoHandoff: (code: string, key: string) =>
+      request<{ sent: number; max: number }>(`/photo-handoff/${encodeURIComponent(code)}/release`, {
+        method: "POST",
+        body: JSON.stringify({ key }),
+        cache: "no-store",
+      }),
     cancelPhotoHandoff: (code: string, key: string) =>
       fetch(`${baseUrl}/photo-handoff/${encodeURIComponent(code)}/cancel`, {
         method: "POST",
