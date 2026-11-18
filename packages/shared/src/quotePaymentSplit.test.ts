@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { quoteDepositEurCents, quotePaymentSplit, quotePaymentSplitLine } from "./onlinePayments";
+import { quoteDepositEurCents, quotePaymentShortLine, quotePaymentSplit, quotePaymentSplitLine } from "./onlinePayments";
 
 // Cifre di ora e di dopo nella scheda del preventivo e nel PDF
 // (docs/changelog/2026-11-05-scheda-preventivo-semplice.md).
@@ -52,4 +52,14 @@ test("pagamento diretto o senza prezzo: nessuna cifra", () => {
   assert.equal(quotePaymentSplit("DIRECT", fifty, 20), null);
   assert.equal(quotePaymentSplit("ONLINE", { totalMinEurCents: 0, totalMaxEurCents: 0 }, 20), null);
   assert.equal(quotePaymentSplitLine("DIRECT", fifty, 20, true), "Direttamente al professionista");
+});
+
+// Mezza riga nella scheda e nella scelta del pagamento (docs/changelog/2026-11-18-accettare-il-preventivo.md).
+test("riga corta del pagamento con la carta", () => {
+  const short = (...args: Parameters<typeof quotePaymentShortLine>) => quotePaymentShortLine(...args)?.replace(/\u00a0/g, " ") ?? null;
+  assert.equal(short("ONLINE", fifty, 20), "10,00 € subito, il resto a lavoro finito");
+  assert.equal(short("MIXED", fifty, 20), "10,00 € subito, il resto a lavoro finito direttamente a lui");
+  assert.equal(short("ONLINE", fifty, 100), "50,00 € subito, tutto il prezzo");
+  assert.equal(short("ONLINE", { totalMinEurCents: 15000, totalMaxEurCents: 25000 }, 100), "150,00 € subito, il resto solo se serve");
+  assert.equal(short("DIRECT", fifty, 20), null);
 });
