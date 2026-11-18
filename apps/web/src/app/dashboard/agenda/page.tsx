@@ -23,7 +23,7 @@ import {
   type ExternalJob,
   type ProfessionalBooking,
   type ProfessionalLead,
-  type WeatherAlertKind,
+  type WeatherDayAlert,
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -343,7 +343,7 @@ function DashboardAgendaContent() {
 
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
-  const [weather, setWeather] = useState<Map<string, WeatherAlertKind>>(new Map());
+  const [weather, setWeather] = useState<Map<string, WeatherDayAlert>>(new Map());
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
   const [showCalendarLink, setShowCalendarLink] = useState(false);
   const [completingBooking, setCompletingBooking] = useState<ProfessionalBooking | null>(null);
@@ -542,7 +542,7 @@ function DashboardAgendaContent() {
     if (!token) return;
     apiClient
       .agendaWeather(token)
-      .then((alerts) => startTransition(() => setWeather(new Map(alerts.map((a) => [a.date, a.kind])))))
+      .then((alerts) => startTransition(() => setWeather(new Map(alerts.map((a) => [a.date, a])))))
       .catch(() => {});
     apiClient
       .agendaWeekTemplate(token)
@@ -1583,7 +1583,7 @@ function DashboardAgendaContent() {
               >
                 {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
                 {withWeather && weather.get(dateStr) ? (
-                  <WeatherIcon kind={weather.get(dateStr)!} size={12} />
+                  <WeatherIcon alert={weather.get(dateStr)!} size={12} />
                 ) : withWeather && busyDates.has(dateStr) ? (
                   <u aria-hidden />
                 ) : null}
@@ -1781,6 +1781,7 @@ function DashboardAgendaContent() {
   const rangeEvents = countJobs(gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait"));
   const rangeFree = visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0);
   const rangeWaiting = countJobs(gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait"));
+  const dayWeather = bookingView === "day" && visibleDayStrs.length === 1 ? weather.get(visibleDayStrs[0]!) : undefined;
   const rangeSummary = [
     `${rangeEvents} ${rangeEvents === 1 ? "lavoro" : "lavori"}`,
     rangeWaiting > 0 ? `${rangeWaiting} in attesa` : null,
@@ -2174,7 +2175,18 @@ function DashboardAgendaContent() {
                       {rangeLabelShort}
                     </span>
                   ) : null}
-                  {bookingView === "day" || bookingView === "week" ? <small>{rangeSummary}</small> : null}
+                  {bookingView === "day" || bookingView === "week" ? (
+                    <small>
+                      {rangeSummary}
+                      {/* Nel giorno aperto il meteo si legge per esteso: al tocco è la spiegazione dell'icona (docs/changelog/2026-11-18-meteo-tre-giorni.md). */}
+                      {bookingView === "day" && dayWeather ? (
+                        <>
+                          {" · "}
+                          <WeatherIcon alert={dayWeather} size={13} mode="label" />
+                        </>
+                      ) : null}
+                    </small>
+                  ) : null}
                 </span>
                 {searchToggle("ag-search-toggle ag-hide-phone")}
                 <label className="ag-view-select">

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { DayForecast, WeatherAlertKind, WeatherCondition, WeatherDayAlert } from "@professionisti/shared";
+import { WEATHER_ALWAYS_DAYS, type DayForecast, type WeatherAlertKind, type WeatherCondition, type WeatherDayAlert } from "@professionisti/shared";
 
 const TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -36,12 +36,39 @@ export function weatherAlertKind(code: number | null | undefined, rainProbabilit
   return null;
 }
 
-export function weatherAlerts(response: OpenMeteoDaily): WeatherDayAlert[] {
+/** "AAAA-MM-GG" spostato di `days` giorni. */
+function addDaysIso(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+/** Oggi in Italia come "AAAA-MM-GG". */
+export function romeToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/**
+ * Icone dell'agenda: da oggi a dopodomani sempre, anche col sereno, così un
+ * giorno senza icona non sembra un errore; più avanti solo col maltempo, che è
+ * l'avviso utile per organizzarsi (docs/changelog/2026-11-18-meteo-tre-giorni.md).
+ * `today` è il giorno italiano: la cache può tenere previsioni di ieri.
+ */
+export function weatherAlerts(response: OpenMeteoDaily, today: string = romeToday()): WeatherDayAlert[] {
   const daily = response.daily;
   if (!daily?.time) return [];
+  const lastAlways = addDaysIso(today, WEATHER_ALWAYS_DAYS - 1);
   const alerts: WeatherDayAlert[] = [];
   daily.time.forEach((date, i) => {
-    const kind = weatherAlertKind(daily.weather_code?.[i], daily.precipitation_probability_max?.[i], daily.wind_gusts_10m_max?.[i]);
+    const code = daily.weather_code?.[i];
+    const rain = daily.precipitation_probability_max?.[i];
+    const gusts = daily.wind_gusts_10m_max?.[i];
+    if (date >= today && date <= lastAlways) {
+      // Senza codice meteo il cielo non si sa: meglio nessuna icona che un "Nuvoloso" inventato.
+      if (code != null || gusts != null) alerts.push({ date, kind: weatherCondition(code, rain, gusts) });
+      return;
+    }
+    const kind = weatherAlertKind(code, rain, gusts);
     if (kind) alerts.push({ date, kind });
   });
   return alerts;

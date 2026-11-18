@@ -32,6 +32,10 @@ const ZONE_DEMAND_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Oggi, domani e dopodomani (richiesta dell'utente, docs/CHANGELOG.md §333). */
 const DAYS_AHEAD = 3;
+/** Giorni con le previsioni nell'agenda: quanti ne dà Open-Meteo (forecast_days). */
+const WEATHER_DAYS = 14;
+/** Comuni diversi al massimo per il meteo dell'agenda; oltre, la zona del profilo. */
+const WEATHER_MAX_PLACES = 6;
 /** Un momento è "richiesto" da almeno 3 richieste: meno è rumore. */
 const ZONE_DEMAND_MIN_TIP = 3;
 
@@ -394,24 +398,45 @@ export class AgendaService {
     });
   }
 
-  /** Icone meteo dei prossimi giorni sulla zona del professionista. */
+  /**
+   * Icone meteo dell'agenda, giorno per giorno, del comune del primo lavoro a
+   * domicilio del giorno o della zona del profilo, come in "Oggi" (richiesta di
+   * Luca, docs/changelog/2026-11-18-meteo-tre-giorni.md). `place` è il comune,
+   * scritto nella spiegazione dell'icona.
+   */
   async weather(userId: string): Promise<WeatherDayAlert[]> {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { latitude: true, longitude: true } });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true, latitude: true, longitude: true } });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
-    return this.weatherService.alerts(profile.latitude, profile.longitude);
+    const places = await this.weatherPlaces(profile, WEATHER_DAYS);
+    // Ogni comune diverso è una chiamata a Open-Meteo (con un'ora di cache): oltre un tetto, la zona del profilo.
+    const distinct = [...new Set(places.map((p) => p.place.name))].slice(0, WEATHER_MAX_PLACES);
+    const alertsByPlace = new Map(
+      await Promise.all(
+        distinct.map(async (name) => {
+          const place = places.find((p) => p.place.name === name)!.place;
+          return [name, await this.weatherService.alerts(place.lat, place.lon)] as const;
+        }),
+      ),
+    );
+    const homeAlerts = alertsByPlace.get(profile.city) ?? (await this.weatherService.alerts(profile.latitude, profile.longitude));
+    return places.flatMap(({ date, place }) => {
+      const fromPlace = alertsByPlace.get(place.name);
+      const alert = (fromPlace ?? homeAlerts).find((a) => a.date === date);
+      return alert ? [{ ...alert, place: fromPlace ? place.name : profile.city }] : [];
+    });
   }
 
   /**
-   * Meteo di oggi, domani e dopodomani in "Oggi" (docs/CHANGELOG.md §333):
-   * del comune del primo lavoro a domicilio del giorno, o della zona del
-   * profilo. A Open-Meteo vanno solo le coordinate del centro del comune,
-   * mai l'indirizzo del cliente. Mai bloccante: senza risposta, nessuna icona.
+   * Comune del meteo per ognuno dei prossimi `count` giorni: quello del primo
+   * lavoro a domicilio del giorno, altrimenti la zona del profilo. A Open-Meteo
+   * vanno solo le coordinate del centro del comune, mai l'indirizzo del cliente.
    */
-  async daysAhead(userId: string): Promise<DayAhead[]> {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true, latitude: true, longitude: true } });
-    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+  private async weatherPlaces(
+    profile: { id: string; city: string; latitude: number; longitude: number },
+    count: number,
+  ): Promise<{ date: string; place: { name: string; lat: number; lon: number } }[]> {
     const from = wallClockToday();
-    const to = new Date(from.getTime() + DAYS_AHEAD * DAY_MS);
+    const to = new Date(from.getTime() + count * DAY_MS);
     const [bookings, externalJobs] = await Promise.all([
       this.prisma.booking.findMany({
         where: { professionalProfileId: profile.id, status: { in: ["PENDING", "CONFIRMED"] }, ...touchingWindow(from, to) },
@@ -426,17 +451,31 @@ export class AgendaService {
       ...bookings.map((b) => ({ start: b.scheduledAt, end: b.scheduledEndAt, online: b.serviceMode === "ONLINE", city: b.city ?? b.quote?.guidedRequest.city ?? null })),
       ...externalJobs.map((j) => ({ start: j.scheduledAt, end: j.scheduledEndAt, online: false, city: comuneInAddress(j.address) })),
     ];
-    const days = Array.from({ length: DAYS_AHEAD }, (_, i) => new Date(from.getTime() + i * DAY_MS).toISOString().slice(0, 10));
+    const home = { name: profile.city, lat: profile.latitude, lon: profile.longitude };
+    return Array.from({ length: count }, (_, i) => {
+      const date = new Date(from.getTime() + i * DAY_MS).toISOString().slice(0, 10);
+      // Un lavoro su più giorni conta in ognuno, con l'orario di quel giorno (§310).
+      const dayJobs = jobs.flatMap((job) => {
+        const occurrence = jobOccurrenceOn(job.start, job.end, date);
+        return occurrence ? [{ ...job, start: occurrence.start }] : [];
+      });
+      const city = firstHomeCity(dayJobs);
+      const comune = city ? findComuneByName(city) : undefined;
+      return { date, place: comune ? { name: comune.name, lat: comune.lat, lon: comune.lon } : home };
+    });
+  }
+
+  /**
+   * Meteo di oggi, domani e dopodomani in "Oggi" (docs/CHANGELOG.md §333):
+   * del comune del primo lavoro a domicilio del giorno, o della zona del
+   * profilo. Mai bloccante: senza risposta, nessuna icona.
+   */
+  async daysAhead(userId: string): Promise<DayAhead[]> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true, latitude: true, longitude: true } });
+    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    const places = await this.weatherPlaces(profile, DAYS_AHEAD);
     return Promise.all(
-      days.map(async (date) => {
-        // Un lavoro su più giorni conta in ognuno, con l'orario di quel giorno (§310).
-        const dayJobs = jobs.flatMap((job) => {
-          const occurrence = jobOccurrenceOn(job.start, job.end, date);
-          return occurrence ? [{ ...job, start: occurrence.start }] : [];
-        });
-        const city = firstHomeCity(dayJobs);
-        const comune = city ? findComuneByName(city) : undefined;
-        const place = comune ? { name: comune.name, lat: comune.lat, lon: comune.lon } : { name: profile.city, lat: profile.latitude, lon: profile.longitude };
+      places.map(async ({ date, place }) => {
         const forecast = (await this.weatherService.forecast(place.lat, place.lon)).find((day) => day.date === date);
         return { date, weather: forecast ? { ...forecast, place: place.name, away: place.name.toLowerCase() !== profile.city.trim().toLowerCase() } : null };
       }),

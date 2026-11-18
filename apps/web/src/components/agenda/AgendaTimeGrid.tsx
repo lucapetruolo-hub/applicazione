@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CloudFog, CloudLightning, CloudRain, Repeat, Snowflake, Wind } from "lucide-react";
-import { WEATHER_ALERT_LABEL, type WeatherAlertKind } from "@professionisti/shared";
+import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Repeat, Snowflake, Sun, Wind } from "lucide-react";
+import { WEATHER_CONDITION_LABEL, type WeatherCondition, type WeatherDayAlert } from "@professionisti/shared";
 import { isSameDateUtc, toIsoDate, weekdayShortLabel } from "@/lib/calendarDates";
 
 export type AgendaEventKind = "conf" | "pending" | "done" | "wait" | "ext" | "canceled";
@@ -56,7 +56,10 @@ const DEFAULT_TO = 20;
 const BOTTOM_GAP_PX = 16;
 const MIN_SCROLL_HEIGHT_PX = 320;
 
-const WEATHER_ICONS: Record<WeatherAlertKind, typeof CloudRain> = {
+const WEATHER_ICONS: Record<WeatherCondition, typeof CloudRain> = {
+  clear: Sun,
+  partly: CloudSun,
+  cloudy: Cloud,
   rain: CloudRain,
   storm: CloudLightning,
   snow: Snowflake,
@@ -64,11 +67,47 @@ const WEATHER_ICONS: Record<WeatherAlertKind, typeof CloudRain> = {
   fog: CloudFog,
 };
 
-export function WeatherIcon({ kind, size = 15 }: { kind: WeatherAlertKind; size?: number }) {
-  const IconComponent = WEATHER_ICONS[kind];
+/** Bel tempo in grigio chiaro, maltempo a colori: l'occhio va solo ai giorni a rischio (docs/changelog/2026-11-18-meteo-tre-giorni.md). */
+const CALM_WEATHER = new Set<WeatherCondition>(["clear", "partly", "cloudy"]);
+
+/** "Pioggia · Roma": tempo e comune, così è chiaro di dove è il meteo. */
+export function weatherText(alert: WeatherDayAlert): string {
+  const label = WEATHER_CONDITION_LABEL[alert.kind];
+  return alert.place ? `${label} · ${alert.place}` : label;
+}
+
+/**
+ * Icona meteo di un giorno (docs/changelog/2026-11-18-meteo-tre-giorni.md).
+ * - `title`: spiegazione del browser al passaggio del mouse (striscia dei giorni);
+ * - `tip`: nuvoletta subito al passaggio, disegnata dall'intestazione del giorno
+ *   (`WeatherTip`), qui solo il nome per il lettore di schermo;
+ * - `label`: icona e testo per esteso, nel giorno aperto (è la spiegazione al tocco).
+ */
+export function WeatherIcon({ alert, size = 15, mode = "title" }: { alert: WeatherDayAlert; size?: number; mode?: "title" | "tip" | "label" }) {
+  const IconComponent = WEATHER_ICONS[alert.kind];
+  const text = weatherText(alert);
+  const className = `ag-weather${CALM_WEATHER.has(alert.kind) ? " calm" : ""}${mode === "label" ? " labeled" : ""}`;
+  if (mode === "label") {
+    return (
+      <span className={className}>
+        <IconComponent size={size} strokeWidth={2} aria-hidden />
+        {text}
+      </span>
+    );
+  }
   return (
-    <span className="ag-weather" title={WEATHER_ALERT_LABEL[kind]} role="img" aria-label={WEATHER_ALERT_LABEL[kind]}>
+    <span className={className} title={mode === "title" ? text : undefined} role="img" aria-label={text}>
       <IconComponent size={size} strokeWidth={2} aria-hidden />
+    </span>
+  );
+}
+
+/** Nuvoletta sotto l'intestazione del giorno: compare subito passando sull'icona. */
+function WeatherTip({ alert }: { alert: WeatherDayAlert }) {
+  return (
+    <span className="ag-weather-tip" aria-hidden>
+      {WEATHER_CONDITION_LABEL[alert.kind]}
+      {alert.place ? <small>{alert.place}</small> : null}
     </span>
   );
 }
@@ -198,7 +237,7 @@ export function AgendaTimeGrid({
   events: AgendaGridEvent[];
   free: AgendaFreeBand[];
   closedDates: Set<string>;
-  weather: Map<string, WeatherAlertKind>;
+  weather: Map<string, WeatherDayAlert>;
   today: Date;
   nowMinutes: number;
   selectedKey: string | null;
@@ -314,7 +353,7 @@ export function AgendaTimeGrid({
                 <span className={`ag-day-note ${note?.tone ?? ""}${narrowWeek ? " narrow" : ""}`}>
                   {narrowWeek && note?.tone === "free" ? note.text.replace(/ libere$/, "").replace(/ /g, "") : note?.text}
                   {narrowWeek && note?.tone === "free" ? <span className="sr-only"> libere</span> : null}
-                  {alert ? <WeatherIcon kind={alert} size={13} /> : null}
+                  {alert ? <WeatherIcon alert={alert} size={13} mode="tip" /> : null}
                 </span>
               ) : days.length > 1 ? (
                 // Riga vuota della stessa altezza: un giorno senza fasce resta allineato agli altri (richiesta di Luca, docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md).
@@ -322,6 +361,7 @@ export function AgendaTimeGrid({
                   {"\u00a0"}
                 </span>
               ) : null}
+              {alert ? <WeatherTip alert={alert} /> : null}
             </>
           );
           const className = isSameDateUtc(date, today) ? "today" : "";
