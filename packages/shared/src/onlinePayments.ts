@@ -1,4 +1,4 @@
-import { formatEurCents } from "./professionals";
+import { formatEur, formatEurCents } from "./professionals";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -294,6 +294,36 @@ export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: 
 export function quoteDepositEurCents(totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
   if (depositPercentIsFull(depositPercent) && totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents) return totals.totalMinEurCents;
   return onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+}
+
+/**
+ * Riga sotto la percentuale nel modulo del preventivo: quanto paga subito il
+ * cliente con la carta, aggiornata mentre il professionista scrive (richiesta
+ * di Luca, docs/changelog/2026-11-18-importo-acconto.md). Stessa regola di
+ * `quoteDepositEurCents`: percentuale sul prezzo massimo (con dentro tutte le
+ * voci, anche il diritto di chiamata), al centesimo; al 100% con una forbice
+ * il minimo. `null` se la percentuale non è valida: l'errore lo dà l'invio.
+ */
+export function depositPreviewLine(
+  totals: { totalMinEurCents: number; totalMaxEurCents: number },
+  depositPercent: number,
+  options: { perVisit?: boolean } = {},
+): { text: string; tooLow: boolean } | null {
+  if (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT) return null;
+  if (totals.totalMaxEurCents <= 0) return { text: "Scrivi i prezzi delle voci: qui vedi quanto paga subito il cliente con la carta.", tooLow: false };
+  const amount = quoteDepositEurCents(totals, depositPercent);
+  const visit = options.perVisit ? " a visita" : "";
+  if (amount < ONLINE_MIN_CHARGE_EUR_CENTS) {
+    return { text: `L'acconto sarebbe ${formatEurCents(amount)}, sotto 0,50 €, il minimo per pagare con la carta: alza la percentuale o il prezzo.`, tooLow: true };
+  }
+  const range = totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents;
+  if (depositPercentIsFull(depositPercent)) {
+    return range
+      ? { text: `Il cliente paga subito ${formatEurCents(amount)}${visit} con la carta, il prezzo minimo. Il resto, se serve, a lavoro finito.`, tooLow: false }
+      : { text: `Il cliente paga subito tutto con la carta: ${formatEurCents(amount)}${visit}.`, tooLow: false };
+  }
+  const basis = range ? `${depositPercent}% di ${formatEur(totals.totalMaxEurCents)}, il prezzo massimo` : `${depositPercent}% di ${formatEur(totals.totalMaxEurCents)}`;
+  return { text: `Il cliente paga subito ${formatEurCents(amount)}${visit} con la carta (${basis}).`, tooLow: false };
 }
 
 /** "Tutto online": acconto al 100%. */

@@ -19,6 +19,7 @@ import {
   jobPaymentChoices,
   onlineLimitHint,
   onlineDepositTooLowProblem,
+  depositPreviewLine,
   onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -468,6 +469,19 @@ export function RequestCard({
             })} · ${gr.preferredTimeSlot.replace("-", "–")}`,
           }
         : null;
+
+  // Totali delle voci mentre si scrivono, per l'importo dell'acconto sotto la percentuale:
+  // un prezzo non valido conta zero, l'errore lo dà l'invio.
+  const draftTotals = quotePriceTotals(
+    items.map((item) => {
+      const cents = (value: string) => {
+        const n = Math.round(Number(value.trim().replace(",", ".")) * 100);
+        return value.trim() && Number.isFinite(n) && n >= 0 ? n : null;
+      };
+      return { priceMinEurCents: cents(item.priceMin), priceMaxEurCents: cents(item.priceMax) };
+    }),
+  );
+  const depositPreview = depositPreviewLine(draftTotals, Number(depositPercentDraft.trim() || "x"), { perVisit: repeatChosen });
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -2021,6 +2035,17 @@ export function RequestCard({
                         </Text>
                       </XStack>
                     ) : null}
+                    {/* L'importo in euro mentre scrive (docs/changelog/2026-11-18-importo-acconto.md). */}
+                    {paymentOptions.some(paymentChoiceIsOnline) && depositPreview ? (
+                      <Text
+                        fontSize={14}
+                        fontWeight={depositPreview.tooLow ? "600" : "400"}
+                        color={depositPreview.tooLow ? brand.ottoneScuro : brand.grafite}
+                        aria-live="polite"
+                      >
+                        {depositPreview.text}
+                      </Text>
+                    ) : null}
                     {/* Al 100% "acconto e saldo diretto" coincide con "tutto online": al cliente si mostra solo quello
                         (docs/changelog/2026-11-13-annullare-data-passata.md). */}
                     {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 ? (
@@ -2029,7 +2054,7 @@ export function RequestCard({
                       </Text>
                     ) : null}
                     {/* "Tutto online" con la forbice: il minimo subito (decisione di Luca, docs/changelog/2026-11-13-tutto-online-forbice.md). */}
-                    {paymentOptions.some(paymentChoiceIsOnline) && Number(depositPercentDraft) >= 100 ? (
+                    {paymentOptions.some(paymentChoiceIsOnline) && Number(depositPercentDraft) >= 100 && draftTotals.totalMaxEurCents <= 0 ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         Con una forbice di prezzo il cliente paga subito il minimo e il resto, se serve, a lavoro finito con la stessa carta.
                       </Text>
