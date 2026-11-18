@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import boardStyles from "@/components/requestBoard/BoardPage.module.css";
+import { BoardWeeklySwitch } from "@/components/requestBoard/BoardWeeklySwitch";
 
 /**
  * "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296, strategia SEO
@@ -101,6 +102,7 @@ export default async function WorkWithUsPage(props: { params: Promise<PageParams
         Le persone ci chiedono {page.findQuestion}. Tu ricevi le richieste vicino a te e scegli a quali rispondere.
         {page.isCategory ? null : ` Iscriviti con il mestiere più vicino al tuo e scrivi "${page.label}" tra le tue prestazioni: le richieste che aspettano nella tua zona ti arrivano da sole.`}
       </p>
+      <BoardWeeklySwitch />
       <ol className="work-steps">
         {STEPS.map((step) => (
           <li key={step.title} className="city-facts-item">

@@ -10,6 +10,7 @@ import {
   NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
   notificationItemChannelOn,
+  notificationItemOf,
   notificationJobLabel,
   notificationMuteTarget,
   resolveNotificationPreferences,
@@ -296,7 +297,11 @@ export class NotificationsService {
    * con l'email di quell'avviso accesa, con "Non ricevere più email come questa".
    */
   async sendOwnEmail(userId: string, type: string, content: Omit<EmailContent, "kind" | "emailOff">): Promise<boolean> {
-    if (!notificationChannelEnabled(await this.preferencesOf(userId), type, "email")) return false;
+    const prefs = await this.preferencesOf(userId);
+    // Un avviso che si sceglie in un'altra pagina conta solo la sua scelta (email del lunedì in "Lavori cercati").
+    const item = notificationItemOf(type);
+    const wanted = item?.elsewhere ? notificationItemChannelOn(prefs, item.key, "email") : notificationChannelEnabled(prefs, type, "email");
+    if (!wanted) return false;
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: EMAIL_USER_SELECT });
     if (!user?.email || user.deletedAt) return false;
     const emailOff = emailOffFor(userId, type, user);
