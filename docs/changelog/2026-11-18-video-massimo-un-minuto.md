@@ -25,3 +25,7 @@ possibile, e chi conosce il browser può trovare l'indirizzo del file. Si
 toglie il gesto normale, non si può rendere impossibile la copia.
 
 **Verifica**: typecheck e lint di `apps/web`.
+
+**Rimandato a una domanda prima del lancio** (Luca: "da richiedere prima del
+lancio"): filigrana col nome del sito sulle foto ingrandite. Annotata nella
+skill `checklist-lancio`, punto 5, con il consiglio di non farla.

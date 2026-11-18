@@ -198,6 +198,14 @@ produzione):
    oltre un migliaio di video al mese serve il piano a pagamento (Plus, circa
    90 $ al mese). Controllare l'uso nel pannello di Cloudinary il primo mese
    (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+   **Da chiedere a Luca prima del lancio: filigrana sulle foto ingrandite?**
+   Foto e video degli utenti non si scaricano più dal sito (PR #411), ma una
+   foto dello schermo resta possibile. Una filigrana col nome del sito sulle
+   foto ingrandite (trasformazione Cloudinary `l_text` solo nella vista
+   grande, non sul file salvato) scoraggerebbe chi la ripubblica altrove, ma
+   copre un po' la foto e il professionista vede peggio il problema. Consiglio
+   del 18/11: non farla; decide Luca, con il nome del sito già scelto
+   (docs/changelog/2026-11-18-video-massimo-un-minuto.md).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i
    promemoria anti no-show (§9/`EmailService`, già implementati e
