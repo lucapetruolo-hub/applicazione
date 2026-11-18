@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, starterWeekTemplate, weekTemplateCovers } from "@professionisti/shared";
+import { agendaWeekTemplateSchema, dayRouteMapsUrl, DAY_ROUTE_MAX_SKIPPED, DEFAULT_WEEK_TEMPLATE, parseDayRouteSkip, starterWeekTemplate, weekTemplateCovers } from "@professionisti/shared";
 import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
 import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
 import { orderStops, comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
@@ -80,6 +80,12 @@ describe("giro intelligente", () => {
     ]);
     expect(url).toContain("waypoints=Via+Roma+10%2C+04100+Latina");
     expect(url).toContain("destination=41.3006%2C13.0271");
+  });
+  it("legge le tappe tolte dal giro e ignora quelle non valide", () => {
+    expect([...parseDayRouteSkip("booking-abc123, external-x_9,altro-1,booking-a;drop")]).toEqual(["booking-abc123", "external-x_9"]);
+    expect(parseDayRouteSkip(undefined).size).toBe(0);
+    const many = Array.from({ length: DAY_ROUTE_MAX_SKIPPED + 10 }, (_, i) => `booking-${i}`).join(",");
+    expect(parseDayRouteSkip(many).size).toBe(DAY_ROUTE_MAX_SKIPPED);
   });
 });
 
