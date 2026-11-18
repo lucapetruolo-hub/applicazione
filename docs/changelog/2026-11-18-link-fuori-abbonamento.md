@@ -27,5 +27,14 @@ grigia, con lo stesso peso del resto. Si leggeva per ultimo o non si leggeva.
 - Non si scrive "gratis": i lavori pagati online hanno comunque la trattenuta
   del 7%, quindi "gratis" sarebbe impreciso.
 
+**Seguito** (Luca, 18/11: "Effettua miglioria 1-2-4"):
+- In **Abbonamento** la riga sul link ha la stessa parte in verde ("I lavori
+  dal tuo link **non contano nel tuo abbonamento**").
+- L'etichetta delle richieste arrivate dal link, in Richieste e in Oggi, è
+  "Dal tuo link · fuori abbonamento".
+- L'indirizzo del link va a capo solo tra il sito e il codice ("/p/…"), mai a
+  metà parola; da telefono è a 16 px. Sotto i 360 px torna ad andare a capo
+  dove serve, per non uscire dal riquadro.
+
 **Verifica**: tipi e lint di `apps/web`; foto prima/dopo da telefono e da
 computer in `anteprime/tuo-link/` (cartella del progetto).

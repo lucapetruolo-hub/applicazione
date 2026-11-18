@@ -55,3 +55,21 @@
     transform: none;
   }
 }
+
+/* Indirizzo del link: a capo solo tra il sito e il codice ("/p/k7m2qa"). */
+.urlPart {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .urlPart {
+    font-size: 16px;
+  }
+}
+
+/* Telefoni molto stretti: meglio a capo dentro che fuori dal riquadro. */
+@media (max-width: 359px) {
+  .urlPart {
+    white-space: normal;
+  }
+}

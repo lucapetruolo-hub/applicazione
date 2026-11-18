@@ -114,6 +114,9 @@ function PersonalLinkContent() {
 
   const url = link ? `${SITE_URL}${link.path}` : "";
   const shownUrl = url.replace(/^https?:\/\//, "");
+  const pathStart = shownUrl.indexOf("/");
+  const shownHost = pathStart >= 0 ? shownUrl.slice(0, pathStart) : shownUrl;
+  const shownPath = pathStart >= 0 ? shownUrl.slice(pathStart) : "";
   const message = useMemo(
     () => editedMessage ?? (link ? personalInviteMessage({ clientName, businessName: link.businessName, siteName: BRAND.name, url }) : ""),
     [editedMessage, link, clientName, url],
@@ -241,8 +244,10 @@ function PersonalLinkContent() {
                 backgroundColor={brand.gesso}
                 alignItems="center"
               >
+                {/* Va a capo solo tra indirizzo del sito e codice, mai a metà parola. */}
                 <Text fontSize={18} fontWeight="700" color={brand.grafite} userSelect="all" style={{ overflowWrap: "anywhere" }}>
-                  {shownUrl}
+                  <span className={styles.urlPart}>{shownHost}</span>
+                  {shownPath ? <span className={styles.urlPart}>{shownPath}</span> : null}
                 </Text>
               </XStack>
               <XStack gap="2" flexWrap="wrap">

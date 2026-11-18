@@ -571,7 +571,7 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
   // (docs/changelog/2026-11-10-richiesta-solo-per-te.md); le altre hanno già
   // la riga "N altri professionisti".
   const personal = lead.guidedRequest.fromProfessionalLink
-    ? "Dal tuo link"
+    ? "Dal tuo link · fuori abbonamento"
     : lead.audience?.kind === "direct" || lead.audience?.kind === "chosen"
       ? leadAudienceLabel(lead.audience)
       : null;
