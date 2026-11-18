@@ -1,6 +1,17 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
-import { chatContactBlockedMessage, ownClientRequest, chatContactKind, personalizeEventMessage, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
+import {
+  CHAT_AWAITING_DAYS,
+  chatContactBlockedMessage,
+  chatTurnOfProfessional,
+  ownClientRequest,
+  chatContactKind,
+  personalizeEventMessage,
+  type ChatAwaitingReply,
+  type ChatThreadSummary,
+  type ConversationEvent,
+  type RealtimeEvent,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { requestThumbnailUrl } from "./request-thumbnail";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -219,6 +230,99 @@ export class TimelineService {
       });
     }
     return threads;
+  }
+
+  /**
+   * Chat in cui il cliente aspetta una risposta del professionista, per
+   * "Ti stanno aspettando" nella pagina Oggi
+   * (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md). Per non
+   * diventare un elenco rumoroso: una riga per chat anche con più messaggi,
+   * solo gli ultimi CHAT_AWAITING_DAYS giorni, solo i lavori ancora vivi
+   * (niente richieste eliminate o ritirate, scadute, preventivi ritirati o
+   * rifiutati, lavori presi da un altro o annullati), e "Non serve risposta"
+   * la toglie finché il cliente non scrive di nuovo.
+   */
+  async listAwaitingReplyForProfessional(userId: string, now: Date = new Date()): Promise<ChatAwaitingReply[]> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) return [];
+    const since = new Date(now.getTime() - CHAT_AWAITING_DAYS * 24 * 60 * 60 * 1000);
+    const events = await this.prisma.conversationEvent.findMany({
+      where: { professionalProfileId: profile.id, createdAt: { gte: since } },
+      orderBy: { createdAt: "desc" },
+      select: { guidedRequestId: true, actor: true, automatic: true, hiddenAt: true, createdAt: true, message: true, mediaUrls: true },
+      // Due settimane di chat di un professionista: ampio margine anche per chi lavora molto.
+      take: 3000,
+    });
+    const byThread = new Map<string, typeof events>();
+    for (const event of events) {
+      const list = byThread.get(event.guidedRequestId) ?? [];
+      list.push(event);
+      byThread.set(event.guidedRequestId, list);
+    }
+    const waiting = new Map<string, { last: (typeof events)[number]; waitingSince: Date; count: number }>();
+    for (const [guidedRequestId, list] of byThread) {
+      const turn = chatTurnOfProfessional(list.map((event) => ({ ...event, hidden: event.hiddenAt !== null })));
+      if (turn) waiting.set(guidedRequestId, turn);
+    }
+    if (waiting.size === 0) return [];
+
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: { id: { in: [...waiting.keys()] } },
+      select: {
+        id: true,
+        deletedByClientAt: true,
+        closedReason: true,
+        client: { select: { name: true, surname: true, deletedAt: true } },
+        category: { select: { label: true } },
+        leads: { where: { professionalProfileId: profile.id }, select: { status: true } },
+        quotes: { select: { professionalProfileId: true, status: true, createdAt: true, booking: { select: { status: true } } }, orderBy: { createdAt: "desc" } },
+        chatReplyDismissals: { where: { professionalProfileId: profile.id }, select: { dismissedAt: true } },
+      },
+    });
+
+    const rows: ChatAwaitingReply[] = [];
+    for (const request of requests) {
+      const turn = waiting.get(request.id)!;
+      if (request.deletedByClientAt || request.client.deletedAt) continue;
+      const dismissedAt = request.chatReplyDismissals[0]?.dismissedAt;
+      if (dismissedAt && dismissedAt >= turn.last.createdAt) continue;
+      const mine = request.quotes.find((quote) => quote.professionalProfileId === profile.id) ?? null;
+      if (mine?.booking) {
+        if (mine.booking.status === "CANCELED") continue;
+      } else {
+        if (request.closedReason === "CANCELED_BY_CLIENT") continue;
+        if (request.quotes.some((quote) => quote.professionalProfileId !== profile.id && quote.booking)) continue;
+        if (mine && (mine.status === "WITHDRAWN" || mine.status === "REJECTED")) continue;
+        const leadStatus = request.leads[0]?.status;
+        if (!mine && (leadStatus === "EXPIRED" || leadStatus === "DECLINED")) continue;
+      }
+      rows.push({
+        guidedRequestId: request.id,
+        professionalProfileId: profile.id,
+        clientName: clientNameForProfessional(request.client, Boolean(mine?.booking)) ?? "Cliente",
+        categoryLabel: request.category.label,
+        lastMessage: turn.last.message || null,
+        lastMessageHasMedia: turn.last.mediaUrls.length > 0,
+        lastMessageAt: turn.last.createdAt.toISOString(),
+        waitingSince: turn.waitingSince.toISOString(),
+        messageCount: turn.count,
+      });
+    }
+    return rows.sort((a, b) => a.waitingSince.localeCompare(b.waitingSince));
+  }
+
+  /** "Non serve risposta": la chat esce da "Ti stanno aspettando" finché il cliente non scrive di nuovo. */
+  async dismissAwaitingReply(userId: string, guidedRequestId: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) throw new ForbiddenException("Solo i professionisti possono farlo.");
+    const inThread = await this.prisma.conversationEvent.findFirst({ where: { guidedRequestId, professionalProfileId: profile.id }, select: { id: true } });
+    if (!inThread) throw new NotFoundException("Chat non trovata.");
+    const now = new Date();
+    await this.prisma.chatReplyDismissal.upsert({
+      where: { guidedRequestId_professionalProfileId: { guidedRequestId, professionalProfileId: profile.id } },
+      create: { guidedRequestId, professionalProfileId: profile.id, dismissedAt: now },
+      update: { dismissedAt: now },
+    });
   }
 
   /**

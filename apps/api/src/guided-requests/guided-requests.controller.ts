@@ -261,6 +261,21 @@ export class GuidedRequestsController {
     return this.timelineService.listThreadsForUser(req.user.userId);
   }
 
+  /** Chat in cui il cliente aspetta la risposta del professionista, per la pagina Oggi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md). */
+  @UseGuards(JwtAuthGuard)
+  @Get("chat-threads/awaiting-reply")
+  listAwaitingReply(@Req() req: AuthenticatedRequest) {
+    return this.timelineService.listAwaitingReplyForProfessional(req.user.userId);
+  }
+
+  /** "Non serve risposta" su una di quelle chat. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/no-reply-needed")
+  @HttpCode(204)
+  dismissAwaitingReply(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.timelineService.dismissAwaitingReply(req.user.userId, id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(":id")
   update(

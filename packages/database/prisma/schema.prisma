@@ -491,6 +491,7 @@ model ProfessionalProfile {
   metrics                ProfessionalMetrics?
   profileViews           ProfileViewDay[]
   timelineEvents         ConversationEvent[]
+  chatReplyDismissals    ChatReplyDismissal[]
   externalJobs           ExternalJob[]
   clientNotes            ProfessionalClientNote[]
   // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
@@ -1064,6 +1065,7 @@ model GuidedRequest {
   leads          Lead[]
   quotes         Quote[]
   timelineEvents ConversationEvent[]
+  chatReplyDismissals ChatReplyDismissal[]
   userStates     GuidedRequestUserState[]
   boardClaims    BoardClaim[]
 
@@ -1868,6 +1870,22 @@ model ConversationEvent {
   @@index([guidedRequestId, professionalProfileId, createdAt])
   @@index([professionalProfileId])
   @@map("conversation_events")
+}
+
+// "Non serve risposta" del professionista su una chat in "Ti stanno
+// aspettando" (pagina Oggi, docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+// la chat torna nell'elenco solo con un messaggio del cliente più recente.
+model ChatReplyDismissal {
+  guidedRequestId       String
+  professionalProfileId String
+  dismissedAt           DateTime @default(now())
+
+  guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@id([guidedRequestId, professionalProfileId])
+  @@index([professionalProfileId])
+  @@map("chat_reply_dismissals")
 }
 
 // ---------------------------------------------------------------------------

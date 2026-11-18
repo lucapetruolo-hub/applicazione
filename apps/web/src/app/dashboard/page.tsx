@@ -2,16 +2,15 @@
 
 import { Fragment, startTransition, useCallback, useEffect, useState } from "react";
 import Link from "@/components/IntentLink";
-import { Check, Clock, Navigation, Phone, Truck } from "lucide-react";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, formatAppointmentTimeRange, jobDayCount, jobOccurrences, leadAudienceLabel, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
-import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
+import { Check, CheckCircle2, Clock, Navigation, Phone, Truck } from "lucide-react";
+import { AGENDA_LOOKAHEAD_DAYS, JOB_ISSUE_LABEL, bookingToClose, formatAppointmentDate, formatAppointmentTime, formatAppointmentTimeRange, jobDayCount, invoiceToDo, issueToDoForProfessional, jobOccurrences, leadAudienceLabel, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type ChatAwaitingReply, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { Badge, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
-import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
@@ -39,7 +38,7 @@ function later<T>(apply: (value: T) => void): (value: T) => void {
  * Fresha/Treatwell per la giornata.
  */
 export default function DashboardTodayPage() {
-  const { user, token, isLoading, unreadNotifications } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   // Lavori aggiunti a mano: se non arrivano, restano solo le prenotazioni.
@@ -47,6 +46,13 @@ export default function DashboardTodayPage() {
   // Meteo dei prossimi tre giorni (§333): se non arriva, la riga sparisce.
   const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
+  // Chat in cui il cliente aspetta una risposta ("Ti stanno aspettando",
+  // docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md): se non arrivano, nessuna riga.
+  const [chatsWaiting, setChatsWaiting] = useState<ChatAwaitingReply[] | null>(null);
+  const [waitingExpanded, setWaitingExpanded] = useState(false);
+  // "Fatta" sulle fatture chieste: la riga resta con "Annulla" fino al prossimo caricamento.
+  const [invoicesDone, setInvoicesDone] = useState<Record<string, true>>({});
+  const [waitingActionError, setWaitingActionError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   // Pausa scelta dal professionista (collaudo C-16): in Home solo mentre dura.
   const [awayUntil, setAwayUntil] = useState<string | null>(null);
@@ -87,6 +93,7 @@ export default function DashboardTodayPage() {
     apiClient.myLeads(token).then(later(setLeads)).catch(onError);
     apiClient.myProfessionalBookings(token).then(later(setBookings)).catch(onError);
     apiClient.myExternalJobs(token).then(later(setExternalJobs)).catch(later(() => setExternalJobs([])));
+    apiClient.myChatsAwaitingReply(token).then(later(setChatsWaiting)).catch(later(() => setChatsWaiting([])));
     apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(later(() => setDaysAhead("failed")));
     apiClient.getMyInsights(token).then(later(setInsights)).catch(later(() => setInsightsFailed(true)));
     loadMySubscription(token).then(later(setSubscription)).catch(later(() => setSubscription(null)));
@@ -109,6 +116,7 @@ export default function DashboardTodayPage() {
     apiClient.myLeads(token).then(later(setLeads)).catch(() => {});
     apiClient.myProfessionalBookings(token).then(later(setBookings)).catch(() => {});
     apiClient.myExternalJobs(token).then(later(setExternalJobs)).catch(() => {});
+    apiClient.myChatsAwaitingReply(token).then(later(setChatsWaiting)).catch(() => {});
     apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(() => {});
   }, [token]);
   useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional && !noProfileYet));
@@ -170,7 +178,64 @@ export default function DashboardTodayPage() {
   // "Date proposte dai clienti", non solo in Agenda e Richieste
   // (docs/changelog/2026-11-18-spostamento-in-oggi.md, richiesta di Luca).
   const movesToConfirm = (bookings ?? []).filter((b) => b.status === "CONFIRMED" && b.dateChange?.proposedBy === "CLIENT");
-  const unreadMessages = accountMenuUnreadCounts(true, unreadNotifications)["/chat"] ?? 0;
+
+  // "Ti stanno aspettando" (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+  // tutto quello in cui un cliente aspetta il professionista, in una lista sola.
+  // Prima i problemi segnalati (hanno una scadenza e un rimborso in gioco), poi
+  // le date proposte, le chat (chi aspetta da più tempo per primo) e le fatture.
+  const wallNow = wallClockNow();
+  const issuesToDo = (bookings ?? [])
+    .flatMap((booking) => {
+      const todo = issueToDoForProfessional(booking.issue);
+      return todo ? [{ booking, todo }] : [];
+    })
+    .sort((a, b) => (a.todo.dueAt ?? "9999").localeCompare(b.todo.dueAt ?? "9999"));
+  const invoicesToDo = (bookings ?? []).filter((booking) => invoiceToDo(booking) || invoicesDone[booking.id]);
+  // Una chat già in un'altra riga (richiesta da quotare, data proposta, problema) non si ripete.
+  const coveredRequests = new Set(
+    [
+      ...toAnswer.map((lead) => lead.guidedRequest.id),
+      ...datesToConfirm.map((lead) => lead.guidedRequest.id),
+      ...movesToConfirm.map((booking) => booking.guidedRequestId),
+      ...issuesToDo.map(({ booking }) => booking.guidedRequestId),
+    ].filter((id): id is string => Boolean(id)),
+  );
+  const chatRows = (chatsWaiting ?? []).filter((chat) => !coveredRequests.has(chat.guidedRequestId));
+  const waitingCount = issuesToDo.length + movesToConfirm.length + datesToConfirm.length + chatRows.length + invoicesToDo.length;
+  // Appuntamenti già finiti ma non chiusi con "Lavoro terminato": il più recente per primo.
+  // Quelli iniziati oggi restano in "Oggi e domani" (si chiudono da lì o dall'agenda): qui da domani, senza doppioni.
+  const toClose = (bookings ?? [])
+    .filter((booking) => bookingToClose(booking, wallNow) && new Date(booking.scheduledAt) < wallClockToday())
+    .sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt));
+
+  async function dismissChat(chat: ChatAwaitingReply) {
+    if (!token) return;
+    setWaitingActionError(null);
+    setChatsWaiting((list) => list?.filter((row) => row.guidedRequestId !== chat.guidedRequestId) ?? list);
+    try {
+      await apiClient.dismissChatAwaitingReply(token, chat.guidedRequestId);
+    } catch {
+      setChatsWaiting((list) => (list ? [...list, chat].sort((a, b) => a.waitingSince.localeCompare(b.waitingSince)) : list));
+      setWaitingActionError("Non siamo riusciti a toglierla, riprova.");
+    }
+  }
+
+  async function markInvoice(booking: ProfessionalBooking, done: boolean) {
+    if (!token) return;
+    setWaitingActionError(null);
+    try {
+      const result = await apiClient.markClientInvoiceDone(token, booking.id, done);
+      setInvoicesDone((map) => {
+        const next = { ...map };
+        if (done) next[booking.id] = true;
+        else delete next[booking.id];
+        return next;
+      });
+      setBookings((list) => list?.map((b) => (b.id === booking.id && b.invoiceRequest ? { ...b, invoiceRequest: { ...b.invoiceRequest, doneAt: result.doneAt } } : b)) ?? list);
+    } catch {
+      setWaitingActionError("Non siamo riusciti a salvarlo, riprova.");
+    }
+  }
 
   // Appuntamenti in ora di parete UTC: oggi e domani in Italia, docs/CHANGELOG.md §287.
   const startToday = wallClockToday();
@@ -269,10 +334,12 @@ export default function DashboardTodayPage() {
   // Appena iscritto, nulla in agenda né da rispondere: una sola riga vuota
   // invece di tre sezioni vuote, così resta in vista "Completa il profilo"
   // (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md).
-  const quietStart = Boolean(heroJourney) && !loading && !error && upcoming.length === 0 && toAnswer.length === 0 && unreadMessages === 0;
+  const quietStart = Boolean(heroJourney) && !loading && !error && upcoming.length === 0 && toAnswer.length === 0 && waitingCount === 0 && toClose.length === 0;
   const greetingName = user.businessName ?? user.name ?? "";
   const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
-  const showDatesOnTop = !loading && !error && datesToConfirm.length + movesToConfirm.length > 0;
+  const showWaitingOnTop = !loading && !error && waitingCount > 0;
+  // Niente da rispondere, nessuno che aspetta e nessun lavoro da chiudere: lo si dice, in verde.
+  const allDone = ready && !error && !quietStart && chatsWaiting !== null && toAnswer.length === 0 && waitingCount === 0 && toClose.length === 0;
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
@@ -309,15 +376,42 @@ export default function DashboardTodayPage() {
             ) : null}
           </TodaySection>
         ) : null}
-        {showDatesOnTop ? (
-          <TodaySection title="Date proposte dai clienti" count={datesToConfirm.length + movesToConfirm.length}>
-            {movesToConfirm.map((booking) => (
+        {/* "Ti stanno aspettando" (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+            tutto quello in cui un cliente aspetta te, in cima come le richieste
+            (§403). Prende il posto di "Date proposte dai clienti" e della
+            tessera "Messaggi non letti". Da telefono le prime 3, dal computer 5. */}
+        {showWaitingOnTop ? (
+          <TodaySection title="Ti stanno aspettando" count={waitingCount}>
+            {[
+              ...issuesToDo.map(({ booking, todo }) => (
+                <Link
+                  key={`issue-${booking.id}`}
+                  href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}${todo.kind === "CHAT_REPLY" ? "&chat=1" : ""}` : `/dashboard/agenda?booking=${booking.id}`}
+                  className="today-row"
+                >
+                  <span className="today-row-main">
+                    <span className="today-row-kind is-issue">Problema segnalato</span>
+                    <strong>
+                      {booking.issue ? JOB_ISSUE_LABEL[booking.issue.type] : "Problema"} · {booking.clientName ?? "Cliente"}
+                    </strong>
+                    <span className="today-row-sub">{todo.label}</span>
+                    {todo.dueAt ? (
+                      <span className="today-row-meta">
+                        <span className="today-deadline is-urgent">Entro {formatRealDateTime(todo.dueAt)}</span>
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="today-row-cta">Rispondi</span>
+                </Link>
+              )),
+              ...movesToConfirm.map((booking) => (
               <Link
                 key={booking.id}
                 href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
                 className="today-row"
               >
                 <span className="today-row-main">
+                  <span className="today-row-kind">Nuova data</span>
                   <strong>
                     {booking.categoryLabel ?? "Appuntamento"} · {booking.clientName ?? "Cliente"}
                   </strong>
@@ -327,10 +421,11 @@ export default function DashboardTodayPage() {
                 </span>
                 <span className="today-row-cta">Rispondi</span>
               </Link>
-            ))}
-            {datesToConfirm.map((lead) => (
+            )),
+              ...datesToConfirm.map((lead) => (
               <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
                 <span className="today-row-main">
+                  <span className="today-row-kind">Nuova data</span>
                   <strong>
                     {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
                   </strong>
@@ -347,8 +442,89 @@ export default function DashboardTodayPage() {
                 </span>
                 <span className="today-row-cta">Rispondi</span>
               </Link>
+            )),
+              ...chatRows.map((chat) => (
+                <div key={`chat-${chat.guidedRequestId}`} className="today-appt">
+                  <Link href={`/dashboard/richieste?open=${chat.guidedRequestId}&chat=1`} className="today-row">
+                    <span className="today-row-main">
+                      <span className="today-row-kind">{chat.messageCount > 1 ? `${chat.messageCount} messaggi` : "Messaggio"}</span>
+                      <strong>
+                        {chat.clientName} · {chat.categoryLabel}
+                      </strong>
+                      <span className="today-row-sub">{chat.lastMessage ? `«${truncate(chat.lastMessage, 90)}»` : chat.lastMessageHasMedia ? "Ti ha mandato una foto o un video" : "Ti ha scritto"}</span>
+                      <span className="today-row-meta">
+                        <span className={isOlderThanDay(chat.waitingSince) ? "today-deadline" : "today-competitors"}>Aspetta da {waitingFor(chat.waitingSince)}</span>
+                      </span>
+                    </span>
+                    <span className="today-row-cta">Rispondi</span>
+                  </Link>
+                  {/* Per un "Grazie, a domani": la riga sparisce finché il cliente non riscrive. */}
+                  <div className="today-appt-actions">
+                    <button type="button" className="today-quiet" onClick={() => void dismissChat(chat)}>
+                      Non serve risposta
+                    </button>
+                  </div>
+                </div>
+              )),
+              ...invoicesToDo.map((booking) => {
+                const receipt = booking.clientDocumentKind === "RECEIPT";
+                const done = Boolean(invoicesDone[booking.id]);
+                return (
+                  <div key={`invoice-${booking.id}`} className="today-appt">
+                    <Link
+                      href={receipt ? `/dashboard/documenti/cortesia/${booking.id}` : booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
+                      className="today-row"
+                    >
+                      <span className="today-row-main">
+                        <span className="today-row-kind">{receipt ? "Ricevuta chiesta" : "Fattura chiesta"}</span>
+                        <strong>
+                          {booking.clientName ?? "Cliente"} · {booking.categoryLabel ?? "Lavoro"}
+                        </strong>
+                        <span className="today-row-sub">
+                          {done ? "Segnata come fatta" : receipt ? "Preparala e scarica il PDF da dare al cliente" : `Lavoro del ${formatAppointmentDate(booking.scheduledAt, { day: "numeric", month: "long" })}: i dati da copiare sono nella scheda`}
+                        </span>
+                      </span>
+                      <span className="today-row-cta">{receipt ? "Prepara" : "Vedi i dati"}</span>
+                    </Link>
+                    {/* La fattura la fa col suo programma: qui la segna come fatta. La ricevuta sparisce da sola col PDF scaricato. */}
+                    {receipt ? null : (
+                      <div className="today-appt-actions">
+                        <button type="button" className={done ? "today-quiet" : "today-nav is-secondary"} onClick={() => void markInvoice(booking, !done)}>
+                          {done ? "Annulla" : (
+                            <>
+                              <Check size={16} aria-hidden /> Fatta
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }),
+            ].map((row, index) => (
+              <div key={row.key} className={index >= WAITING_SHOWN_COMPUTER && !waitingExpanded ? "today-item is-hidden" : index >= PHONE_TO_ANSWER && !waitingExpanded ? "today-item is-phone-hidden" : "today-item"}>
+                {row}
+              </div>
             ))}
+            {waitingActionError ? (
+              <span className="today-nav-error" role="alert">
+                {waitingActionError}
+              </span>
+            ) : null}
+            {!waitingExpanded && waitingCount > PHONE_TO_ANSWER ? (
+              <button type="button" className={`today-more${waitingCount > WAITING_SHOWN_COMPUTER ? "" : " is-phone-only"}`} onClick={() => setWaitingExpanded(true)}>
+                Vedi tutte le {waitingCount} voci
+              </button>
+            ) : null}
           </TodaySection>
+        ) : null}
+        {allDone ? (
+          <div className="today-alldone" role="status">
+            <CheckCircle2 size={20} aria-hidden />
+            <span>
+              <strong>Tutto fatto.</strong> Nessun cliente ti sta aspettando: ti avvisiamo appena arriva una richiesta.
+            </span>
+          </div>
         ) : null}
         {/* Manca un passo obbligatorio del percorso: "Completa il profilo" qui,
             a tutta larghezza, sotto le sole richieste da rispondere
@@ -451,6 +627,34 @@ export default function DashboardTodayPage() {
                     onSaved={(id, arrivalTime) => setBookings((list) => list?.map((b) => (b.id === id ? { ...b, arrivalTime } : b)) ?? list)}
                   />
                 ) : null}
+                {/* Lavori finiti ma non chiusi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+                    da "Lavoro terminato" partono saldo, recensione e conteggio dei lavori. */}
+                {!loading && !error && toClose.length > 0 ? (
+                  <TodaySection title="Lavori da chiudere" count={toClose.length}>
+                    {toClose.slice(0, WAITING_SHOWN_COMPUTER).map((booking, index) => (
+                      <Link
+                        key={booking.id}
+                        href={`/dashboard/agenda?booking=${booking.id}&termina=1`}
+                        className={index >= PHONE_TO_ANSWER ? "today-row is-phone-hidden" : "today-row"}
+                      >
+                        <span className="today-row-main">
+                          <strong>
+                            {booking.clientName ?? "Cliente"} · {booking.categoryLabel ?? "Intervento"}
+                          </strong>
+                          <span className="today-row-sub">
+                            {formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long" })}: segna l&apos;importo finale, così parte la richiesta di recensione
+                          </span>
+                        </span>
+                        <span className="today-row-cta">Lavoro terminato</span>
+                      </Link>
+                    ))}
+                    {toClose.length > PHONE_TO_ANSWER ? (
+                      <Link href="/dashboard/richieste?stage=accettata" className={`today-more${toClose.length > WAITING_SHOWN_COMPUTER ? "" : " is-phone-only"}`}>
+                        Vedi tutti i {toClose.length} lavori →
+                      </Link>
+                    ) : null}
+                  </TodaySection>
+                ) : null}
                 {ready && journeyBelowJobs ? <SetupJourneyHero steps={journeyBelowJobs} /> : null}
               </div>
               {!ready ? null : (
@@ -474,21 +678,10 @@ export default function DashboardTodayPage() {
                       />
                     ) : (
                       <>
-                        {/* Il numero delle richieste sta nel titolo qui sotto, che
-                            le elenca (§352); le altre tessere solo se c'è qualcosa. */}
-                        {/* "Date da confermare" non è più una tessera: le date sono
-                            elencate in cima (§403). */}
-                        {unreadMessages > 0 ? (
-                          <div className="today-kpis today-counters">
-                            <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} />
-                          </div>
-                        ) : null}
-
-                        {toAnswer.length === 0 && !quietStart ? (
-                          <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
-                            <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
-                          </TodaySection>
-                        ) : null}
+                        {/* I messaggi da leggere sono ora le righe di "Ti stanno aspettando",
+                            e la pagina senza nulla da fare dice "Tutto fatto" in cima
+                            (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md): qui
+                            non resta più la riga vuota "Nessuna richiesta in attesa". */}
 
 
                 </>
@@ -550,16 +743,6 @@ export default function DashboardTodayPage() {
   );
 }
 
-function TodayCounter({ href, icon, value, label, urgent, loading }: { href: string; icon: IconName; value: number; label: string; urgent: boolean; loading: boolean }) {
-  return (
-    <Link href={href} className={`admin-kpi${urgent ? " is-urgent" : ""}`}>
-      <Icon name={icon} size={18} color={urgent ? "#dc3545" : "#5e5a54"} />
-      <span className="admin-kpi-value">{loading ? "…" : value}</span>
-      <span className="admin-kpi-label">{label}</span>
-    </Link>
-  );
-}
-
 function TodaySection({ title, subtitle, count, action, children }: { title: string; subtitle?: string; count?: number; action?: { href: string; label: string }; children: React.ReactNode }) {
   return (
     <YStack gap="3">
@@ -592,6 +775,8 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
 
 /** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§403). */
 const PHONE_TO_ANSWER = 3;
+/** Voci di "Ti stanno aspettando" e "Lavori da chiudere" mostrate dal computer prima di "Vedi tutte". */
+const WAITING_SHOWN_COMPUTER = 5;
 
 function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extra?: boolean }) {
   const deadlines = leadDeadlines(lead);
@@ -812,6 +997,25 @@ function formatMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
+
+/** Un istante vero (scadenze di un problema), non un orario di parete: in ora italiana. */
+function formatRealDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("it-IT", { timeZone: "Europe/Rome", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+/** "3 ore", "2 giorni": da quanto il cliente aspetta una risposta in chat. */
+function waitingFor(iso: string): string {
+  const minutes = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 60) return minutes === 1 ? "1 minuto" : `${minutes} minuti`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours === 1 ? "1 ora" : `${hours} ore`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 giorno" : `${days} giorni`;
+}
+
+function isOlderThanDay(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() >= 24 * 60 * 60 * 1000;
 }
 
 function formatDateTime(iso: string): string {
