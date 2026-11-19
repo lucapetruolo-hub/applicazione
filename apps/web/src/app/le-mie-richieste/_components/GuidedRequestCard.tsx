@@ -403,6 +403,8 @@ export function GuidedRequestCard({
   }, [autoStartEditing]);
 
   const [showReschedule, setShowReschedule] = useState(false);
+  // "Sposta" su una sola visita di un lavoro ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  const [moveVisitId, setMoveVisitId] = useState<string | null>(null);
   const searchHighlight = useSearchHighlight();
   // "Non posso più" dal promemoria: si apre solo con l'appuntamento fissato.
   useEffect(() => {
@@ -945,7 +947,12 @@ export function GuidedRequestCard({
     />
   );
   const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
-  const bookingView = booking ? (
+  // La proposta di data in sospeso può stare su una sola visita di un lavoro
+  // ricorrente; "Sposta" sceglie la visita da spostare
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  const dateChangeBooking = booking ? ([booking, ...recurringVisits].find((visit) => visit.dateChange) ?? booking) : null;
+  const movingBooking = (moveVisitId ? recurringVisits.find((visit) => visit.id === moveVisitId) : null) ?? dateChangeBooking;
+  const bookingView = booking && dateChangeBooking && movingBooking ? (
     <YStack gap="3">
       <BookingSection
         booking={booking}
@@ -1003,7 +1010,22 @@ export function GuidedRequestCard({
         </Disclosure>
       ) : null}
       {/* Lavoro ricorrente: prossime visite, "Salta questa volta" e "Interrompi". */}
-      {booking.recurring ? <RecurringVisitsBox side="CLIENT" visits={recurringVisits} token={token} onChanged={onChanged} /> : null}
+      {booking.recurring ? (
+        <RecurringVisitsBox
+          side="CLIENT"
+          visits={recurringVisits}
+          token={token}
+          onChanged={onChanged}
+          onMove={
+            acceptedQuote
+              ? (visitId) => {
+                  setMoveVisitId(visitId);
+                  setShowReschedule(true);
+                }
+              : undefined
+          }
+        />
+      ) : null}
       <ChangeLinks
         booking={booking}
         // Un'altra data si propone sul preventivo: solo per la prima visita di un lavoro ricorrente.
@@ -1012,27 +1034,35 @@ export function GuidedRequestCard({
         onCancel={() => setShowCancelModal(true)}
       />
       {/* Altra data per l'appuntamento: la stessa "Proponi un'altra data" del preventivo (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
-      {acceptedQuote && booking.dateChange?.proposedBy === "CLIENT" && !showReschedule ? (
+      {acceptedQuote && dateChangeBooking.dateChange?.proposedBy === "CLIENT" && !showReschedule ? (
         <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="1">
-          In attesa di conferma del professionista per il {formatQuoteDateRange(booking.dateChange.start, booking.dateChange.end)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
+          In attesa di conferma del professionista per il {formatQuoteDateRange(dateChangeBooking.dateChange.start, dateChangeBooking.dateChange.end)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
         </Text>
       ) : null}
       {/* Con "Modifica" il professionista propone un'altra data: stessi pulsanti di una proposta. */}
-      {acceptedQuote && booking.dateChange?.proposedBy === "PROFESSIONAL" && !showReschedule ? (
-        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={booking} dateChange={booking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} />
+      {acceptedQuote && dateChangeBooking.dateChange?.proposedBy === "PROFESSIONAL" && !showReschedule ? (
+        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={dateChangeBooking} dateChange={dateChangeBooking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null} />
       ) : null}
       {acceptedQuote && showReschedule ? (
         <QuoteDateChooser
           token={token}
           quote={acceptedQuote}
           serviceMode={request.serviceMode}
-          from={booking.dateChange ? { start: booking.dateChange.start, end: booking.dateChange.end } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
-          booking={booking}
+          from={
+            movingBooking.dateChange
+              ? { start: movingBooking.dateChange.start, end: movingBooking.dateChange.end }
+              : { start: movingBooking.scheduledAt, end: movingBooking.scheduledEndAt }
+          }
+          booking={movingBooking}
           onSent={() => {
             setShowReschedule(false);
+            setMoveVisitId(null);
             onChanged();
           }}
-          onCancel={() => setShowReschedule(false)}
+          onCancel={() => {
+            setShowReschedule(false);
+            setMoveVisitId(null);
+          }}
         />
       ) : null}
     </YStack>
@@ -1478,7 +1508,9 @@ export function GuidedRequestCard({
           // Visita di un lavoro ricorrente: si salta solo questa, le altre restano.
           title={booking?.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
           description={
-            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+            // Spostamento chiesto dal professionista e senza risposta: annullare è gratis
+            // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours) && !booking.dateChange?.clientCancelsFree
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
                   keptDeposit(booking) > 0
                     ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} non è rimborsabile: resta a lui.`

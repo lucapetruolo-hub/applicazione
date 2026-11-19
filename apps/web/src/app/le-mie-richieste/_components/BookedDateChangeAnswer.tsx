@@ -8,6 +8,7 @@ import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CardButton } from "@/components/CardButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
+import { DateRoundsHint } from "@/components/DateRoundsHint";
 import { formatQuoteDateRange } from "./QuoteCard";
 
 /**
@@ -23,6 +24,7 @@ export function BookedDateChangeAnswer({
   dateChange,
   onPropose,
   onChanged,
+  onMessage,
 }: {
   token: string;
   quoteId: string;
@@ -30,6 +32,7 @@ export function BookedDateChangeAnswer({
   dateChange: BookingDateChange;
   onPropose: () => void;
   onChanged: () => void;
+  onMessage?: (() => void) | null;
 }) {
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +71,12 @@ export function BookedDateChangeAnswer({
         afterText={formatQuoteDateRange(dateChange.start, dateChange.end)}
         note={dateChange.note}
       />
+      {dateChange.clientCancelsFree ? (
+        // Lo spostamento l'ha chiesto il professionista (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+        <Text fontSize={13} color={brand.grafite70} data-testid="reschedule-free-cancel">
+          Se nessuna data ti va bene, finché non rispondi puoi annullare il lavoro senza perdere l&apos;acconto.
+        </Text>
+      ) : null}
       {cancelLine ? (
         <Text
           fontSize={cancelLine.tone === "warning" ? 16 : 13}
@@ -89,6 +98,7 @@ export function BookedDateChangeAnswer({
           {busy === "reject" ? "..." : "Rifiuta"}
         </CardButton>
       </XStack>
+      <DateRoundsHint rounds={dateChange.rounds} onMessage={onMessage} />
       {error ? (
         <Text fontSize={13} color={brand.urgenza} role="alert">
           {error}

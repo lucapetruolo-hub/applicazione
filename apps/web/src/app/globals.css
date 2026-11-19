@@ -4744,7 +4744,8 @@ a.admin-kpi:hover {
 }
 .pstats-ratios {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Cinque rapporti con "Spostati all'ultimo momento" (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 .pstats-ratio {
@@ -4767,6 +4768,9 @@ a.admin-kpi:hover {
 @media (max-width: 799px) {
   .pstats-ratios {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pstats-ratio:last-child:nth-child(odd) {
+    grid-column: span 2;
   }
 }
 @media (max-width: 599px) {

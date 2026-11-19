@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bucketStatsRows } from "./revenue-analytics.service";
 
 const d = (iso: string) => new Date(iso);
-const emptyRows = { views: [], requests: [], quotes: [], won: [], completed: [], reviews: [] };
+const emptyRows = { views: [], requests: [], quotes: [], won: [], completed: [], reviews: [], lateMoves: [] };
 
 describe("bucketStatsRows", () => {
   it("crea un giorno per ogni data del periodo, anche a zero, e somma nel giorno giusto", () => {

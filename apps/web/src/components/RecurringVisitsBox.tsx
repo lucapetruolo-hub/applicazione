@@ -6,13 +6,14 @@ import {
   formatAppointmentDate,
   formatAppointmentTimeRange,
   wallClockNow,
+  type BookingDateChange,
   type RecurringVisitInfo,
 } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
 import { apiClient } from "@/lib/apiClient";
 
-type Visit = { id: string; status: string; scheduledAt: string; scheduledEndAt: string | null; recurring: RecurringVisitInfo | null };
+type Visit = { id: string; status: string; scheduledAt: string; scheduledEndAt: string | null; recurring: RecurringVisitInfo | null; dateChange?: BookingDateChange | null };
 
 /** Visite future mostrate per prime: le altre restano dietro "Mostra tutte". */
 const UPCOMING_SHOWN = 4;
@@ -22,18 +23,23 @@ const UPCOMING_SHOWN = 4;
  * professionista (funzione nuova 3 del controllo pre-lancio dell'08/11,
  * docs/changelog/2026-11-09-lavori-ricorrenti.md): ogni quanto, le prossime
  * visite con "Salta questa volta" (il normale annullamento di quella visita)
- * e "Interrompi", che toglie tutte le visite future.
+ * e "Interrompi", che toglie tutte le visite future. "Sposta" apre la solita
+ * "Proponi un'altra data" per quella visita sola
+ * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
  */
 export function RecurringVisitsBox({
   side,
   visits,
   token,
   onChanged,
+  onMove,
 }: {
   side: "CLIENT" | "PROFESSIONAL";
   visits: readonly Visit[];
   token: string;
   onChanged: () => void;
+  /** "Sposta" su una visita: apre la proposta di un'altra data per quella visita. */
+  onMove?: (visitId: string) => void;
 }) {
   const [skippingId, setSkippingId] = useState<string | null>(null);
   const [confirmSkipId, setConfirmSkipId] = useState<string | null>(null);
@@ -50,6 +56,8 @@ export function RecurringVisitsBox({
   const done = sorted.filter((visit) => visit.status === "COMPLETED").length;
   const shown = showAll ? upcoming : upcoming.slice(0, UPCOMING_SHOWN);
   const stopped = info.stoppedAt !== null;
+  // Una proposta di data alla volta per tutta la serie.
+  const anyPending = visits.some((visit) => visit.dateChange);
 
   async function skip(visitId: string) {
     setError(null);
@@ -148,11 +156,25 @@ export function RecurringVisitsBox({
                           </CardButton>
                         </XStack>
                       ) : (
-                        <CardButton compact onPress={() => setConfirmSkipId(visit.id)} aria-label={`Salta questa volta: ${when}`}>
-                          Salta questa volta
-                        </CardButton>
+                        <XStack gap="2" flexWrap="wrap">
+                          {onMove && !anyPending && visit.status === "CONFIRMED" ? (
+                            <CardButton compact onPress={() => onMove(visit.id)} aria-label={`Sposta questa visita: ${when}`}>
+                              Sposta
+                            </CardButton>
+                          ) : null}
+                          <CardButton compact onPress={() => setConfirmSkipId(visit.id)} aria-label={`Salta questa volta: ${when}`}>
+                            Salta questa volta
+                          </CardButton>
+                        </XStack>
                       )}
                     </XStack>
+                    {visit.dateChange ? (
+                      <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro} data-testid="recurring-visit-date-change">
+                        Nuova data proposta: {formatAppointmentDate(visit.dateChange.start, { weekday: "short", day: "numeric", month: "short" })},{" "}
+                        {formatAppointmentTimeRange(visit.dateChange.start, visit.dateChange.end)}.{" "}
+                        {visit.dateChange.proposedBy === side ? (side === "CLIENT" ? "Aspetta il professionista." : "Aspetta il cliente.") : side === "CLIENT" ? "Rispondi qui sotto." : "Rispondi in alto nella scheda."}
+                      </Text>
+                    ) : null}
                   </YStack>
                 );
               })}
