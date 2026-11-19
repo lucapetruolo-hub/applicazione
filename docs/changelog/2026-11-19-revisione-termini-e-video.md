@@ -36,3 +36,14 @@ esperto"): sì alle correzioni 1, 2 e 3 della revisione dei lavori del 18/11
 senza sovrascrittura, tetto per utente, tetto del sito), prove dell'API di
 cloudinary/guided-requests/common, controllo di TypeScript, controllo di
 `render.yaml`.
+
+## Agenda: voci spente di "Mostra" ricordate (19/11/2026)
+
+**Richiesta** (Luca, 19/11/2026): sì alla voce 12 della revisione.
+
+**Decisione**: le voci spente di "Mostra" in Agenda restano spente anche
+riaprendo la pagina, su questo browser (`localStorage`
+"agenda-voci-nascoste"), come le tappe tolte del Giro intelligente (#406) e la
+colonna nascosta. È sicuro da quando le voci spente si vedono sempre (#417:
+"Nascosti", riga "Non stai vedendo" sopra il calendario anche da telefono, con
+"Mostra tutto"). Valori rovinati o sconosciuti si ignorano: tutte accese.
