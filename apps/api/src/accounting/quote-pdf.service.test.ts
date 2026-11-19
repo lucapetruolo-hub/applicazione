@@ -38,8 +38,17 @@ function textOf(model: unknown): string {
 
 describe("PDF del preventivo: annullare", () => {
   // Pagamenti online accesi (onlinePaymentsEnabled legge solo la presenza della chiave).
-  beforeEach(() => vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta"));
-  afterEach(() => vi.unstubAllEnvs());
+  // Giorno fisso, una settimana prima dell'appuntamento del 20/11: con l'ora vera
+  // le prove cambiavano risultato da sole il 19/11 (dentro le 24 ore).
+  beforeEach(() => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-13T12:00:00.000Z"));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
 
   it("con l'acconto trattenuto dice fino a quando si annulla gratis e che dopo non è rimborsabile", async () => {
     const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };

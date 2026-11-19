@@ -28,6 +28,9 @@ export function BoardAlertForm({
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
+  // Chiuso di serie sotto il pulsante "Iscriviti" (decisione di Luca del 18/11,
+  // docs/changelog/2026-11-18-email-settimana-in-bacheca.md): l'iscrizione è la strada principale.
+  const [open, setOpen] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -62,6 +65,14 @@ export function BoardAlertForm({
           {provinceName}.
         </p>
       </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className={styles.alertOpen} onClick={() => setOpen(true)}>
+        Non sei pronto? Avvisami alla prima richiesta
+      </button>
     );
   }
 

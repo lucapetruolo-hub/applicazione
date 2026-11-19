@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@professionisti/database";
 import { QuotesService } from "./quotes.service";
+import { proposedByProfessionalFirst } from "./booked-date-change";
 import type { NotificationsService } from "../notifications/notifications.service";
 import type { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import type { TimelineService } from "../timeline/timeline.service";
@@ -14,9 +15,10 @@ import type { WhatsAppService } from "../whatsapp/whatsapp.service";
 const FAR = new Date("2099-03-10T10:00:00.000Z");
 const FAR_END = new Date("2099-03-10T12:00:00.000Z");
 
-function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: string | null }[]; depositKept?: boolean } = {}) {
+function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: string | null }[]; depositKept?: boolean; visits?: Record<string, unknown>[] } = {}) {
   const booking: Record<string, unknown> = {
     id: "b1",
+    quoteId: "q1",
     status: "CONFIRMED",
     scheduledAt: FAR,
     scheduledEndAt: FAR_END,
@@ -26,9 +28,12 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
     rescheduleRequestedAt: null,
     rescheduleProposedBy: null,
     rescheduleReminderAt: null,
+    rescheduleRounds: 0,
     reminderSentAt: new Date("2099-03-09T08:00:00.000Z"),
     clientDepositReminderAt: null,
     clientReplyChannel: "WHATSAPP",
+    cancellationNoticeHours: 24,
+    recurringJobId: null,
   };
   const quote: Record<string, unknown> = {
     id: "q1",
@@ -63,7 +68,19 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
           : null,
         quote: { lateCancelKeepsDeposit: !!options.depositKept, items: [{ priceMinEurCents: 12000, priceMaxEurCents: 12000 }] },
       })),
-      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => Object.assign(booking, data)),
+      // Il lavoro della serie con la proposta in sospeso, o una visita indicata.
+      findFirst: vi.fn(async ({ where }: { where: { id?: string; rescheduleRequestedAt?: unknown } }) => {
+        if (where.id) return (options.visits ?? []).find((v) => v.id === where.id) ?? null;
+        const all = [booking, ...(options.visits ?? [])];
+        return all.find((b) => b.rescheduleRequestedAt) ?? null;
+      }),
+      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        // `{ increment: n }` di Prisma, per i giri di proposte.
+        for (const [key, value] of Object.entries(data)) {
+          booking[key] = value && typeof value === "object" && "increment" in value ? Number(booking[key] ?? 0) + Number((value as { increment: number }).increment) : value;
+        }
+        return booking;
+      }),
       updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (booking.status !== where.status || booking.rescheduleRequestedAt === null) return { count: 0 };
         Object.assign(booking, data);
@@ -72,6 +89,8 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
       findMany: vi.fn(async () => [{ professionalProfileId: "p1", scheduledAt: booking.scheduledAt, scheduledEndAt: booking.scheduledEndAt, serviceMode: "HOME" }, ...(options.otherBookings ?? []).map((b) => ({ professionalProfileId: "p1", ...b }))]),
     },
     externalJob: { findMany: vi.fn(async () => []) },
+    // Spostamenti per le Statistiche (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    bookingReschedule: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => data) },
     availabilitySlot: { findMany: vi.fn(async () => []) },
     $executeRaw: vi.fn(async () => 1),
     $transaction: vi.fn(async (arg: unknown) => (typeof arg === "function" ? (arg as (tx: unknown) => Promise<unknown>)(prisma) : Promise.all(arg as Promise<unknown>[]))),
@@ -221,5 +240,67 @@ describe("Altra data per un appuntamento già fissato, dalla proposta standard",
     notify.mockClear();
     await service.confirmProposedDate("c1", "q1");
     expect(notify).toHaveBeenCalledWith("pro1", "QUOTE_DATE_CONFIRMED_BY_CLIENT", expect.objectContaining({ cancelNotice: "Se annulla, il cliente deve avvisarti entro giovedì 12 marzo alle 09:00." }));
+  });
+
+  it("il professionista propone per primo un'altra data: il cliente risponde, l'appuntamento resta finché non accetta", async () => {
+    const { service, booking, quote, notify, log, prisma } = setup();
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", note: "Mi si è rotto il furgone", isManual: true });
+    expect(booking.scheduledAt).toBe(FAR);
+    expect(booking.rescheduleProposedBy).toBe("PROFESSIONAL");
+    // Non è il cliente a non poter venire: può annullare gratis finché non risponde.
+    expect(booking.clientCantComeAt).toBeNull();
+    expect(quote.professionalCounterNote).toBe("Mi si è rotto il furgone");
+    expect(notify).toHaveBeenCalledWith("c1", "QUOTE_DATE_CHANGED", expect.objectContaining({ booked: true, fromProfessional: true, change: "both" }));
+    expect(log).toHaveBeenCalledWith("r1", "p1", "PROFESSIONAL", expect.stringContaining("propone di spostare"));
+    expect(prisma.bookingReschedule.create).toHaveBeenCalledWith({ data: expect.objectContaining({ bookingId: "b1", proposedBy: "PROFESSIONAL", late: false }) });
+    await expect(service.counterProposeDate("pro1", "q1", { date: "2099-03-14", startTime: "09:00", endTime: "11:00", isManual: true })).rejects.toThrow("aspetta la risposta");
+    await service.confirmProposedDate("c1", "q1");
+    expect((booking.scheduledAt as Date).toISOString()).toBe("2099-03-13T09:00:00.000Z");
+  });
+
+  it("niente proposta del professionista sulla stessa data", async () => {
+    const { service } = setup();
+    await expect(service.counterProposeDate("pro1", "q1", { date: "2099-03-10", startTime: "10:00", endTime: "12:00", isManual: true })).rejects.toThrow("scegline un'altra");
+  });
+
+  it("si sposta anche una sola visita di un lavoro ricorrente, sullo stesso percorso", async () => {
+    const visit = { id: "00000000-0000-4000-8000-000000000003", quoteId: null, status: "CONFIRMED", scheduledAt: new Date("2099-03-24T10:00:00.000Z"), scheduledEndAt: new Date("2099-03-24T12:00:00.000Z"), serviceMode: "HOME", rescheduleRequestedAt: null, rescheduleProposedBy: null, clientCantComeAt: null, cancellationNoticeHours: 24, recurringJobId: "serie1" };
+    const { service, prisma, booking } = setup({ visits: [visit] });
+    booking.recurringJobId = "serie1";
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-25", startTime: "10:00", endTime: "12:00", isManual: true, bookingId: visit.id });
+    expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: visit.id } }));
+    expect(prisma.bookingReschedule.create).toHaveBeenCalledWith({ data: expect.objectContaining({ bookingId: visit.id, proposedBy: "PROFESSIONAL" }) });
+    // Una proposta alla volta per serie.
+    await expect(service.counterProposeDate("pro1", "q1", { date: "2099-03-26", startTime: "10:00", endTime: "12:00", isManual: true })).rejects.toThrow("aspetta la risposta");
+    const other = setup({ visits: [visit] });
+    await expect(other.service.counterProposeDate("pro1", "q1", { date: "2099-03-25", startTime: "10:00", endTime: "12:00", isManual: true, bookingId: "00000000-0000-4000-8000-000000000009" })).rejects.toThrow("Visita non trovata");
+  });
+
+  it("conta i giri di proposte senza accordo e li azzera all'accordo", async () => {
+    const { service, booking } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    expect(booking.rescheduleRounds).toBe(1);
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", isManual: true });
+    expect(booking.rescheduleRounds).toBe(2);
+    await service.proposeDate("c1", "q1", { ...PROPOSAL, date: "2099-03-14" });
+    expect(booking.rescheduleRounds).toBe(3);
+    await service.confirmProposedDate("pro1", "q1");
+    expect(booking.rescheduleRounds).toBe(0);
+  });
+
+  it("la proposta del cliente resta segnata per le Statistiche", async () => {
+    const { service, prisma } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    expect(prisma.bookingReschedule.create).toHaveBeenCalledWith({ data: expect.objectContaining({ proposedBy: "CLIENT", professionalProfileId: "p1", late: false }) });
+  });
+});
+
+describe("chi ha chiesto per primo lo spostamento", () => {
+  it("solo il professionista che propone senza una richiesta del cliente", () => {
+    const at = new Date("2099-03-01T10:00:00.000Z");
+    expect(proposedByProfessionalFirst({ rescheduleRequestedAt: at, rescheduleProposedBy: "PROFESSIONAL", clientCantComeAt: null })).toBe(true);
+    expect(proposedByProfessionalFirst({ rescheduleRequestedAt: at, rescheduleProposedBy: "PROFESSIONAL", clientCantComeAt: at })).toBe(false);
+    expect(proposedByProfessionalFirst({ rescheduleRequestedAt: at, rescheduleProposedBy: "CLIENT", clientCantComeAt: null })).toBe(false);
+    expect(proposedByProfessionalFirst({ rescheduleRequestedAt: null, rescheduleProposedBy: null, clientCantComeAt: null })).toBe(false);
   });
 });

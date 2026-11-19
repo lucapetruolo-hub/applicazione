@@ -2468,16 +2468,25 @@ button.today-more {
 }
 /* Stessa pillola nei riquadri della Settimana in Agenda: più piccola, e un
    pallino sul telefono dove il riquadro è stretto. */
-.ag-ev-move {
+.ag-ev .ag-ev-move {
   display: inline-block;
   max-width: 100%;
   margin-top: 3px;
-  padding: 1px 6px;
+  padding: 2px 6px;
+  border-radius: 10px;
   overflow: hidden;
+  color: #7a4f0e;
   font-size: 11px;
+  font-weight: 700;
   line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.ag-ev .ag-ev-move small {
+  display: block;
+  color: #7a4f0e;
+  font-size: 10px;
+  font-weight: 600;
 }
 .ag-ev-move-dot {
   display: inline-block;
@@ -2485,11 +2494,8 @@ button.today-more {
   height: 7px;
   margin-left: 3px;
   border-radius: 4px;
-  background: #8a857e;
-  vertical-align: middle;
-}
-.ag-ev-move-dot.is-asked {
   background: #c27a12;
+  vertical-align: middle;
 }
 .today-empty {
   padding: 14px 16px;
@@ -4806,7 +4812,8 @@ a.admin-kpi:hover {
 }
 .pstats-ratios {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Cinque rapporti con "Spostati all'ultimo momento" (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 .pstats-ratio {
@@ -4829,6 +4836,9 @@ a.admin-kpi:hover {
 @media (max-width: 799px) {
   .pstats-ratios {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pstats-ratio:last-child:nth-child(odd) {
+    grid-column: span 2;
   }
 }
 @media (max-width: 599px) {
@@ -6981,6 +6991,22 @@ a.admin-kpi:hover {
 }
 /* Orari una settimana alla volta, un giorno per riga (WeekSlotPicker,
    docs/changelog/2026-11-10-date-del-preventivo.md). */
+/* Elenco aperto da "Cambia": compare scendendo appena (200 ms, ease-out),
+   come il pannello di "Chi ti serve"; con riduzione del movimento è
+   istantaneo per la regola globale in cima al file. */
+@keyframes slot-picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.slot-picker-in {
+  animation: slot-picker-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 .week-slots {
   display: flex;
   flex-direction: column;
@@ -7039,7 +7065,7 @@ a.admin-kpi:hover {
   border-bottom: none;
 }
 .week-slots-label {
-  width: 96px;
+  width: 100px;
   flex: none;
   font-size: 14px;
   font-weight: 700;
@@ -7050,6 +7076,12 @@ a.admin-kpi:hover {
 }
 .week-slots-weekday {
   text-transform: capitalize;
+}
+/* Data in grigio e più leggera sotto il giorno, come le colonne del profilo. */
+.week-slots-date {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #5e5a54;
 }
 .week-slots-dot {
   display: inline-block;
@@ -7068,6 +7100,58 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #5e5a54;
 }
+/* Stesso aspetto dell'agenda del profilo pubblico (pillole verde chiaro,
+   testo verde scuro, al completo in grigio):
+   docs/changelog/2026-11-18-scelta-data-come-profilo.md. */
+/* Fasce in colonne uguali (come le righe dell'agenda del profilo): da
+   computer 4 in fila, da telefono 2, e gli stessi orari restano incolonnati
+   da un giorno all'altro. */
+.week-slots-day .slot-pills {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+  max-width: 600px;
+}
+.week-slots-day .slot-pill {
+  justify-content: center;
+  padding: 0 6px;
+  text-align: center;
+  font-size: 14px;
+  border-color: transparent;
+  background: var(--c-cianografiaVelo, #dff0f0);
+  color: var(--c-cianografiaScuro, #186163);
+  font-weight: 700;
+}
+.week-slots-day .slot-pill:hover {
+  border-color: #247c7c;
+}
+.week-slots-day .slot-pill.is-on {
+  border-color: #247c7c;
+  background: #1e6b6e;
+  color: #fff;
+}
+.week-slots-day .slot-pill.is-full {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #5e5a54;
+  font-weight: 600;
+  opacity: 0.55;
+  cursor: default;
+}
+.week-slots-day .slot-pill.is-full:hover {
+  border-color: transparent;
+}
+.week-slots-none {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  color: #5e5a54; /* senza trasparenza: contrasto 4,5:1 sul fondo crema */
+}
 /* Sul telefono le due fasce di un giorno stanno su una riga. */
 @media (max-width: 520px) {
   .week-slots-day {
@@ -7082,6 +7166,7 @@ a.admin-kpi:hover {
     display: block;
   }
   .week-slots-day .slot-pills {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
     gap: 6px;
   }
   .week-slots-day .slot-pill {
@@ -7286,6 +7371,11 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Icona della scheda "Data e orario scelti": i colori delle pillole dell'agenda. */
+.slot-choice-icon {
+  background: var(--c-cianografiaVelo, #dff0f0);
+  color: var(--c-cianografiaScuro, #186163);
 }
 .cat-choice-text {
   flex: 1;

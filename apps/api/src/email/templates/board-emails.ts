@@ -46,8 +46,9 @@ export function boardWeeklyEmail(input: { name: string | null; cards: { id: stri
     detailsTitle: "Le richieste",
     details: shown.map((card) => ({ label: `${card.tradeLabel} · ${card.place}`, value: card.title, url: `${frontendUrl()}/rispondi?richiesta=${card.id}` })),
     ...(more > 0 ? { after: [more === 1 ? "C'è anche un'altra richiesta in Lavori cercati." : `Ci sono anche altre ${more} richieste in Lavori cercati.`] } : {}),
-    // Si spegne e si riaccende dalla pagina Notifiche (richiesta di Luca del 18/11).
-    secondaryLink: { label: "Spegni o riaccendi questa email", url: `${frontendUrl()}/account/notifiche?avviso=richieste.settimana` },
+    // Si spegne e si riaccende nella pagina "Lavori cercati" del suo mestiere (decisione di Luca del 18/11,
+    // docs/changelog/2026-11-18-email-settimana-in-bacheca.md).
+    ...(shown[0] ? { secondaryLink: { label: "Spegni o riaccendi questa email", url: `${frontendUrl()}/lavora-con-noi/${shown[0].trade}#email-settimana` } } : {}),
     ...(shown[0] ? { cta: { label: "Apri Lavori cercati", url: `${frontendUrl()}/lavora-con-noi/${shown[0].trade}` } } : {}),
   };
 }

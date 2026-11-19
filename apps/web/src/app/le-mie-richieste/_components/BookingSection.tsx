@@ -213,8 +213,11 @@ export function BookingSection({
   // "Lavoro terminato" solo da quando l'appuntamento è iniziato (§346):
   // prima compariva già giorni prima. Se il professionista l'ha già chiuso, subito.
   const started = moment?.kind === "inProgress" || moment?.kind === "over" || booking.status === "COMPLETED";
+  // Prima del giorno fissato solo se il professionista dice che l'ha già finito
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  const earlyDoneAsked = booking.status === "CONFIRMED" && !started && !!booking.earlyCompletionAskedAt;
   const canConfirmDone =
-    (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && started && !booking.hasReview && !booking.canReview && !issueOpen && !booking.clientConfirmedCompletedAt;
+    (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && (started || earlyDoneAsked) && !booking.hasReview && !booking.canReview && !issueOpen && !booking.clientConfirmedCompletedAt;
   const canWriteReview = (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && booking.canReview && !booking.hasReview;
   const onTheWay = live && moment?.kind === "onTheWay" && !canConfirmDone ? moment : null;
   const phone = booking.professionalAccountDeleted ? null : booking.professionalPhone;
@@ -265,10 +268,14 @@ export function BookingSection({
         <YStack gap="3" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="4">
           <YStack gap={2}>
             <Text fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-              {canConfirmDone && moment?.kind === "inProgress" ? "Lavoro in corso" : "Com'è andata?"}
+              {canConfirmDone && earlyDoneAsked ? "Il lavoro è già finito?" : canConfirmDone && moment?.kind === "inProgress" ? "Lavoro in corso" : "Com'è andata?"}
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
-              {canConfirmDone ? "Quando ha finito, confermalo qui." : "Una recensione aiuta altri clienti a scegliere."}
+              {canConfirmDone && earlyDoneAsked
+                ? `${booking.businessName} dice di averlo già finito. Se è così, confermalo; se no, l'appuntamento resta com'è.`
+                : canConfirmDone
+                  ? "Quando ha finito, confermalo qui."
+                  : "Una recensione aiuta altri clienti a scegliere."}
             </Text>
           </YStack>
           <XStack gap="2" flexWrap="wrap">
@@ -720,18 +727,22 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già dentro il
           preavviso si dice cosa succede, non "avvisa prima" (collaudo A-06). Frasi da una
           sola fonte (docs/changelog/2026-11-13-annullare-una-fonte.md). */}
-      <CancellationTermsLines
-        terms={cancellationTerms({
-          phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours, now),
-          start: booking.scheduledAt,
-          hours: booking.cancellationNoticeHours,
-          money: bookingCancellationMoney(booking.payment, booking.lateCancelKeepsDeposit, quotePriceTotals(booking.quoteItems).totalMaxEurCents),
-          stage: "booked",
-          audience: "client",
-        })}
-        noticeSize={13}
-        testId="booking-cancel"
-      />
+      {booking.dateChange?.clientCancelsFree ? null : (
+        // Spostamento chiesto dal professionista e senza risposta: annullare è gratis, lo dice
+        // il riquadro della proposta (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+        <CancellationTermsLines
+          terms={cancellationTerms({
+            phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours, now),
+            start: booking.scheduledAt,
+            hours: booking.cancellationNoticeHours,
+            money: bookingCancellationMoney(booking.payment, booking.lateCancelKeepsDeposit, quotePriceTotals(booking.quoteItems).totalMaxEurCents),
+            stage: "booked",
+            audience: "client",
+          })}
+          noticeSize={13}
+          testId="booking-cancel"
+        />
+      )}
     </YStack>
   );
 }

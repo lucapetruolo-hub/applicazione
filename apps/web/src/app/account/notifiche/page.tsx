@@ -192,7 +192,8 @@ export default function NotifichePage() {
                   const style = NOTIFICATION_TOPIC_STYLE[topic];
                   const copy = info[role];
                   const prefs = notificationPrefs.topics[topic];
-                  const items = notificationItemsFor(topic, role, isAdmin);
+                  // Gli avvisi che si scelgono in un'altra pagina (es. l'email del lunedì in "Lavori cercati") qui non si vedono.
+                  const items = notificationItemsFor(topic, role, isAdmin).filter((item) => !item.elsewhere);
                   const activeItems = items.filter(
                     (item) =>
                       item.locked ||

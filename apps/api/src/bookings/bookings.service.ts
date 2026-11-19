@@ -76,7 +76,7 @@ import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service"
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { AuthService } from "../auth/auth.service";
 import { ClientInvoiceRequestsService } from "../client-invoice-requests/client-invoice-requests.service";
-import { bookingDateChange } from "../quotes/booked-date-change";
+import { bookingDateChange, proposedByProfessionalFirst } from "../quotes/booked-date-change";
 import { quoteExecutor } from "../guided-requests/guided-requests.service";
 import { RecurringJobsService, recurringVisitInfo } from "./recurring-jobs.service";
 import { formatSlotForTimeline } from "../common/format-date.util";
@@ -134,6 +134,23 @@ export const ACCOUNT_CLOSED_NOTE = "Il professionista ha chiuso il suo account."
 /** L'appuntamento è in un giorno dopo oggi (ora italiana). */
 function startsAfterToday(scheduledAt: Date): boolean {
   return scheduledAt.toISOString().slice(0, 10) > wallClockNow().toISOString().slice(0, 10);
+}
+
+export const EARLY_COMPLETION_NEEDS_CLIENT =
+  "Il lavoro è fissato per un altro giorno: prima chiedi al cliente di confermare che è finito, poi lo chiudi con l'importo.";
+
+/**
+ * Date di un lavoro chiuso prima del giorno fissato: finisce adesso e dura
+ * quanto prima, in orario "di parete" italiano come scheduledAt
+ * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+ */
+export function earlyCompletionDates(scheduledAt: Date, scheduledEndAt: Date | null, now: Date = new Date()): { scheduledAt: Date; scheduledEndAt: Date | null } {
+  const end = new Date(Math.floor(wallClockNow(now).getTime() / 60_000) * 60_000);
+  const lengthMs = scheduledEndAt ? Math.max(0, Math.min(scheduledEndAt.getTime() - scheduledAt.getTime(), 12 * 60 * 60_000)) : 0;
+  const start = new Date(end.getTime() - lengthMs);
+  // Mai a cavallo di due giorni: l'inizio resta nel giorno di oggi.
+  const dayStart = new Date(`${end.toISOString().slice(0, 10)}T00:00:00.000Z`);
+  return { scheduledAt: start < dayStart ? dayStart : start, scheduledEndAt: scheduledEndAt ? end : null };
 }
 
 @Injectable()
@@ -308,7 +325,7 @@ export class BookingsService implements OnModuleInit {
         guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } }, category: { select: { label: true } } } },
         booking: true,
         professionalProfile: true,
-        items: true,
+        items: { orderBy: { position: "asc" } },
       },
     });
     if (!quote) {
@@ -945,7 +962,7 @@ export class BookingsService implements OnModuleInit {
 
     const job = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { quote: { include: { items: true } }, recurringJob: { select: { quote: { include: { items: true } } } } },
+      include: { quote: { include: { items: { orderBy: { position: "asc" } } } }, recurringJob: { select: { quote: { include: { items: { orderBy: { position: "asc" } } } } } } },
     });
     if (!job || job.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questo lavoro non è tuo.");
@@ -955,12 +972,13 @@ export class BookingsService implements OnModuleInit {
     if (booking.status !== "CONFIRMED") {
       throw new BadRequestException("Solo un lavoro fissato può essere segnato come terminato.");
     }
-    // Mai prima del giorno dell'appuntamento, come il pulsante in Agenda
-    // (§311, collaudo F-01): il saldo si addebiterebbe al cliente prima del lavoro.
-    if (startsAfterToday(booking.scheduledAt)) {
-      throw new BadRequestException(
-        "Puoi segnare il lavoro come terminato dal giorno dell'appuntamento. Se l'hai fatto prima, sposta prima la data con il cliente.",
-      );
+    // Mai prima del giorno dell'appuntamento senza la conferma del cliente
+    // (§311, collaudo F-01): il saldo si addebiterebbe prima del lavoro. Con
+    // la conferma sì, e la data del lavoro diventa quella vera
+    // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    const early = startsAfterToday(booking.scheduledAt);
+    if (early && !booking.clientConfirmedCompletedAt) {
+      throw new BadRequestException(EARLY_COMPLETION_NEEDS_CLIENT);
     }
 
     // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §246): il testo
@@ -1008,6 +1026,8 @@ export class BookingsService implements OnModuleInit {
           completionChangeReason: deviation?.needsReason ? changeReason : null,
           completionDeclarationAcceptedAt: new Date(),
           completionDeclarationVersion: declaration.version,
+          // Fatto prima del giorno fissato: in agenda, fatture e conteggi vale oggi.
+          ...(early ? earlyCompletionDates(booking.scheduledAt, booking.scheduledEndAt) : {}),
         },
       }),
     ]);
@@ -1022,6 +1042,14 @@ export class BookingsService implements OnModuleInit {
       ...(clientReason ? { changeReason: clientReason } : {}),
     });
 
+    if (booking.quote && early) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il lavoro era fissato per ${formatSlotForTimeline(booking.scheduledAt, booking.scheduledEndAt)} ed è stato fatto prima: vale la data di oggi.`,
+      );
+    }
     if (booking.quote) {
       const totalEuro = formatEurCents(finalAmountEurCents);
       await this.timelineService.log(
@@ -1072,6 +1100,44 @@ export class BookingsService implements OnModuleInit {
   }
 
   /**
+   * "Lavoro terminato" del professionista prima del giorno fissato
+   * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): il lavoro
+   * non si chiude, si chiede al cliente di confermare che è già stato fatto.
+   * Appena conferma, il professionista chiude con l'importo come sempre.
+   */
+  async askEarlyCompletion(professionalUserId: string, bookingId: string) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId }, select: { id: true } });
+    if (!professionalProfile) throw new NotFoundException("Profilo professionista non trovato.");
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { select: { guidedRequestId: true } } } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) throw new ForbiddenException("Questo lavoro non è tuo.");
+    if (booking.status !== "CONFIRMED") throw new BadRequestException("Solo un lavoro fissato può essere segnato come terminato.");
+    if (!startsAfterToday(booking.scheduledAt)) throw new BadRequestException("È il giorno del lavoro: premi \"Lavoro terminato\" e scrivi l'importo.");
+    if (booking.recurringJobId) throw new BadRequestException("Per un lavoro ricorrente segna terminata la visita nel suo giorno.");
+    if (booking.clientConfirmedCompletedAt) throw new BadRequestException("Il cliente ha già confermato: premi \"Lavoro terminato\" e scrivi l'importo.");
+    if (booking.earlyCompletionAskedAt) throw new BadRequestException("Hai già chiesto al cliente di confermare: aspetta la sua risposta.");
+    const asked = await this.prisma.booking.updateMany({
+      where: { id: bookingId, status: "CONFIRMED", earlyCompletionAskedAt: null, clientConfirmedCompletedAt: null },
+      data: { earlyCompletionAskedAt: new Date() },
+    });
+    if (asked.count === 0) throw new ConflictException("Il lavoro è cambiato: ricarica la pagina.");
+    await this.notificationsService.notify(booking.clientId, "JOB_EARLY_DONE_ASKED", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId ?? null,
+      scheduledAt: booking.scheduledAt.toISOString(),
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista dice che il lavoro è già finito, prima della data fissata (${formatSlotForTimeline(booking.scheduledAt, booking.scheduledEndAt)}): chiede al cliente di confermarlo.`,
+      );
+    }
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    return { bookingId };
+  }
+
+  /**
    * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
    * in origine possibile solo dopo che il professionista aveva già
@@ -1097,10 +1163,10 @@ export class BookingsService implements OnModuleInit {
     if (booking.clientConfirmedCompletedAt) {
       throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");
     }
-    // Mai prima del giorno dell'appuntamento (§346, collaudo F-01).
-    if (booking.status === "CONFIRMED" && startsAfterToday(booking.scheduledAt)) {
-      throw new BadRequestException("Potrai confermare che il lavoro è terminato dal giorno dell'appuntamento.");
-    }
+    // Anche prima del giorno fissato (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md):
+    // la conferma del cliente da sola non muove soldi né sblocca la recensione,
+    // serve al professionista per chiudere il lavoro fatto prima. Prima era
+    // vietato (§346, collaudo F-01).
 
     await this.prisma.booking.update({
       where: { id: bookingId },
@@ -1221,7 +1287,9 @@ export class BookingsService implements OnModuleInit {
     // Dentro il preavviso scelto dal professionista (§347) si può ancora
     // annullare, ma resta segnato: lo vede il professionista. L'acconto
     // online resta a lui solo se l'aveva scritto nel preventivo (§348).
-    const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours);
+    // Spostamento chiesto dal professionista e ancora senza risposta: annullare
+    // non costa nulla al cliente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours) && !proposedByProfessionalFirst(booking);
     await this.prisma.booking.update({
       where: { id: bookingId },
       data: {
@@ -1869,7 +1937,7 @@ export class BookingsService implements OnModuleInit {
       include: {
         professionalProfile: { include: { user: true } },
         review: true,
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         issue: true,
         jobPayment: true,
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
@@ -1878,10 +1946,10 @@ export class BookingsService implements OnModuleInit {
         // solo i dati del professionista. Assente per le prenotazioni
         // dirette da agenda pubblica (bookAgendaSlot), che non hanno una
         // Quote/GuidedRequest collegata.
-        quote: { include: { items: true, guidedRequest: { include: { category: true } } } },
+        quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { include: { category: true } } } },
         // Visite di un lavoro ricorrente dopo la prima: preventivo e richiesta della serie
         // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
-        recurringJob: { include: { quote: { include: { items: true, guidedRequest: { include: { category: true } } } } } },
+        recurringJob: { include: { quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { include: { category: true } } } } } },
       },
       orderBy: { scheduledAt: "desc" },
     });
@@ -2008,6 +2076,7 @@ export class BookingsService implements OnModuleInit {
       // l'eliminazione della prenotazione dalla propria lista.
       professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      earlyCompletionAskedAt: booking.earlyCompletionAskedAt?.toISOString() ?? null,
       // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §346).
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
@@ -2016,7 +2085,7 @@ export class BookingsService implements OnModuleInit {
       // Tolto se il cliente non ha mai avuto il tempo di annullare gratis (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
       lateCancelKeepsDeposit: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
       // Altra data proposta sul preventivo accettato, in attesa del professionista.
-      dateChange: bookingDateChange(booking, booking.ownQuote),
+      dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       recurring: recurringVisitInfo(booking),

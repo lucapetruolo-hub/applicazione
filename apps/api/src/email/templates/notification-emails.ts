@@ -580,9 +580,14 @@ const BUILDERS: Record<string, Builder> = {
         paragraphs: [
           reminder
             ? `**${pro(ctx)}** ti ha proposto un'altra data per l'appuntamento per **${job(ctx)}** e aspetta ancora la tua risposta.`
-            : `**${pro(ctx)}** non può nella data che hai proposto per **${job(ctx)}** e te ne propone un'altra.`,
+            : payload.fromProfessional === true
+              ? `**${pro(ctx)}** ha bisogno di spostare l'appuntamento per **${job(ctx)}** e ti propone un'altra data.`
+              : `**${pro(ctx)}** non può nella data che hai proposto per **${job(ctx)}** e te ne propone un'altra.`,
           ...quotedNote(payload),
           "Se la accetti l'appuntamento si sposta, con il pagamento com'era. Se la rifiuti resta com'è.",
+          // Lo spostamento lo chiede il professionista: annullare non costa nulla
+          // finché la proposta aspetta una risposta (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+          ...(payload.fromProfessional === true ? ["Se nessuna data ti va bene, finché non rispondi puoi annullare il lavoro senza perdere l'acconto."] : []),
         ],
         details: changeDetails(ctx, payload, "Appuntamento di adesso", "Nuova proposta", true),
         cta: clientRequests(),
@@ -1302,6 +1307,58 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
       `Confermalo e lascia una recensione, oppure segnala un problema${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}. Dopo quella data il lavoro sarà considerato terminato e non potrai più segnalare problemi.`,
+    ],
+    cta: { label: "Apri il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
+  // Proposta di un'altra data ancora senza risposta a poche ore
+  // dall'appuntamento: a tutti e due, vale l'orario di adesso
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  BOOKING_DATE_CHANGE_UNANSWERED: (payload, ctx) => {
+    const now = slotText(payload.from) ?? "quello già fissato";
+    const forClient = payload.audience === "client";
+    const byProfessional = payload.proposedBy === "PROFESSIONAL";
+    const toAnswer = forClient === byProfessional;
+    const paragraphs = forClient
+      ? byProfessional
+        ? [
+            `**${pro(ctx)}** ti ha proposto un'altra data per **${job(ctx)}** e aspetta ancora la tua risposta.`,
+            `Se non rispondi resta l'appuntamento di adesso: **${now}**.`,
+            ...(payload.clientCancelsFree === true ? ["Se nessuna data ti va bene, puoi ancora annullare senza perdere l'acconto."] : []),
+          ]
+        : [
+            `**${pro(ctx)}** non ha ancora risposto alla data che hai proposto per **${job(ctx)}**.`,
+            `Per ora resta l'appuntamento di adesso: **${now}**. Se non puoi esserci, scrivigli in chat.`,
+          ]
+      : byProfessional
+        ? [
+            `Il cliente non ha ancora risposto alla data che hai proposto per **${job(ctx)}**.`,
+            `Resta l'appuntamento di adesso: **${now}**. Se non riesci a venire, annullalo dalla richiesta: il cliente riavrà l'acconto.`,
+          ]
+        : [
+            `Il cliente ti ha chiesto un'altra data per **${job(ctx)}** e aspetta ancora la tua risposta.`,
+            `Ha detto che all'appuntamento di adesso (**${now}**) non può esserci: rispondi alla proposta o scrivigli in chat.`,
+          ];
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: toAnswer ? "Rispondi alla nuova data: l'appuntamento è tra poco" : "Nessuna risposta sulla nuova data: vale l'appuntamento di adesso",
+      greeting: ctx.name,
+      title: toAnswer ? "Manca poco all'appuntamento" : "Vale l'appuntamento di adesso",
+      paragraphs,
+      details: changeDetails(ctx, payload, "Appuntamento di adesso", "Data proposta", forClient),
+      cta: forClient ? clientRequests() : proRequests(),
+    };
+  },
+  // "Lavoro terminato" del professionista prima del giorno fissato
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  JOB_EARLY_DONE_ASKED: (payload, ctx) => ({
+    kind: "notification",
+    subject: payload.reminder === true ? `${pro(ctx)} aspetta la tua conferma: il lavoro è già finito?` : `${pro(ctx)} dice che il lavoro è già finito`,
+    greeting: ctx.name,
+    title: "Il lavoro è già finito?",
+    paragraphs: [
+      `**${pro(ctx)}** dice di aver già finito il lavoro per **${job(ctx)}**${str(payload.scheduledAt) ? `, fissato per ${new Date(str(payload.scheduledAt) ?? "").toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}` : ""}.`,
+      "Se è così, confermalo: poi il professionista scrive l'importo finale e puoi lasciare una recensione. Se non è ancora finito, non fare niente: l'appuntamento resta com'è.",
     ],
     cta: { label: "Apri il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
   }),

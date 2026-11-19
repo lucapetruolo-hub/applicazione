@@ -402,8 +402,8 @@ export default function DashboardTodayPage() {
                               <strong>{title}</strong>
                               <span className="today-row-sub">{sub}</span>
                               {move ? (
-                                <span className={move === "CLIENT" ? "today-move is-asked" : "today-move"}>
-                                  {move === "CLIENT" ? "Il cliente chiede di spostarlo" : "Nuova data proposta: in attesa del cliente"}
+                                <span className="today-move is-asked">
+                                  {move === "CLIENT" ? "Spostamento dal cliente" : "Spostamento da te"}
                                 </span>
                               ) : null}
                             </span>

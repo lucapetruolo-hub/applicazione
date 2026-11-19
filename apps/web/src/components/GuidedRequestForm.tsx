@@ -57,7 +57,7 @@ import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidge
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { CategoryChoice, WaitingTradeChoice } from "@/components/CategoryChoice";
-import { WeekSlotPicker } from "@/components/WeekSlotPicker";
+import { WeekSlotPicker, shortDayLabel } from "@/components/WeekSlotPicker";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { useComuni } from "@/lib/comuniLazy";
@@ -108,6 +108,18 @@ function flattenPickableSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE
       if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
         result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime, remaining: modeInfo.maxBookings - modeInfo.bookedCount });
       }
+    }
+  }
+  return result;
+}
+
+/** Fasce al completo nella modalità scelta: in grigio nell'elenco, come nel profilo pubblico. */
+function flattenFullSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE"): PickableAgendaSlot[] {
+  const result: PickableAgendaSlot[] = [];
+  for (const day of agenda.days) {
+    for (const slot of day.slots) {
+      const modeInfo = mode === "ONLINE" ? slot.online : slot.home;
+      if (modeInfo && modeInfo.bookedCount >= modeInfo.maxBookings) result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
     }
   }
   return result;
@@ -342,9 +354,24 @@ export function GuidedRequestForm({
   // dal professionista". Nessuna fascia esclusa a priori (esatta o
   // generica, vedi flattenPickableSlots sopra).
   const [pickableSlots, setPickableSlots] = useState<PickableAgendaSlot[]>([]);
+  const [fullSlots, setFullSlots] = useState<PickableAgendaSlot[]>([]);
   // Inizializzato dalla fascia già bloccata in URL (click su una pillola
   // dell'agenda pubblica), se presente — resta comunque modificabile.
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
+  // Orario già cliccato nell'agenda del profilo: una scheda con "Cambia" al
+  // posto dell'elenco, come "Chi ti serve" (scelta di Luca del 18/11/2026,
+  // docs/changelog/2026-11-18-scelta-data-come-profilo.md). "Cambia" apre l'elenco.
+  const [slotListOpen, setSlotListOpen] = useState(!(preferredDate && preferredTimeSlot));
+  // Orario tolto (cambio A domicilio/Online o orario non più libero): torna l'elenco e ci resta.
+  if (!slotListOpen && !selectedSlotValue) setSlotListOpen(true);
+  // Aperto da "Cambia": l'elenco entra con un'animazione leggera (come il pannello
+  // di "Chi ti serve") e il fuoco va sull'orario scelto, non si perde con la scheda.
+  const [slotListFromChange, setSlotListFromChange] = useState(false);
+  const slotListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!slotListFromChange) return;
+    slotListRef.current?.querySelector<HTMLElement>('.week-slots [aria-checked="true"]')?.focus({ preventScroll: true });
+  }, [slotListFromChange]);
   // "Altri orari": quanti giorni dell'agenda sono aperti sotto i primi tre
   // orari liberi (0 = chiusi, docs/CHANGELOG.md §349).
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
@@ -377,6 +404,7 @@ export function GuidedRequestForm({
       .then((agenda) => {
         const slots = flattenPickableSlots(agenda, serviceMode);
         setPickableSlots(slots);
+        setFullSlots(flattenFullSlots(agenda, serviceMode));
         // L'orario del link non è più libero: "Nessuna preferenza" e una riga che lo dice (collaudo I-07).
         if (preferredDate && preferredTimeSlot && serviceMode === initialServiceMode) {
           const linkValue = `${preferredDate}|${preferredTimeSlot}`;
@@ -1930,18 +1958,41 @@ export function GuidedRequestForm({
               </Text>
             ) : null}
             <Text fontSize={13} color={brand.grafite70}>
-              Scegli un orario libero o lascia senza preferenza: non è ancora un appuntamento.
+              {slotListOpen
+                ? "Scegli un orario libero o lascia senza preferenza: non è ancora un appuntamento."
+                : "Non è ancora un appuntamento: il professionista ti risponde con il preventivo."}
             </Text>
-            {/* Stesso elenco del preventivo: una settimana alla volta, un
-                giorno per riga (docs/changelog/2026-11-10-date-del-preventivo.md). */}
-            <div className="slot-picker">
-              <div className="slot-pills" role="radiogroup" aria-label="Preferenza di orario">
-                <button type="button" role="radio" aria-checked={selectedSlotValue === ""} className={`slot-pill${selectedSlotValue === "" ? " is-on" : ""}`} onClick={() => setSelectedSlotValue("")}>
-                  Nessuna preferenza
-                </button>
+            {!slotListOpen && selectedSlotValue && finalPreferredDate && finalPreferredTimeSlot ? (
+              <div className="cat-choice-card" role="group" aria-label="Data e orario scelti">
+                <div className="cat-choice-row">
+                  <span className="cat-choice-icon slot-choice-icon" aria-hidden="true">
+                    <Icon name="calendar" size={22} color="currentColor" strokeWidth={1.8} />
+                  </span>
+                  <span className="cat-choice-text">
+                    <span className="cat-choice-name">{`${shortDayLabel(finalPreferredDate)} · ${finalPreferredTimeSlot.replace("-", "–")}`}</span>
+                    <span className="cat-choice-note">{serviceMode === "HOME" ? "A domicilio" : "Online"} · scelto dall&apos;agenda</span>
+                  </span>
+                  <button type="button" className="cat-choice-change" aria-expanded={false} onClick={() => {
+                      setSlotListOpen(true);
+                      setSlotListFromChange(true);
+                    }}>
+                    Cambia
+                  </button>
+                </div>
               </div>
-              <WeekSlotPicker slots={displaySlots} selectedKey={selectedSlotValue} keyOf={pickableSlotValue} onSelect={setSelectedSlotValue} label="Data e orario dell'appuntamento" />
-            </div>
+            ) : (
+              /* Stesso elenco del preventivo, con l'aspetto dell'agenda del
+                 profilo: sette giorni alla volta da oggi, un giorno per riga
+                 (docs/changelog/2026-11-18-scelta-data-come-profilo.md). */
+              <div ref={slotListRef} className={`slot-picker${slotListFromChange ? " slot-picker-in" : ""}`}>
+                <div className="slot-pills" role="radiogroup" aria-label="Preferenza di orario">
+                  <button type="button" role="radio" aria-checked={selectedSlotValue === ""} className={`slot-pill${selectedSlotValue === "" ? " is-on" : ""}`} onClick={() => setSelectedSlotValue("")}>
+                    Nessuna preferenza
+                  </button>
+                </div>
+                <WeekSlotPicker slots={displaySlots} fullSlots={fullSlots} selectedKey={selectedSlotValue} keyOf={pickableSlotValue} onSelect={setSelectedSlotValue} label="Data e orario dell'appuntamento" />
+              </div>
+            )}
           </YStack>
         ) : null}
 

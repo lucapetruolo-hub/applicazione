@@ -34,7 +34,7 @@ export class ProfessionalClientsService {
           city: true,
           province: true,
           client: { select: { name: true, surname: true, phone: true, email: true, deletedAt: true } },
-          quote: { select: { guidedRequestId: true, items: { select: { name: true }, orderBy: { id: "asc" }, take: 1 }, guidedRequest: { select: { category: { select: { label: true } } } } } },
+          quote: { select: { guidedRequestId: true, items: { select: { name: true }, orderBy: { position: "asc" }, take: 1 }, guidedRequest: { select: { category: { select: { label: true } } } } } },
         },
       }),
       this.prisma.externalJob.findMany({

@@ -156,6 +156,13 @@ export class BookingsController {
     return this.bookingsService.completeWithFinalAmount(req.user.userId, id, body);
   }
 
+  /** "Lavoro terminato" prima del giorno fissato: si chiede al cliente di confermare (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/ask-early-completion")
+  askEarlyCompletion(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.askEarlyCompletion(req.user.userId, id);
+  }
+
   /**
    * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi"),

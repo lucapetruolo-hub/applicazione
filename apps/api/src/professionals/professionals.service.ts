@@ -369,7 +369,7 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
     include: {
       review: true,
       client: { select: { name: true, surname: true } },
-      quote: { select: { items: { select: { name: true }, orderBy: { id: "asc" }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
+      quote: { select: { items: { select: { name: true }, orderBy: { position: "asc" }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
     },
   },
   visibilityBoosts: { where: { status: "ACTIVE" } },
@@ -1949,7 +1949,7 @@ export class ProfessionalsService {
           include: {
             category: true,
             client: true,
-            quotes: { where: { professionalProfileId }, include: { items: true, booking: true } },
+            quotes: { where: { professionalProfileId }, include: { items: { orderBy: { position: "asc" } }, booking: true } },
             // Stato personale del professionista sulla scheda (docs/CHANGELOG.md §130).
             userStates: { where: { userId } },
           },
@@ -2320,12 +2320,12 @@ export class ProfessionalsService {
         // tutti questi campi restano null/[] in quel caso.
         quote: {
           include: {
-            items: true,
+            items: { orderBy: { position: "asc" } },
             guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
             invoiceRequest: true,
           },
         },
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         issue: true,
         jobPayment: true,
         courtesyDocument: { select: COURTESY_DOCUMENT_FIELDS },
@@ -2335,7 +2335,7 @@ export class ProfessionalsService {
           include: {
             quote: {
               include: {
-                items: true,
+                items: { orderBy: { position: "asc" } },
                 guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
                 invoiceRequest: true,
               },
@@ -2480,7 +2480,7 @@ export class ProfessionalsService {
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       clientReminder: clientReminder(booking),
       // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      dateChange: bookingDateChange(booking, booking.ownQuote),
+      dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
@@ -2506,6 +2506,7 @@ export class ProfessionalsService {
       meetingLink: booking.meetingLink,
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      earlyCompletionAskedAt: booking.earlyCompletionAskedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
