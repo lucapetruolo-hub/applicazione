@@ -46,9 +46,13 @@ export default async function PricesIndexPage() {
     <div className="price-page">
       <JsonLd data={breadcrumbJsonLd([{ label: "Home", href: "/" }, { label: "Prezzi" }])} />
       <h1 className="price-page-title">Quanto costa?</h1>
-      <p className="price-page-lead">
-        Prezzi veri: preventivi accettati dai clienti e prezzi indicati dai professionisti nel loro profilo. Nessuna stima inventata.
-      </p>
+      {/* Senza nessun prezzo da mostrare la frase prometteva "prezzi veri" su una
+          pagina vuota (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md). */}
+      {available.length > 0 ? (
+        <p className="price-page-lead">
+          Prezzi veri: preventivi accettati dai clienti e prezzi indicati dai professionisti nel loro profilo. Nessuna stima inventata.
+        </p>
+      ) : null}
 
       {available.length > 0 ? (
         <nav className="popular-services" aria-labelledby="price-index-title">

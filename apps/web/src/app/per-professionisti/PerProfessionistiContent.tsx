@@ -732,9 +732,12 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
       </Grid>
       <YStack borderTopWidth={1} borderColor={LINE} padding="5 gtMd:6" gap="3">
         <CellTitle>Compreso in ogni livello</CellTitle>
-        <YStack gap="2" flexDirection="gtSm:row" flexWrap="gtSm:wrap">
+        {/* Due colonne da computer con una griglia semplice: con le classi di
+            Tamagui restava una colonna sola e, da 13 righe, mezza pagina vuota
+            (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md). */}
+        <div className="pro-features">
           {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="2" alignItems="flex-start" width="gtSm:50%" paddingRight="3">
+            <XStack key={feature} gap="2" alignItems="flex-start">
               {/* flexShrink 0: sul telefono, nelle righe che vanno a capo, la spunta si rimpiccioliva. */}
               <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} aria-hidden style={{ flexShrink: 0, marginTop: 3 }} />
               <Text color={brand.grafite70} flex={1}>
@@ -742,7 +745,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
               </Text>
             </XStack>
           ))}
-        </YStack>
+        </div>
       </YStack>
       <YStack borderTopWidth={1} borderColor={LINE} padding="4" alignItems="center" gap="1">
         <Text fontSize={15} color={brand.grafite70} textAlign="center">

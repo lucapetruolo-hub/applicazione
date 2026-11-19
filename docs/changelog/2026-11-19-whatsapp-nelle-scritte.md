@@ -153,3 +153,19 @@ nasconderla. Compare da sola quando i professionisti veri mettono i prezzi:
 gli account di prova non contano.
 
 **Verifica**: `e2e/tests/quanto-costa.spec.ts` crea tre lavori con prezzo.
+
+## Migliorie prima di unire (Luca, 19/11/2026: "Miglioria 1-3-4 sì")
+
+- **Due colonne**: "Compreso in ogni livello" in /per-professionisti è una
+  griglia semplice (`.pro-features` in `globals.css`): una colonna da telefono,
+  due da 801 px in su. Con le classi di Tamagui (`width="gtSm:50%"`) restava
+  una colonna sola anche da computer, e con 13 righe mezza pagina era vuota.
+- **"Tuttofare"** confermato come nome del mestiere.
+- **/prezzi senza prezzi**: la frase "Prezzi veri... Nessuna stima inventata"
+  compare solo se almeno un mestiere ha una pagina di prezzi; altrimenti resta
+  l'invito al preventivo. Stesso difetto della voce T4.
+- Non scelta (facoltativa): le novità anche nel riquadro scuro della home per
+  i professionisti.
+
+**Verifica**: pagina aperta in locale a 412, 820 e 1440 px: una colonna, due,
+due; niente che esce dallo schermo.
