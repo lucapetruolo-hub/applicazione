@@ -71,6 +71,8 @@ test("dopo il primo salvataggio Oggi porta ai dati fiscali, non di nuovo al prof
 
   await expect(page.getByRole("heading", { name: "Completa il profilo", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Crea il profilo pubblico" })).toHaveCount(0);
+  // Il profilo resta in testa come passo fatto: "1 di N", non di nuovo "0 di N".
+  await expect(page.getByRole("region", { name: "Completa il profilo" })).toContainText(/1 di \d fatti/);
   // Al primo profilo arrivano insieme le richieste già aperte in zona: un solo
   // popup che le conta, non uno per giro fino a coprire lo schermo. Lo si
   // chiude come farebbe la persona prima di andare avanti.
