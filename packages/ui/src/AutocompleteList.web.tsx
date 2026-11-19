@@ -227,7 +227,10 @@ export function revealFieldForList(field: unknown): void {
   if (!node || typeof node.getBoundingClientRect !== "function") return;
   if (!window.matchMedia("(pointer: coarse) and (max-width: 767px)").matches) return;
   if (insideFixed(node)) return;
-  const target = stickyTopBottom() + 12;
+  // Spazio anche per l'etichetta sopra il campo ("Città in cui operi"),
+  // che prima restava sotto la barra in alto
+  // (docs/changelog/2026-11-19-campi-obbligatori-profilo.md).
+  const target = stickyTopBottom() + 40;
   const delta = node.getBoundingClientRect().top - target;
   if (Math.abs(delta) < 8) return;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

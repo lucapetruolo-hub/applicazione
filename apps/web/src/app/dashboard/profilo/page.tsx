@@ -105,10 +105,15 @@ const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
 
 /**
  * Campo da raggiungere toccando l'errore sopra "Salva profilo"
- * (docs/changelog/2026-11-19-campi-obbligatori-profilo.md): un id, oppure il
- * prezzo di una prestazione, che va prima riaperta.
+ * (docs/changelog/2026-11-19-campi-obbligatori-profilo.md): uno dei campi
+ * qui sotto, oppure i prezzi di una prestazione, che va prima riaperta.
  */
-type ProfileFieldTarget = { id: string } | { serviceIndex: number; ariaLabel: string };
+type ProfileField = keyof typeof PROFILE_FIELD_ID | { serviceIndex: number };
+/** Cosa non va in un campo: il messaggio e, per i prezzi, quale dei due. */
+type ProfileProblem = { message: string; field: ProfileField; price?: "min" | "max" };
+const sameProfileField = (a: ProfileField, b: ProfileField) =>
+  typeof a === "string" || typeof b === "string" ? a === b : a.serviceIndex === b.serviceIndex;
+const notAPrice = (price: string) => price.trim() !== "" && Number.isNaN(Number(price.trim().replace(",", ".")));
 const PROFILE_FIELD_ID = {
   nome: "profilo-campo-nome",
   citta: "profilo-campo-citta",
@@ -361,8 +366,9 @@ export default function DashboardProfiloPage() {
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  // Il campo a cui porta l'errore, se è di un campo del modulo.
-  const [errorTarget, setErrorTarget] = useState<ProfileFieldTarget | null>(null);
+  // Il campo a cui porta l'errore, se è di un campo del modulo: finché resta
+  // sbagliato ha il bordo rosso, corretto l'errore sparisce da solo.
+  const [errorField, setErrorField] = useState<ProfileField | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -566,6 +572,7 @@ export default function DashboardProfiloPage() {
   function discardChanges() {
     setConfirmDiscard(false);
     setError(null);
+    setErrorField(null);
     setMode("preview");
     window.scrollTo({ top: 0 });
     if (!token) return;
@@ -668,46 +675,52 @@ export default function DashboardProfiloPage() {
     );
   }
 
+  /** Cosa non va in un campo del modulo, null se è a posto. */
+  function profileProblem(field: ProfileField): ProfileProblem | null {
+    if (field === "nome") {
+      if (businessName.trim().length < 2) return { message: "Inserisci il nome della tua attività.", field };
+      if (companyNameForPrivate) return { message: "Il nome è quello di una società: da privato senza partita IVA non si può usare.", field };
+      return null;
+    }
+    if (field === "citta") return city.trim() ? null : { message: "Indica la città in cui operi.", field };
+    if (field === "categorie") return categorySlugs.length > 0 ? null : { message: NO_CATEGORY_MESSAGE, field };
+    if (field === "anni") {
+      const years = yearsOfExperience.trim();
+      return !years || (/^\d+$/.test(years) && Number(years) <= 80) ? null : { message: "Gli anni di esperienza devono essere un numero tra 0 e 80.", field };
+    }
+    const service = services[field.serviceIndex];
+    const name = service?.name.trim();
+    if (!service || !name) return null;
+    const min = service.priceMin.trim();
+    const max = service.priceMax.trim();
+    if (notAPrice(min)) return { message: `Prezzo minimo non valido per "${name}".`, field, price: "min" };
+    if (notAPrice(max)) return { message: `Prezzo massimo non valido per "${name}".`, field, price: "max" };
+    if (min && max && Number(max.replace(",", ".")) < Number(min.replace(",", "."))) {
+      return { message: `Il prezzo massimo deve essere maggiore o uguale al minimo per "${name}".`, field, price: "max" };
+    }
+    return null;
+  }
+
+  function firstProfileProblem(): ProfileProblem | null {
+    const fields: ProfileField[] = ["nome", "citta", "categorie", "anni", ...services.map((_, serviceIndex) => ({ serviceIndex }))];
+    for (const field of fields) {
+      const problem = profileProblem(field);
+      if (problem) return problem;
+    }
+    return null;
+  }
+
   /** Validazione + salvataggio del form principale; `true` se è andato a buon fine. */
   async function saveProfile(): Promise<boolean> {
     setError(null);
-    setErrorTarget(null);
-    const fail = (message: string, target: ProfileFieldTarget) => {
-      setError(message);
-      setErrorTarget(target);
-      return false;
-    };
+    setErrorField(null);
     // Nello stesso ordine della pagina: se manca più di un campo, l'errore
     // porta al primo che si incontra scorrendo.
-    if (!businessName.trim() || businessName.trim().length < 2) {
-      return fail("Inserisci il nome della tua attività.", { id: PROFILE_FIELD_ID.nome });
-    }
-    if (companyNameForPrivate) {
-      return fail("Il nome è quello di una società: da privato senza partita IVA non si può usare.", { id: PROFILE_FIELD_ID.nome });
-    }
-    if (!city.trim()) {
-      return fail("Indica la città in cui operi.", { id: PROFILE_FIELD_ID.citta });
-    }
-    if (categorySlugs.length === 0) {
-      return fail(NO_CATEGORY_MESSAGE, { id: PROFILE_FIELD_ID.categorie });
-    }
-    if (yearsOfExperience.trim() && (!/^\d+$/.test(yearsOfExperience.trim()) || Number(yearsOfExperience.trim()) > 80)) {
-      return fail("Gli anni di esperienza devono essere un numero tra 0 e 80.", { id: PROFILE_FIELD_ID.anni });
-    }
-
-    const notANumber = (price: string) => price.trim() !== "" && Number.isNaN(Number(price.trim().replace(",", ".")));
-    for (const [index, service] of services.entries()) {
-      const name = service.name.trim();
-      if (!name) continue;
-      const min = service.priceMin.trim();
-      const max = service.priceMax.trim();
-      const minLabel = `Prezzo minimo di ${name} in euro`;
-      const maxLabel = `Prezzo massimo di ${name} in euro`;
-      if (notANumber(min)) return fail(`Prezzo minimo non valido per "${name}".`, { serviceIndex: index, ariaLabel: minLabel });
-      if (notANumber(max)) return fail(`Prezzo massimo non valido per "${name}".`, { serviceIndex: index, ariaLabel: maxLabel });
-      if (min && max && Number(max.replace(",", ".")) < Number(min.replace(",", "."))) {
-        return fail(`Il prezzo massimo deve essere maggiore o uguale al minimo per "${name}".`, { serviceIndex: index, ariaLabel: maxLabel });
-      }
+    const problem = firstProfileProblem();
+    if (problem) {
+      setErrorField(problem.field);
+      if (problem.field === "nome" && companyNameForPrivate) businessNameInputRef.current?.focus();
+      return false;
     }
     const cleanedServices = services
       .map((service) => ({
@@ -782,13 +795,16 @@ export default function DashboardProfiloPage() {
    * Tocco sull'errore: scorre fino al campo e ci mette il cursore. L'indice in
    * alto segue da solo la parte in vista; una prestazione chiusa si riapre.
    */
-  function goToField(target: ProfileFieldTarget) {
+  function goToField(problem: ProfileProblem) {
+    const target = problem.field;
     let field: HTMLElement | null | undefined;
-    if ("id" in target) {
-      field = document.getElementById(target.id);
+    if (typeof target === "string") {
+      field = document.getElementById(PROFILE_FIELD_ID[target]);
     } else {
       flushSync(() => setServices((prev) => prev.map((service, i) => (i === target.serviceIndex ? { ...service, open: true } : service))));
-      field = [...document.querySelectorAll<HTMLElement>("#profilo-prestazioni input")].find((input) => input.getAttribute("aria-label") === target.ariaLabel);
+      const name = services[target.serviceIndex]?.name.trim() ?? "";
+      const label = `${problem.price === "min" ? "Prezzo minimo" : "Prezzo massimo"} di ${name} in euro`;
+      field = [...document.querySelectorAll<HTMLElement>("#profilo-prestazioni input")].find((input) => input.getAttribute("aria-label") === label);
     }
     if (!field) return;
     const focusable = field.matches("input, textarea, select, button")
@@ -989,6 +1005,13 @@ export default function DashboardProfiloPage() {
   const identityStep = journey?.find((step) => step.key === "identity") ?? null;
   const paymentsStep = journey?.find((step) => step.key === "payments") ?? null;
   const nextStep = journey ? journeyCurrent(journey) : null;
+
+  // L'errore di un campo vale finché il campo resta sbagliato.
+  const fieldError = errorField !== null ? profileProblem(errorField) : null;
+  const shownError = errorField !== null ? (fieldError?.message ?? null) : error;
+  const invalid = (field: ProfileField) => (fieldError !== null && sameProfileField(fieldError.field, field)) || undefined;
+  const invalidPrice =
+    fieldError && typeof fieldError.field !== "string" && fieldError.price ? { index: fieldError.field.serviceIndex, which: fieldError.price } : null;
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4" gap="5">
@@ -1255,12 +1278,12 @@ export default function DashboardProfiloPage() {
               ref={businessNameInputRef}
               id={PROFILE_FIELD_ID.nome}
               aria-label="Nome attività"
-              aria-invalid={companyNameForPrivate || undefined}
+              aria-invalid={companyNameForPrivate || invalid("nome")}
               aria-describedby={companyNameForPrivate ? "nome-societa-privato" : undefined}
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="Es. Rossi Impianti"
-              style={companyNameForPrivate ? { ...inputStyle, borderColor: brand.urgenza } : inputStyle}
+              style={companyNameForPrivate || invalid("nome") ? { ...inputStyle, borderColor: brand.urgenza } : inputStyle}
             />
             {companyNameForPrivate ? (
               <Text id="nome-societa-privato" fontSize={13} color={brand.urgenza}>
@@ -1287,7 +1310,13 @@ export default function DashboardProfiloPage() {
             {/* Bianco con il bordo degli altri campi, come in Account: grigio
                 sembrava già scelto o non modificabile
                 (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */}
-            <YStack className="guided-city guided-city-inline" borderWidth={1} borderColor={brand.bordoCampo} borderRadius={10} backgroundColor="#ffffff">
+            <YStack
+              className="guided-city guided-city-inline"
+              borderWidth={1}
+              borderColor={invalid("citta") ? brand.urgenza : brand.bordoCampo}
+              borderRadius={10}
+              backgroundColor="#ffffff"
+            >
               <Autocomplete
                 id={PROFILE_FIELD_ID.citta}
                 items={allItalianCityNames()}
@@ -1342,7 +1371,7 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="2">
             <FieldLabel>Categorie</FieldLabel>
-            <div id={PROFILE_FIELD_ID.categorie}>
+            <div id={PROFILE_FIELD_ID.categorie} className={invalid("categorie") ? "field-invalid-frame" : undefined}>
               <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
             </div>
           </YStack>
@@ -1465,13 +1494,14 @@ export default function DashboardProfiloPage() {
             <input
               id={PROFILE_FIELD_ID.anni}
               aria-label="Anni di esperienza"
+              aria-invalid={invalid("anni")}
               type="number"
               min={0}
               max={80}
               value={yearsOfExperience}
               onChange={(e) => setYearsOfExperience(e.target.value)}
               placeholder="Es. 10"
-              style={{ ...inputStyle, maxWidth: 160 }}
+              style={{ ...inputStyle, maxWidth: 160, ...(invalid("anni") ? { borderColor: brand.urgenza } : {}) }}
             />
           </YStack>
 
@@ -1607,6 +1637,7 @@ export default function DashboardProfiloPage() {
           <ServicesEditor
             services={services}
             setServices={setServices}
+            invalidPrice={invalidPrice}
             categorySlugs={categorySlugs}
             suggestedFor={suggestedFor}
             serviceCategory={serviceCategory}
@@ -1863,8 +1894,8 @@ export default function DashboardProfiloPage() {
           saving={isSubmitting}
           onSave={handleSubmit}
           saveLabel="Salva profilo"
-          error={error}
-          onErrorPress={errorTarget ? () => goToField(errorTarget) : undefined}
+          error={shownError}
+          onErrorPress={fieldError ? () => goToField(fieldError) : undefined}
         />
       </YStack>
       )}

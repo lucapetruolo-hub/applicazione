@@ -30,6 +30,8 @@ test("Modifica: la città si sceglie dall'elenco dei comuni, caricato all'apertu
   await expect(card.getByText("Torna alla richiesta")).toBeVisible();
 
   const city = card.getByPlaceholder("Città");
+  // Bianca come la descrizione, non grigia (docs/changelog/2026-11-19-campi-obbligatori-profilo.md).
+  expect(await city.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(255, 255, 255)");
   await city.fill("Sabaud");
   await page.getByRole("option", { name: "Sabaudia", exact: true }).click();
   await expect(city).toHaveValue("Sabaudia");

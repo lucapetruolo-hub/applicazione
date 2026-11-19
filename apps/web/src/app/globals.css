@@ -10624,6 +10624,25 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: save-bar-in 180ms ease-out;
   }
 }
+/* Campo sbagliato dopo "Salva" o "Avanti": rosso finché non è a posto
+   (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). Riquadro attorno
+   ai gruppi (mestieri, "Quando ti serve?"), bordo sui campi della richiesta. */
+.field-invalid-frame {
+  outline: 2px solid #b42318;
+  outline-offset: 8px;
+  border-radius: 12px;
+}
+.guided-request-form input[aria-invalid="true"],
+.guided-request-form textarea[aria-invalid="true"],
+.guided-invalid input,
+.guided-invalid.guided-city > div {
+  border-color: #b42318 !important;
+}
+.guided-request-form textarea.guided-description-input[aria-invalid="true"] {
+  border: 2px solid #b42318 !important;
+  background: #ffffff !important;
+  animation: none;
+}
 /* Errore del salvataggio sopra il pulsante; se porta a un campo è un
    pulsante che sembra un link (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */
 .save-bar-error:empty {
