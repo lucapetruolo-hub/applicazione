@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "@/components/IntentLink";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
@@ -31,9 +31,17 @@ export function FooterByPath({ full, short }: { full: ReactNode; short: ReactNod
 }
 
 /** Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */
+const noSubscribe = () => () => {};
+
 export function FooterLoginLink() {
   const { user } = useAuth();
-  if (user) return null;
+  // Il piede arriva dopo il resto della pagina (Suspense): quando si aggancia
+  // l'utente è già noto, mentre il server ha scritto "Accedi". Durante
+  // l'aggancio React usa il valore del server (false), così l'HTML combacia,
+  // e subito dopo toglie il link a chi è dentro (errore "Hydration failed" su
+  // ogni pagina per chi era collegato, docs/changelog/2026-11-19-piede-accedi-hydration.md).
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
+  if (hydrated && user) return null;
   return (
     <Link href="/accedi" className={styles.link}>
       <span className={`is_Text ${styles.linkText}`}>Accedi</span>
