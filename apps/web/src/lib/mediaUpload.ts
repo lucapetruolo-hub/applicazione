@@ -118,7 +118,8 @@ async function uploadVideoDirect(
     ticket = await apiClient.getVideoUploadTicket(token, forChat);
   } catch (err) {
     // 503: Cloudinary non configurato per il caricamento diretto. Altri errori del permesso: idem, si prova dall'API.
-    if (err instanceof ApiError && err.status !== 0) return null;
+    // 429: video di oggi finiti (docs/changelog/2026-11-19-revisione-termini-e-video.md): niente ripiego, si mostra il messaggio.
+    if (err instanceof ApiError && err.status !== 0 && err.status !== 429) return null;
     throw err;
   }
   // Solo verso Cloudinary: un indirizzo diverso non deve mai ricevere il file.

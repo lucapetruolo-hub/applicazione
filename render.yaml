@@ -239,6 +239,12 @@ services:
       # docs/changelog/2026-11-16-scatta-dal-telefono.md.
       - key: PHOTO_HANDOFF_IP_DAILY_LIMIT
         sync: false
+      # Facoltative: video al giorno per utente (20) e per tutto il sito (1500),
+      # docs/changelog/2026-11-19-revisione-termini-e-video.md.
+      - key: VIDEO_UPLOAD_USER_DAILY_LIMIT
+        sync: false
+      - key: VIDEO_UPLOAD_DAILY_LIMIT
+        sync: false
       - key: OPENROUTER_MODEL
         sync: false
       # WhatsApp: versione delle API di Meta e prezzi per il registro dei costi

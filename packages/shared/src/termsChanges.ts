@@ -91,7 +91,8 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     notify: false,
   },
   {
-    // Spostare la data e lavoro terminato in anticipo (Luca, docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    // Spostare la data e lavoro terminato in anticipo (Luca, docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md)
+    // e correzioni del punto 5 (docs/changelog/2026-11-19-revisione-termini-e-video.md).
     version: "2026-11-19",
     publishedAt: "2026-11-19",
     effectiveAt: "2026-11-19",
@@ -99,6 +100,7 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
       "Dopo l'accettazione anche il professionista può proporre un'altra data, e si può spostare una sola visita di un lavoro ricorrente: finché l'altro non accetta resta la data fissata, e senza risposta prima dell'appuntamento la proposta scade.",
       "Se è il professionista a chiedere per primo di spostare l'appuntamento, finché la proposta aspetta risposta il cliente può annullare senza perdere l'acconto.",
       "Prima del giorno fissato il lavoro si chiude solo dopo che il cliente ha confermato che è già finito.",
+      "Correzioni al punto 5: l'acconto online si calcola sul prezzo minimo anche dove era rimasto scritto il massimo; se il cliente annulla dentro il preavviso e il preventivo lo prevede, l'acconto pagato online non è rimborsabile, come il cliente vede già prima di accettare.",
     ],
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
