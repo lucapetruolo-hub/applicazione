@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { POPULAR_SERVICES } from "./categories";
-import { canonicalServiceName, serviceNameKey, serviceNameMatches, similarServiceName, splitServiceList } from "./serviceNames";
+import { canonicalServiceName, serviceNameKey, serviceNameMatches, similarServiceName } from "./serviceNames";
 
 test("le varianti scritte a mano finiscono nella stessa voce", () => {
   for (const variant of ["riparazione perdite", "Riparazione perdita d'acqua", "RIPARAZIONE PERDITE D'ACQUA", "perdite"]) {
@@ -49,16 +49,6 @@ test("la casella di \"Quanto costa\" trova le voci con le parole di chi scrive",
   assert.ok(serviceNameMatches("Sostituzione caldaia", "Caldaia"));
   assert.ok(!serviceNameMatches("Sostituzione caldaia", "perdite"));
   assert.ok(!serviceNameMatches("Trasloco locale", "zzz"));
-});
-
-test("più lavori insieme: virgole, a capo, varianti del catalogo e doppioni", () => {
-  const { added, alreadyThere } = splitServiceList("sturatura scarichi, perdite;\n- posa carta da parati\n, ,Perdite, x, Sostituzione sifone", ["Sostituzione sifone"]);
-  assert.deepEqual(added, ["Sturatura scarichi", "Riparazione perdita d'acqua", "Posa carta da parati"]);
-  assert.equal(alreadyThere, 2);
-});
-
-test("più lavori insieme: testo vuoto non aggiunge niente", () => {
-  assert.deepEqual(splitServiceList("  , ;\n "), { added: [], alreadyThere: 0 });
 });
 
 test("prestazioni che sembrano lo stesso lavoro", () => {

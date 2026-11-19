@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import { Search, X } from "lucide-react";
 import {
   MAX_PROFESSIONAL_SERVICES,
@@ -10,7 +10,6 @@ import {
   canonicalServiceName,
   formatServicePrice,
   similarServiceName,
-  splitServiceList,
   type ProfessionalCategorySlug,
   type ServicePriceUnit,
 } from "@professionisti/shared";
@@ -19,8 +18,10 @@ import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 
 /**
  * Prestazioni offerte nel profilo (docs/changelog/2026-11-17-prestazioni-veloci.md):
- * una riga che spiega perché aggiungerne tante, "Aggiungi più lavori insieme"
- * separati da virgole, e righe compatte con il prezzo che si apre solo se serve.
+ * una riga che spiega perché aggiungerne tante e righe compatte con il prezzo
+ * che si apre solo se serve. La casella "Aggiungi più lavori insieme" è stata
+ * tolta su richiesta di Luca (docs/changelog/2026-11-19-togli-piu-lavori-insieme.md):
+ * si aggiunge dai "Più cercati" o con "+ Scrivi un'altra prestazione".
  */
 export type EditableService = {
   name: string;
@@ -72,7 +73,6 @@ export function ServicesEditor({
   suggestedFor,
   serviceCategory,
   datalistNames,
-  quickAddRef,
 }: {
   services: EditableService[];
   setServices: Dispatch<SetStateAction<EditableService[]>>;
@@ -80,14 +80,10 @@ export function ServicesEditor({
   suggestedFor: (slug: ProfessionalCategorySlug) => string[];
   serviceCategory: (service: EditableService) => ProfessionalCategorySlug | undefined;
   datalistNames: string[];
-  quickAddRef?: RefObject<HTMLInputElement | null>;
 }) {
   const [showAllSuggested, setShowAllSuggested] = useState<Record<string, boolean>>({});
   const [showMore, setShowMore] = useState(false);
-  const [quickText, setQuickText] = useState("");
-  const [quickStatus, setQuickStatus] = useState<string | null>(null);
   const ids = useId();
-  const quickId = `${ids}-veloce`;
   const moreId = `${ids}-scopri`;
 
   const named = services.filter((service) => service.name.trim()).length;
@@ -103,32 +99,6 @@ export function ServicesEditor({
     if (full) return;
     setServices((prev) => [...prev, { name, priceMin: "", priceMax: "", priceUnit: "JOB", categorySlug, open, fresh: true }]);
   }
-  /** Mestiere di un nome scritto: quello che lo suggerisce, altrimenti il principale. */
-  function categoryForName(name: string): ProfessionalCategorySlug | null {
-    return categorySlugs.find((slug) => suggestedFor(slug).includes(name)) ?? categorySlugs[0] ?? null;
-  }
-
-  function addQuick() {
-    const { added, alreadyThere } = splitServiceList(
-      quickText,
-      services.map((service) => service.name),
-    );
-    const room = Math.max(0, MAX_PROFESSIONAL_SERVICES - services.length);
-    const taken = added.slice(0, room);
-    if (taken.length > 0) {
-      setServices((prev) => [
-        ...prev,
-        ...taken.map((name) => ({ name, priceMin: "", priceMax: "", priceUnit: "JOB" as const, categorySlug: categoryForName(name), fresh: true })),
-      ]);
-    }
-    const parts: string[] = [];
-    if (taken.length > 0) parts.push(taken.length === 1 ? "Aggiunto 1 lavoro" : `Aggiunti ${taken.length} lavori`);
-    if (alreadyThere > 0) parts.push(alreadyThere === 1 ? "1 c'era già" : `${alreadyThere} c'erano già`);
-    if (added.length > room) parts.push(`puoi averne al massimo ${MAX_PROFESSIONAL_SERVICES}`);
-    setQuickStatus(parts.length > 0 ? `${parts.join(", ")}.` : "Scrivi almeno un lavoro.");
-    if (taken.length > 0 || alreadyThere > 0) setQuickText("");
-  }
-
   const addedNames = new Set(services.map((service) => canonicalServiceName(service.name)));
   const indexed = services.map((service, index) => ({ service, index }));
   const groups: { key: string; slug: ProfessionalCategorySlug | null; label: string | null; rows: typeof indexed; suggested: string[] }[] =
@@ -176,59 +146,6 @@ export function ServicesEditor({
           ? "Nessun lavoro ancora: aggiungine qualcuno qui sotto."
           : `${named === 1 ? "1 lavoro aggiunto" : `${named} lavori aggiunti`}${named < MAX_PROFESSIONAL_SERVICES ? ": più ne metti, più ricerche ti trovano." : "."}`}
       </Text>
-
-      {/* "Aggiungi più lavori insieme" (idea di Luca): virgole o a capo; sul
-          telefono basta anche un lavoro alla volta con Invio. */}
-      <YStack gap="2">
-        <label htmlFor={quickId} style={{ fontSize: 15, fontWeight: 700, color: brand.grafite }}>
-          Aggiungi più lavori insieme
-        </label>
-        <XStack gap="2" alignItems="center" flexWrap="wrap">
-          <input
-            id={quickId}
-            ref={quickAddRef}
-            value={quickText}
-            disabled={full}
-            enterKeyHint="done"
-            autoComplete="off"
-            onChange={(e) => {
-              setQuickText(e.target.value);
-              setQuickStatus(null);
-            }}
-            onPaste={(e) => {
-              // Un elenco incollato a righe diventa un elenco a virgole: il campo non tiene gli "a capo".
-              const pasted = e.clipboardData.getData("text");
-              if (!/[\r\n]/.test(pasted)) return;
-              e.preventDefault();
-              const joined = pasted.split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean).join(", ");
-              setQuickText((prev) => {
-                let end = prev.length;
-                while (end > 0 && (prev[end - 1] === "," || prev[end - 1]!.trim() === "")) end -= 1;
-                return end > 0 ? `${prev.slice(0, end)}, ${joined}` : joined;
-              });
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              e.preventDefault();
-              addQuick();
-            }}
-            placeholder={full ? `Hai già ${MAX_PROFESSIONAL_SERVICES} lavori` : "Es. sturatura scarichi, sostituzione sifone"}
-            aria-describedby={`${quickId}-aiuto`}
-            style={{ ...inputStyle, padding: 12, flex: 1, minWidth: 220, height: 48 }}
-          />
-          <Button variant="primary" size="3" height={48} disabled={full || !quickText.trim()} onPress={addQuick}>
-            Aggiungi
-          </Button>
-        </XStack>
-        <Text id={`${quickId}-aiuto`} fontSize={13} color={brand.grafite70}>
-          Separali con una virgola. Il prezzo puoi metterlo dopo.
-        </Text>
-        {quickStatus ? (
-          <Text fontSize={14} fontWeight="600" color={brand.cianografiaScuro} role="status">
-            {quickStatus}
-          </Text>
-        ) : null}
-      </YStack>
 
       {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
           uno, la sua prestazione si somma alle altre uguali nella ricerca e

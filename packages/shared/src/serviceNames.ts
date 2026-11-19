@@ -266,44 +266,6 @@ export function serviceCategoryOf<Slug extends keyof typeof POPULAR_SERVICES>(
 /** Prestazioni al massimo in un profilo (`professionalServiceSchema`, `max(30)`). */
 export const MAX_PROFESSIONAL_SERVICES = 30;
 
-/** Toglie trattini, puntini e spazi a inizio voce e punti e spazi in fondo (senza espressioni regolari: testo libero). */
-function trimListMarks(piece: string): string {
-  const leading = new Set([" ", "\t", "-", "•", "*", "·", "."]);
-  const trailing = new Set([" ", "\t", "."]);
-  let start = 0;
-  let end = piece.length;
-  while (start < end && (leading.has(piece[start]!) || /\s/.test(piece[start]!))) start += 1;
-  while (end > start && (trailing.has(piece[end - 1]!) || /\s/.test(piece[end - 1]!))) end -= 1;
-  return piece.slice(start, end);
-}
-
-/**
- * "Aggiungi più lavori insieme" nel profilo (docs/changelog/2026-11-17-prestazioni-veloci.md):
- * il testo diviso a virgole, punti e virgola o a capo, ogni voce con il nome
- * del catalogo se è una sua variante (stessa regola di `canonicalServiceName`,
- * nessuna parola nuova nel dizionario), prima lettera maiuscola, senza doppioni
- * e senza le voci già presenti in `existing`. Le voci di una lettera sola si scartano.
- */
-export function splitServiceList(text: string, existing: readonly string[] = []): { added: string[]; alreadyThere: number } {
-  const seen = new Set(existing.map(serviceNameKey));
-  const added: string[] = [];
-  let alreadyThere = 0;
-  for (const piece of text.split(/[,;\n\r]+/)) {
-    const cleaned = trimListMarks(piece).replace(/\s+/g, " ").slice(0, 120);
-    if (cleaned.length < 2) continue;
-    const canonical = canonicalServiceName(cleaned);
-    const name = canonical.charAt(0).toLocaleUpperCase("it-IT") + canonical.slice(1);
-    const key = serviceNameKey(name);
-    if (seen.has(key)) {
-      alreadyThere += 1;
-      continue;
-    }
-    seen.add(key);
-    added.push(name);
-  }
-  return { added, alreadyThere };
-}
-
 /**
  * Nel profilo, un'altra prestazione che sembra lo stesso lavoro
  * (docs/changelog/2026-11-17-prestazioni-veloci.md): quasi uguale

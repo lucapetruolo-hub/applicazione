@@ -299,8 +299,8 @@ export default function DashboardProfiloPage() {
   const [lateCancelKeepsDeposit, setLateCancelKeepsDeposit] = useState(false);
   const [services, setServices] = useState<EditableService[]>([]);
   // Da Oggi o dal preventivo con "Aggiungi lavori" (?campo=prestazioni): modulo aperto sulle prestazioni.
-  const servicesQuickAddRef = useRef<HTMLInputElement>(null);
-  const [focusServices, setFocusServices] = useState(false);
+  // Da Oggi o dal preventivo: alla prossima apertura del modulo si scorre alle prestazioni.
+  const focusServicesRef = useRef(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Copertina del profilo pubblico: si salva subito, come la foto (docs/changelog/2026-11-13-copertina-profilo.md).
   const [cover, setCover] = useState<CoverValue>({ coverImageUrl: null, coverPreset: null });
@@ -423,13 +423,12 @@ export default function DashboardProfiloPage() {
     input.select();
   }, [focusBusinessName, mode, isLoadingProfile]);
   useEffect(() => {
-    if (!focusServices || mode !== "edit" || isLoadingProfile) return;
-    const input = servicesQuickAddRef.current;
-    if (!input) return;
-    setFocusServices(false);
-    document.getElementById("profilo-prestazioni")?.scrollIntoView({ block: "start" });
-    input.focus({ preventScroll: true });
-  }, [focusServices, mode, isLoadingProfile]);
+    if (!focusServicesRef.current || mode !== "edit" || isLoadingProfile) return;
+    const section = document.getElementById("profilo-prestazioni");
+    if (!section) return;
+    focusServicesRef.current = false;
+    section.scrollIntoView({ block: "start" });
+  }, [mode, isLoadingProfile]);
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
   // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
@@ -528,7 +527,7 @@ export default function DashboardProfiloPage() {
         // Da Oggi o dal preventivo: si apre il modulo sulle prestazioni.
         if (profile && (new URLSearchParams(window.location.search).get("campo") === "prestazioni" || window.location.hash === "#profilo-prestazioni")) {
           setMode("edit");
-          setFocusServices(true);
+          focusServicesRef.current = true;
         }
         // Primo profilo: parte dalla foto dell'account (quella di Google per
         // chi si è registrato con Google), modificabile come le altre.
@@ -1546,7 +1545,7 @@ export default function DashboardProfiloPage() {
 
         <Surface gap="3" id="profilo-prestazioni" className="profile-section">
           <SectionTitle>Prestazioni offerte</SectionTitle>
-          {/* Riga che spiega, più lavori insieme e prezzo che si apre a richiesta
+          {/* Riga che spiega e prezzo che si apre a richiesta
               (docs/changelog/2026-11-17-prestazioni-veloci.md). */}
           <ServicesEditor
             services={services}
@@ -1555,7 +1554,6 @@ export default function DashboardProfiloPage() {
             suggestedFor={suggestedFor}
             serviceCategory={serviceCategory}
             datalistNames={[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])]}
-            quickAddRef={servicesQuickAddRef}
           />
           {/* Richieste in attesa del mestiere scritto (docs/changelog/2026-11-17-richieste-in-attesa.md). */}
           <WaitingRequestsNearby token={token} city={city} texts={[...services.map((service) => service.name), certifications]} />

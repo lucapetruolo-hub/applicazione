@@ -125,7 +125,8 @@ test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita
   await page.goto("/dashboard/profilo#profilo-prestazioni");
   const hint = page.locator(".services-why");
   await expect(hint).toContainText("Ogni lavoro che aggiungi ti fa trovare");
-  await expect(page.getByLabel("Aggiungi più lavori insieme")).toBeFocused();
+  await expect(page.locator("#profilo-prestazioni")).toBeInViewport();
+  await expect(page.getByLabel("Aggiungi più lavori insieme")).toHaveCount(0);
   await hint.scrollIntoViewIfNeeded();
   await page.screenshot({ path: "test-results/preventivo-veloce-profilo-suggerimento.png" });
   const axe = await new AxeBuilder({ page }).include("#profilo-prestazioni").analyze();
