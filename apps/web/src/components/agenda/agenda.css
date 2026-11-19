@@ -974,9 +974,6 @@
   line-height: 1.5;
 }
 .ag-pay {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   border-radius: 14px;
   padding: 12px 14px;
   background: #f6f1ec;
@@ -984,20 +981,48 @@
 .ag-pay.paid {
   background: var(--ag-green-veil);
 }
-.ag-pay b {
-  display: block;
-  font-size: 15px;
+/* Righe come in un conto: scritta a sinistra, cifra a destra, tutte allineate. */
+.ag-pay dl {
+  margin: 0;
 }
-.ag-pay span {
+.ag-pay dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 14.5px;
+}
+.ag-pay dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ag-pay dd {
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ag-pay dl > div.strong {
+  margin-top: 5px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 59, 59, 0.14);
+  font-weight: 600;
+  font-size: 15.5px;
+}
+.ag-pay dl > div.strong:first-child {
+  margin-top: 0;
+  padding-top: 3px;
+  border-top: 0;
+}
+.ag-pay p {
+  margin-top: 6px;
   font-size: 13px;
+  line-height: 1.4;
   color: var(--ag-muted);
 }
-.ag-pay .amt {
-  margin-left: auto;
-  text-align: right;
-  font-weight: 600;
-  font-size: 15px;
-  white-space: nowrap;
+.ag-pay dl + p {
+  margin-top: 8px;
 }
 .ag-note {
   width: 100%;

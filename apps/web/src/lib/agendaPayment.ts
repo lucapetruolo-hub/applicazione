@@ -1,7 +1,13 @@
 import { formatEurCents, formatServicePriceRange, quotePriceTotals, type ProfessionalBooking } from "@professionisti/shared";
 
-/** Riga del pagamento nel riquadro dell'appuntamento (docs/CHANGELOG.md §288): cosa è già pagato e cosa resta da incassare. */
-export type AgendaPaymentLine = { title: string; detail: string; amount: string | null; paid: boolean };
+/**
+ * Pagamento nel riquadro dell'appuntamento (docs/CHANGELOG.md §288), a righe
+ * come un conto (richiesta di Luca, docs/changelog/2026-11-19-pagamento-in-agenda.md):
+ * totale del preventivo, pagato online, quello che resta. `strong` è la riga
+ * che interessa di più adesso (quanto resta da incassare), `done` una cifra già pagata.
+ */
+export type AgendaPaymentRow = { label: string; value: string; strong?: boolean; done?: boolean };
+export type AgendaPayment = { rows: AgendaPaymentRow[]; note: string; paid: boolean };
 
 type BookingPaymentInput = Pick<ProfessionalBooking, "status" | "items" | "finalAmountEurCents" | "payment">;
 
@@ -12,40 +18,35 @@ function quoteRange(items: BookingPaymentInput["items"], minusCents = 0): string
   return formatServicePriceRange(Math.max(0, totalMinEurCents - minusCents), Math.max(0, totalMaxEurCents - minusCents));
 }
 
-export function agendaPaymentLine(booking: BookingPaymentInput): AgendaPaymentLine {
+export function agendaPayment(booking: BookingPaymentInput): AgendaPayment {
   const payment = booking.payment;
   const online = payment?.method === "ONLINE";
   const paid = payment?.paidEurCents ?? 0;
+  const rows: AgendaPaymentRow[] = [];
 
   if (booking.status === "COMPLETED" && booking.finalAmountEurCents !== null) {
-    const total = formatEurCents(booking.finalAmountEurCents);
-    if (!online) return { title: "Pagamento diretto", detail: "Importo finale del lavoro", amount: total, paid: false };
-    if ((payment?.balanceDueEurCents ?? 0) > 0) {
-      return {
-        title: payment?.balanceDirect ? "Saldo da incassare" : "Saldo da pagare online",
-        detail: `Già pagato online ${formatEurCents(paid)}`,
-        amount: formatEurCents(payment!.balanceDueEurCents),
-        paid: false,
-      };
+    rows.push({ label: "Importo finale", value: formatEurCents(booking.finalAmountEurCents) });
+    if (!online) return { rows, note: "Pagamento diretto: ti paga il cliente.", paid: false };
+    if (paid > 0) rows.push({ label: "Pagato online", value: formatEurCents(paid), done: true });
+    const due = payment?.balanceDueEurCents ?? 0;
+    if (due > 0) {
+      rows.push({ label: payment?.balanceDirect ? "Resta da incassare" : "Resta da pagare online", value: formatEurCents(due), strong: true });
+      return { rows, note: payment?.balanceDirect ? "Il saldo te lo paga il cliente." : "Il saldo lo paga il cliente online.", paid: false };
     }
-    return { title: "Pagato", detail: payment?.balanceDirect ? "Acconto online, saldo diretto" : "Tutto online", amount: total, paid: true };
+    if (payment?.balanceDirect && payment.directBalanceEurCents) rows.push({ label: "Saldo diretto", value: formatEurCents(payment.directBalanceEurCents) });
+    return { rows, note: payment?.balanceDirect ? "Pagato: acconto online, saldo diretto." : "Pagato tutto online.", paid: true };
   }
 
-  if (!online) {
-    return { title: "Pagamento diretto", detail: "Ti paga il cliente a fine lavoro", amount: quoteRange(booking.items), paid: false };
-  }
+  const total = quoteRange(booking.items);
+  if (total) rows.push({ label: "Totale del preventivo", value: total });
+  if (!online) return { rows, note: "Pagamento diretto: ti paga il cliente a fine lavoro.", paid: false };
+
   if (paid > 0) {
-    return {
-      title: `Acconto pagato online ${formatEurCents(paid)}`,
-      detail: payment?.balanceDirect ? "Il saldo te lo paga il cliente a fine lavoro" : "Il saldo lo paga online a fine lavoro",
-      amount: quoteRange(booking.items, paid),
-      paid: true,
-    };
+    rows.push({ label: "Acconto pagato online", value: formatEurCents(paid), done: true });
+    const rest = quoteRange(booking.items, paid);
+    if (rest) rows.push({ label: "Resta a fine lavoro", value: rest, strong: true });
+    return { rows, note: payment?.balanceDirect ? "Il saldo te lo paga il cliente a fine lavoro." : "Il saldo lo paga online a fine lavoro.", paid: true };
   }
-  return {
-    title: "Acconto online non ancora pagato",
-    detail: payment?.depositEurCents ? `Acconto di ${formatEurCents(payment.depositEurCents)}` : "Il lavoro si conferma col pagamento",
-    amount: quoteRange(booking.items),
-    paid: false,
-  };
+  if (payment?.depositEurCents) rows.push({ label: "Acconto online da pagare", value: formatEurCents(payment.depositEurCents), strong: true });
+  return { rows, note: "Acconto online non ancora pagato: il lavoro si conferma col pagamento.", paid: false };
 }
