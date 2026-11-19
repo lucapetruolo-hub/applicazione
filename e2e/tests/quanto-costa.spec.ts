@@ -33,11 +33,20 @@ test.beforeAll(async () => {
     [1000, 1000],
     [1200, 1800],
   ];
+  const profiles: { id: string }[] = [];
   for (const [index, name] of names.entries()) {
     const profile = await createProfessional(prisma, name, "imbianchino");
+    profiles.push(profile);
     await prisma.professionalService.create({
       data: { professionalProfileId: profile.id, name: index === 1 ? ` ${SERVICE.toUpperCase()} ` : SERVICE, priceMinEurCents: prices[index]![0], priceMaxEurCents: prices[index]![1] },
     });
+  }
+  // La sezione della home si vede da 3 lavori con un prezzo medio
+  // (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md): altri due, con i loro prezzi.
+  for (const extra of [`${SERVICE} due`, `${SERVICE} tre`]) {
+    for (const profile of profiles) {
+      await prisma.professionalService.create({ data: { professionalProfileId: profile.id, name: extra, priceMinEurCents: 2000, priceMaxEurCents: 3000 } });
+    }
   }
   const paused = await createProfessional(prisma, `In pausa ${Date.now()}`, "imbianchino");
   await prisma.professionalProfile.update({ where: { id: paused.id }, data: { pausedAt: new Date() } });

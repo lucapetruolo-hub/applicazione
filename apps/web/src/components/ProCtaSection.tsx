@@ -13,7 +13,7 @@ const COLUMNS = [
   {
     icon: "receipt-text" as const,
     title: "Agenda e preventivi",
-    text: "Agenda, preventivi e fatturazione in un'unica dashboard. Senza fogli di calcolo o WhatsApp sparsi.",
+    text: "Agenda, preventivi e documenti in un posto solo. Senza fogli di calcolo o WhatsApp sparsi.",
   },
   {
     icon: "map-pin" as const,

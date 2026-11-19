@@ -416,7 +416,11 @@ prima del lancio"):
     Processing Terms di Meta (domanda 69 per l'avvocato). "Come funziona"
     in home dice già "email e WhatsApp" (Luca, 09/11/2026, PR #260): se al
     lancio il canale non è acceso, togliere "e WhatsApp" dalla frase
-    (`QuoteExampleSection.tsx`). Appena acceso, aggiungere in `/sicurezza`
+    (`QuoteExampleSection.tsx`) e, dal 19/11/2026
+    (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md), dall'elenco
+    "Compreso in ogni livello" (`packages/shared/src/plans.ts`) e dalla FAQ
+    "Il cliente riceve un promemoria dell'appuntamento?"
+    (`packages/shared/src/faq.ts`). Appena acceso, aggiungere in `/sicurezza`
     che il codice WhatsApp si scrive solo sul sito (riproporlo a Luca).
     Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
@@ -723,6 +727,13 @@ Città, pagine vuote fuori da Google.
       - 5 professionisti sulla casella delle prestazioni a virgole (#393);
       - 2-3 professionisti sull'agenda (punto 39);
       - 2-3 persone esterne sul foglio "l'IA conosce i servizi del sito".
+    - **Prova "5 secondi"** (collaudo totale del 19/11,
+      `/mnt/project-files/collaudo/2026-11-19-collaudo-totale/rapporto.md`):
+      mostrare la home per 5 secondi a 5 persone e chiedere "cosa fa questo
+      sito?". Dice se il titolo funziona.
+    - **Prova di carico breve** dopo il passaggio ai piani Render a pagamento
+      (gennaio, con la SRL): la rifà Claude con gli script di
+      `/mnt/project-files/analisi/carico-e-traffico/`.
     - **Servizi esterni dal vivo**: flusso Didit con documento e selfie
       (punto 15), segnalazione DSA con le tre email (punto 41), pagamento con
       una carta vera sul conto Live di Stripe, confronto delle pagine da

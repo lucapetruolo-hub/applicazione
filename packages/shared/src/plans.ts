@@ -80,14 +80,21 @@ export function freeMonthUpgradeEurCents(to: SubscriptionTier): number {
 /** Funzioni comprese in ogni livello: solo ciò che il sito offre davvero oggi. */
 export const SUBSCRIPTION_FEATURES = [
   "Profilo pubblico nella ricerca della tua zona",
-  "Richieste di preventivo dai clienti",
+  "Richieste di preventivo dai clienti, con foto e video del lavoro",
   "Preventivi e chat con i clienti",
-  "Agenda e prenotazioni online",
-  "Promemoria via email, così il cliente non si dimentica",
+  // Novità di novembre raccontate anche qui (collaudo del 19/11, voci N1-N8,
+  // docs/changelog/2026-11-19-whatsapp-nelle-scritte.md).
+  "Oggi: chi aspetta una risposta, i lavori di domani e quelli da chiudere",
+  "Agenda e prenotazioni online, anche nel calendario del tuo telefono",
+  "Giro della giornata: le tappe in ordine per fare meno strada",
+  "Promemoria via email e WhatsApp, così il cliente non si dimentica",
+  "Una sola email al mattino con le cose di oggi",
   "Recensioni da lavori fatti tramite il sito",
-  "Statistiche della tua attività",
+  "Bollino Verificato sul profilo, dopo il controllo del documento",
+  "Statistiche della tua attività, a confronto con i colleghi della tua zona",
   // Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md).
   "Il tuo link personale: i clienti che ti scrivono da lì non contano nei lavori",
+  "Codice QR da stampare e bollino con le tue stelle per il tuo sito",
 ] as const;
 
 /**

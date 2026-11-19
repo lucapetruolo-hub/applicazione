@@ -354,7 +354,7 @@ describe("prestazioni più cercate", () => {
       { profileId: "p3", name: "Sturatura scarichi", categorySlugs: ["idraulico"] },
       { profileId: "p4", name: "Lucidatura parquet", categorySlugs: ["pulizie"] },
     ];
-    expect(buildMissingServices(rows)).toEqual([{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }]);
+    expect(buildMissingServices(rows)).toEqual([{ categorySlug: "tuttofare", categoryLabel: "Tuttofare", name: "Montaggio tende", professionals: 3 }]);
     // Aggiunta alle standard da "Prestazioni per mestiere" (§388): non manca più.
     expect(buildMissingServices(rows, { tuttofare: ["Montaggio tende"] })).toEqual([]);
   });
@@ -373,7 +373,7 @@ describe("prestazioni più cercate", () => {
             ],
           },
         ],
-        missingServices: [{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }],
+        missingServices: [{ categorySlug: "tuttofare", categoryLabel: "Tuttofare", name: "Montaggio tende", professionals: 3 }],
       }),
     );
     const keys = advice.map((a) => a.key);

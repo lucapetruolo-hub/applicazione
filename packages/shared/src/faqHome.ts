@@ -42,3 +42,18 @@ export const FAQ_HOME: readonly FaqItem[] = [
       "Sì, serve un account gratuito (email o Google) per inviare la richiesta e ricevere i preventivi. Bastano pochi secondi, nessuna carta richiesta.",
   },
 ];
+
+/**
+ * "Chi mi fa la fattura?": sta tra le domande sui pagamenti e, dal collaudo
+ * del 19/11 (voce N13, docs/changelog/2026-11-19-whatsapp-nelle-scritte.md),
+ * anche in home, con la riga sulla detrazione già scritta nella finestra
+ * "Accetta il preventivo".
+ */
+export const FAQ_CLIENT_INVOICE: FaqItem = {
+  id: "fattura-cliente",
+  audience: "cliente",
+  topic: "Pagamenti",
+  question: "Chi mi fa la fattura o la ricevuta?",
+  answer:
+    "Il professionista, perché il lavoro lo fai fare a lui. Puoi chiedergliela con \"Chiedi la fattura\" dalla scheda del lavoro: gli arrivano i dati che servono. Se vuoi la detrazione per i lavori in casa, di solito serve il bonifico parlante e non la carta: scegli il pagamento diretto.",
+};

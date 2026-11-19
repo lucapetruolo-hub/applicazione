@@ -57,3 +57,17 @@ export type ServicePriceIndexEntry = {
    */
   price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number; unit: ServicePriceUnit } | null;
 };
+
+/**
+ * "Quanto costa in media?" della home si vede solo quando almeno questi lavori
+ * hanno un prezzo medio (scelta di Luca del 19/11/2026, che cambia il "mai
+ * nascosta" del 07/11: dieci righe "Su preventivo" sotto un titolo che promette
+ * una media sembravano una sezione vuota,
+ * docs/changelog/2026-11-19-whatsapp-nelle-scritte.md).
+ */
+export const MIN_PRICED_SERVICES_FOR_PRICE_TOOL = 3;
+
+/** `null` = prezzi non ancora arrivati: la sezione resta, decide quando arrivano. */
+export function priceToolVisible(entries: readonly Pick<ServicePriceIndexEntry, "price">[] | null): boolean {
+  return entries === null || entries.filter((entry) => entry.price !== null).length >= MIN_PRICED_SERVICES_FOR_PRICE_TOOL;
+}

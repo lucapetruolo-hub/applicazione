@@ -109,7 +109,7 @@ function FullFooter() {
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
-            <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
+            <FooterLink href="/#quanto-costa">Quanto costa un lavoro</FooterLink>
             {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
             <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
             <FooterLoginLink />

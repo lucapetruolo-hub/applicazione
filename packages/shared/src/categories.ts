@@ -75,7 +75,7 @@ export const PROFESSIONAL_CATEGORIES = [
   },
   {
     slug: "tuttofare",
-    label: "Tutto Fare",
+    label: "Tuttofare",
     icon: "drill",
     subTags: ["piccole-riparazioni", "montaggio-mobili", "manutenzione-generale"],
   },

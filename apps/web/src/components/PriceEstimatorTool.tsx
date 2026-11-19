@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type FocusEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { formatServicePrice, shownServicePriceUnit, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
+import { formatServicePrice, shownServicePriceUnit, formatServicePriceRange, serviceNameMatches, priceToolVisible, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
 import { Section, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -84,6 +84,21 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
   // "buco bianco" segnalato in audit.
   const isEmpty = entries !== null && entries.length === 0;
 
+  // Con meno di 3 lavori con un prezzo la sezione non si mostra (Luca,
+  // 19/11/2026, docs/changelog/2026-11-19-whatsapp-nelle-scritte.md): restano
+  // solo le domande. Chi arriva da "Quanto costa un lavoro" (/#quanto-costa)
+  // va alla pagina dei prezzi per mestiere invece che su un punto vuoto.
+  const hidden = !priceToolVisible(entries);
+  useEffect(() => {
+    if (!hidden) return;
+    const toPrices = () => {
+      if (window.location.hash === "#quanto-costa") window.location.replace("/prezzi");
+    };
+    toPrices();
+    window.addEventListener("hashchange", toPrices);
+    return () => window.removeEventListener("hashchange", toPrices);
+  }, [hidden]);
+
   // "Più inserite" = da più professionisti diversi (professionalCount) —
   // ordinamento usato solo per l'elenco a riposo (i primi 10), l'elenco
   // completo filtrato dalla ricerca resta nell'ordine restituito dall'API.
@@ -94,6 +109,8 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
   // dalla prova con 5 persone: "perdite" e "imbiancatura" non trovavano nulla).
   const filtered = (entries ?? []).filter((entry) => serviceNameMatches(entry.name, query));
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
+
+  if (hidden) return <>{children}</>;
 
   return (
     // Larga come le altre sezioni della home, con le voci su due colonne da

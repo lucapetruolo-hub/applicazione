@@ -7869,6 +7869,18 @@ a.admin-kpi:hover {
     border-left: 1px solid rgba(27, 26, 24, 0.12);
   }
 }
+/* "Compreso in ogni livello": una colonna da telefono, due da computer. */
+.pro-features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 32px;
+  width: 100%;
+}
+@media (min-width: 801px) {
+  .pro-features {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 /* Caselle dei livelli: si tocca tutta la casella, non solo il pulsante. Il
    link del pulsante si allarga a tutta la casella con ::after; al passaggio
    del mouse un velo leggero dice che è cliccabile. */

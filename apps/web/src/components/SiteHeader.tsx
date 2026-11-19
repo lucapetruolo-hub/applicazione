@@ -165,7 +165,7 @@ export function SiteHeader() {
                 {/* Strumento "Quanto costa in media" della home (richiesta di
                     Luca, docs/CHANGELOG.md §398). */}
                 <Link href="/#quanto-costa" style={{ textDecoration: "none" }}>
-                  <span className={`is_Text ${styles.navText}`}>Quanto costa</span>
+                  <span className={`is_Text ${styles.navText}`}>Quanto costa un lavoro</span>
                 </Link>
                 {/* "Prezzi" (abbonamento dei professionisti) tolto da qui: accanto a
                     "Quanto costa" si confondeva, resta in "Offri i tuoi servizi"

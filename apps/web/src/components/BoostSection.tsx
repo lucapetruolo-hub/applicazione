@@ -16,7 +16,7 @@ type BoostOption = {
 const BOOST_OPTIONS: BoostOption[] = [
   {
     type: "BOOST_LOCALE",
-    label: "Boost locale",
+    label: "In evidenza nella tua zona",
     description: "Compari tra i primi quando cercano la tua categoria nella tua zona.",
     perks: ["Prime posizioni per 30 giorni", "Etichetta Sponsorizzato"],
     priceEur: 19.9,

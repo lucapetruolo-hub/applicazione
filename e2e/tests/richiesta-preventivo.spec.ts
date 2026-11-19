@@ -112,7 +112,7 @@ test("la descrizione sceglie la categoria suggerita: scheda con Cambia e pannell
   expect(first).toBe("TEXTAREA");
   // Senza descrizione tutte le categorie a pillole.
   const pills = page.getByRole("group", { name: "Chi ti serve" });
-  await expect(pills.getByRole("button", { name: "Tutto Fare" })).toBeVisible();
+  await expect(pills.getByRole("button", { name: "Tuttofare" })).toBeVisible();
 
   await description.fill("Salta la corrente quando accendo il forno");
   const card = chosenCard(page);
@@ -218,7 +218,7 @@ test("\"Scegli tu\" mentre l'IA pensa mostra subito tutte le categorie", async (
   await page.goto("/preventivo");
   await page.getByLabel("Descrivi il lavoro").fill("Si è staccata una piastrella");
   await page.getByRole("status").filter({ hasText: "Sto capendo chi ti serve…" }).getByRole("button", { name: "Scegli tu" }).click();
-  await expect(page.getByRole("group", { name: "Chi ti serve" }).getByRole("button", { name: "Tutto Fare" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Chi ti serve" }).getByRole("button", { name: "Tuttofare" })).toBeVisible();
 });
 
 test("sotto la descrizione si legge chi ti serve, e un tocco porta alla scelta", async ({ page }) => {

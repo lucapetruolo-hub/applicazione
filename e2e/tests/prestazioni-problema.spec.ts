@@ -184,7 +184,7 @@ test("Admin: richieste che tengono o cambiano la categoria proposta", async ({ b
   const page = await context.newPage();
   await page.goto("/admin/mestieri-richiesti");
   await expect(page.getByText(/Richieste di preventivo con la categoria proposta: \d+/)).toBeVisible();
-  await expect(page.getByText(/Falegname → Tutto Fare \d+/)).toBeVisible();
+  await expect(page.getByText(/Falegname → Tuttofare \d+/)).toBeVisible();
   // Mestieri che non abbiamo, con le zone e "Da valutare" da 10 richieste.
   const trade = page.locator("#mestieri-mancanti").getByRole("group", { name: missingTrade, exact: true });
   await expect(trade.getByText("11 richieste")).toBeVisible();
