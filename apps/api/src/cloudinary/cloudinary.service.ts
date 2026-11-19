@@ -7,6 +7,7 @@ import { temporaryUploadPath } from "../common/media-upload";
 import { DailyBudget, sharedBudgetStore } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { v2 as cloudinary } from "cloudinary";
+import { MEDIA_VIDEO_MAX_SECONDS } from "@professionisti/shared";
 
 /**
  * Manda il file a Cloudinary: dal disco a pezzi se Multer l'ha scritto lì
@@ -263,7 +264,10 @@ export class CloudinaryService {
     const transformation = isImage
       ? [{ width: 800, height: 800, crop: "limit" as const, quality: "auto", fetch_format: "auto" }]
       : isVideo
-        ? [{ quality: "auto" }]
+        ? // Stesso taglio del caricamento diretto (`du_`): un video più lungo tenuto dal
+          // cliente arriva al professionista solo col primo minuto anche da qui
+          // (docs/changelog/2026-11-19-video-lungo-due-scelte.md).
+          [{ quality: "auto", duration: MEDIA_VIDEO_MAX_SECONDS + 5 }]
         : undefined;
     // Caricato via stream (buffer, nessun nome file passato a Cloudinary):
     // per un documento "raw" Cloudinary non ha altro modo di sapere che

@@ -11440,6 +11440,53 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   font-size: 13px;
   cursor: pointer;
 }
+/* Video oltre il minuto in attesa della scelta: non è un errore, niente rosso
+   (docs/changelog/2026-11-19-video-lungo-due-scelte.md). */
+.guided-photo-state-wait {
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.2;
+}
+.guided-video-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fbf3e2;
+  border: 1px solid #e8d5a8;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #2b2a28;
+}
+.guided-video-choice p {
+  margin: 0;
+}
+.guided-video-choice > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.guided-video-choice button {
+  flex: 1 1 150px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid #1e6b6e;
+  background: #ffffff;
+  color: #134a4c;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.guided-video-choice button.guided-video-choice-keep {
+  background: #1e6b6e;
+  color: #ffffff;
+}
+.guided-video-choice button:focus-visible {
+  outline: 2px solid #0f3b3b;
+  outline-offset: 2px;
+}
 .guided-photo-state-error:focus-visible {
   outline: 2px solid #1e6b6e;
   outline-offset: 2px;
