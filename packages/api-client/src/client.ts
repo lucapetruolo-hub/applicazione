@@ -241,6 +241,8 @@ export type ClientBooking = {
    * scrivere la propria recensione.
    */
   clientConfirmedCompletedAt: string | null;
+  /** Il professionista dice che il lavoro è già finito, prima del giorno fissato (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). */
+  earlyCompletionAskedAt?: string | null;
   /** Foto/video del lavoro terminato allegate da ciascuna parte (richiesta esplicita dell'utente). */
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
@@ -2296,6 +2298,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** "Lavoro terminato" prima del giorno fissato: chiede al cliente di confermare (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). */
+    askEarlyCompletion: (token: string, bookingId: string) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/ask-early-completion`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     /** Il cliente conferma dal proprio lato che il lavoro è terminato (richiesta esplicita dell'utente: "servono i completed da entrambi"), con foto facoltative. */

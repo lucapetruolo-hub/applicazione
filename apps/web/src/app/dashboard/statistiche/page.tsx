@@ -365,6 +365,14 @@ function RatiosSection({ totals, previous }: { totals: ProfessionalStatsTotals; 
       detail: `${totals.reviews} ${totals.reviews === 1 ? "recensione" : "recensioni"} nel periodo`,
       before: previous.ratingAvg !== null ? `${previous.ratingAvg.toLocaleString("it-IT")} ★` : "—",
     },
+    // Spostamenti chiesti dentro il preavviso per annullare
+    // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): meno sono, più i clienti si fidano.
+    {
+      label: "Spostati all'ultimo momento",
+      value: String(totals.lateMovesByYou ?? 0),
+      detail: `Chiesti da te dentro il preavviso. Dai clienti: ${totals.lateMovesByClients ?? 0}`,
+      before: String(previous.lateMovesByYou ?? 0),
+    },
   ];
   return (
     <section className="pstats-card" aria-labelledby="pstats-ratios-title">

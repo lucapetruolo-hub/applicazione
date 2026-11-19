@@ -53,6 +53,8 @@ type StatsRows = {
   won: { createdAt: Date }[];
   completed: { updatedAt: Date; professionalCompletedAt: Date | null; finalAmountEurCents: number | null }[];
   reviews: { rating: number }[];
+  /** Spostamenti chiesti dentro il preavviso (BookingReschedule.late). */
+  lateMoves: { proposedBy: string }[];
 };
 
 function emptyBucket(key: string, label: string): ProfessionalStatsBucket {
@@ -70,6 +72,8 @@ function totalsOf(rows: StatsRows): ProfessionalStatsTotals {
     revenueEurCents: rows.completed.reduce((sum, b) => sum + (b.finalAmountEurCents ?? 0), 0),
     reviews: rows.reviews.length,
     ratingAvg: rows.reviews.length > 0 ? Math.round((ratingSum / rows.reviews.length) * 10) / 10 : null,
+    lateMovesByYou: rows.lateMoves.filter((m) => m.proposedBy === "PROFESSIONAL").length,
+    lateMovesByClients: rows.lateMoves.filter((m) => m.proposedBy === "CLIENT").length,
   };
 }
 
@@ -211,7 +215,7 @@ export class RevenueAnalyticsService {
   private async loadStatsRows(professionalProfileId: string, start: Date, endInclusive: Date): Promise<StatsRows> {
     const endExclusive = new Date(endInclusive.getTime() + DAY_MS);
     const createdIn = { gte: start, lt: endExclusive };
-    const [views, requests, quotes, won, completed, reviews] = await Promise.all([
+    const [views, requests, quotes, won, completed, reviews, lateMoves] = await Promise.all([
       this.prisma.profileViewDay.findMany({ where: { professionalProfileId, day: { gte: start, lte: endInclusive } }, select: { day: true, count: true } }),
       this.prisma.lead.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.quote.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
@@ -231,8 +235,10 @@ export class RevenueAnalyticsService {
         where: { hiddenAt: null, createdAt: createdIn, booking: { professionalProfileId } },
         select: { rating: true },
       }),
+      // Spostamenti all'ultimo momento (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+      this.prisma.bookingReschedule.findMany({ where: { professionalProfileId, late: true, createdAt: createdIn }, select: { proposedBy: true } }),
     ]);
-    return { views, requests, quotes, won, completed, reviews };
+    return { views, requests, quotes, won, completed, reviews, lateMoves };
   }
 
   async getSummary(professionalProfileId?: string): Promise<RevenueAnalyticsSummary> {

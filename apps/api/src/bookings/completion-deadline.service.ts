@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import { BAD_WORK_REPORT_DAYS } from "@professionisti/shared";
+import { BAD_WORK_REPORT_DAYS, wallClockNow } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { TimelineService } from "../timeline/timeline.service";
@@ -16,6 +16,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const COMPLETION_AUTO_CLOSE_DAYS = BAD_WORK_REPORT_DAYS;
 // Con 7 giorni (collaudo P-04): promemoria al 3° e al 6° giorno, l'ultimo il giorno prima.
 export const COMPLETION_REMINDER_DAYS = [3, COMPLETION_AUTO_CLOSE_DAYS - 1];
+/** Ore senza risposta a "Il lavoro è già finito?" prima del promemoria. */
+export const EARLY_DONE_REMINDER_HOURS = 24;
 
 /** Cosa fare oggi per un lavoro chiuso da una sola parte da `since`. */
 export function completionDeadlineStep(since: Date, reminderCount: number, now: Date): "REMIND" | "CLOSE" | null {
@@ -39,6 +41,43 @@ export class CompletionDeadlineService {
   async run(now: Date = new Date()): Promise<void> {
     await this.clientSilent(now);
     await this.professionalSilent(now);
+    await this.earlyAskSilent(now);
+  }
+
+  /**
+   * "Il lavoro è già finito?" senza risposta dopo 24 ore
+   * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): un
+   * promemoria al cliente, uno solo, mai di notte, e solo se il giorno fissato
+   * non è ancora arrivato (da quel giorno valgono le regole di sempre).
+   */
+  private async earlyAskSilent(now: Date): Promise<void> {
+    const wall = wallClockNow(now);
+    const hour = wall.getUTCHours();
+    if (hour < 8 || hour >= 21) return;
+    const tomorrow = new Date(Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate() + 1));
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        status: "CONFIRMED",
+        earlyCompletionAskedAt: { not: null, lte: new Date(now.getTime() - EARLY_DONE_REMINDER_HOURS * 60 * 60 * 1000) },
+        earlyCompletionReminderAt: null,
+        clientConfirmedCompletedAt: null,
+        scheduledAt: { gte: tomorrow },
+      },
+      select: { id: true, clientId: true, scheduledAt: true, quote: { select: { guidedRequestId: true } } },
+    });
+    for (const booking of bookings) {
+      const { count } = await this.prisma.booking.updateMany({
+        where: { id: booking.id, earlyCompletionReminderAt: null, clientConfirmedCompletedAt: null },
+        data: { earlyCompletionReminderAt: now },
+      });
+      if (count === 0) continue;
+      await this.notificationsService.notify(booking.clientId, "JOB_EARLY_DONE_ASKED", {
+        bookingId: booking.id,
+        guidedRequestId: booking.quote?.guidedRequestId ?? null,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        reminder: true,
+      });
+    }
   }
 
   private deadlineOf(since: Date): string {

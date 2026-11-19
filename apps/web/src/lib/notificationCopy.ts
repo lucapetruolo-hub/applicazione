@@ -156,6 +156,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },
+  BOOKING_DATE_CHANGE_UNANSWERED: { icon: "⏰", message: "La nuova data non ha ancora risposta: per ora vale l'appuntamento di adesso." },
+  JOB_EARLY_DONE_ASKED: { icon: "✅", message: "Il professionista dice che il lavoro è già finito: confermalo se è così." },
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   REVIEW_REMINDER: { icon: "⭐", message: "Com'è andato il lavoro? Se vuoi, lascia una recensione: bastano un voto e due righe." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
@@ -326,6 +328,24 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
+  if (type === "JOB_EARLY_DONE_ASKED" && data.reminder === true) {
+    return { icon: "⏰", message: "Il professionista aspetta ancora la tua conferma: il lavoro è già finito?" };
+  }
+  // Proposta senza risposta a poche ore dall'appuntamento (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  if (type === "BOOKING_DATE_CHANGE_UNANSWERED") {
+    const now = slotLabel(data.from);
+    const at = now ? ` (${now})` : "";
+    const forClient = data.audience === "client";
+    const byProfessional = data.proposedBy === "PROFESSIONAL";
+    const message = forClient
+      ? byProfessional
+        ? `Il professionista aspetta la tua risposta sulla nuova data: se non rispondi resta l'appuntamento di adesso${at}.`
+        : `Il professionista non ha ancora risposto: per ora resta l'appuntamento di adesso${at}.`
+      : byProfessional
+        ? `Il cliente non ha risposto: resta l'appuntamento di adesso${at}. Se non riesci a venire, annullalo.`
+        : `Il cliente aspetta la tua risposta sulla nuova data: all'appuntamento di adesso${at} non può esserci.`;
+    return { icon: "⏰", message };
+  }
   // Altra data per un appuntamento già fissato: proposta con "Modifica" o promemoria dopo 12 ore.
   if (data.booked === true && data.reminder === true && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "⏰", message: `Il cliente aspetta la tua risposta sulla nuova data${newSlot ? ` (${newSlot})` : ""}.` };
