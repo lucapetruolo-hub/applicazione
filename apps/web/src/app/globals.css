@@ -5618,7 +5618,7 @@ a.admin-kpi:hover {
 }
 .xg-done a:not(.xg-button),
 .xg-privacy a,
-.xg-card > div > a {
+.xg-card > div > a:not(.xg-button) {
   color: #186163;
   font-weight: 600;
 }
@@ -5631,6 +5631,10 @@ a.admin-kpi:hover {
   .xg-wrap {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
+  }
+  /* Arrivati dal link dell'email: da telefono il pulsante per scaricare viene prima della spiegazione. */
+  .xg-page-download .xg-card {
+    order: -1;
   }
   .xg-text h1 {
     font-size: 32px;
