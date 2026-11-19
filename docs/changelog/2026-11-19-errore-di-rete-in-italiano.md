@@ -33,6 +33,13 @@ Render non erano leggibili dal thread: l'orario è un indizio, non una prova.
   era arrivato e l'account c'è già, il secondo viene rifiutato (token anti-bot
   già usato o "Esiste già un account") e si entra con l'email e la password
   appena scritte, invece di mostrare un errore.
+- Richiesta di preventivo (Luca, 19/11: "sì" alla miglioria): una riprova da
+  sola dopo 2 secondi senza mai mandarla due volte
+  (`apps/web/src/lib/sendRequestDespiteNetwork.ts`). Il server rifiutava già
+  lo stesso testo per la stessa categoria entro 30 minuti; ora il rifiuto ha il
+  codice `DUPLICATE_REQUEST_CODE`. Se arriva dopo una rete caduta vuol dire che
+  il primo invio era arrivato: si mostra "Richiesta inviata" con i numeri presi
+  da "Le mie richieste". Poi la frase con "Riprova".
 - `AuthContext`: l'errore di rete nuovo non scollega (come prima il
   `TypeError`).
 - Andamento del sito in Admin: gli invii non riusciti si contano anche per
@@ -44,4 +51,5 @@ Render non erano leggibili dal thread: l'orario è un indizio, non una prova.
 registrazione, pagamento e accettazione senza rete, annullamento, riprova solo
 per la rete); prova nel browser `e2e/tests/errore-di-rete.spec.ts` (accesso
 senza rete con "Riprova", registrazione con la risposta persa che entra
-nell'account creato); typecheck, lint, prove dell'andamento in Admin.
+nell'account creato, richiesta con la risposta persa salvata una volta sola);
+prova del doppione col codice in `chosen-professionals.test.ts`; typecheck, lint, prove dell'andamento in Admin.

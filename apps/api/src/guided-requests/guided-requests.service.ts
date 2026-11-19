@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { WAITING_REQUEST_HOST_CATEGORY, WAITING_REQUEST_STILL_NEEDED_DAYS, isWaitingTradeKey, textsMatchWaitingTrade, waitingTradeKeywords, waitingTradeName, isRecurringFrequency, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { DUPLICATE_REQUEST_CODE, WAITING_REQUEST_HOST_CATEGORY, WAITING_REQUEST_STILL_NEEDED_DAYS, isWaitingTradeKey, textsMatchWaitingTrade, waitingTradeKeywords, waitingTradeName, isRecurringFrequency, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -277,11 +277,13 @@ export class GuidedRequestsService {
     });
     const text = sameRequestText(input.description);
     if (recent.some((r) => sameRequestText(r.description) === text)) {
-      throw new ConflictException(
-        target
+      // Col codice il sito capisce che, dopo una rete caduta, il primo invio era arrivato.
+      throw new ConflictException({
+        code: DUPLICATE_REQUEST_CODE,
+        message: target
           ? `Hai già mandato questa richiesta a ${target.businessName} pochi minuti fa: la trovi in "Le mie richieste".`
           : `Hai già mandato questa richiesta pochi minuti fa: la trovi in "Le mie richieste".`,
-      );
+      });
     }
   }
 

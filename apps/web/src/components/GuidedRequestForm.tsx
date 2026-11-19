@@ -36,9 +36,10 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
-import { ApiError, type LastRequestAddress } from "@professionisti/api-client";
+import { ApiError, isNetworkError, type LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr, toTrade } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
+import { sendRequestDespiteNetwork } from "@/lib/sendRequestDespiteNetwork";
 import { usePhotoReorder } from "@/lib/usePhotoReorder";
 import { cameFromPersonalLink } from "@/lib/personalLink";
 import { setChosenParams } from "@/lib/chosenParams";
@@ -831,6 +832,8 @@ export function GuidedRequestForm({
   const [fieldError, setFieldError] = useState<{ field: StepField; message: string; value: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
+  // La chiamata non è arrivata al sito: accanto all'errore compare "Riprova".
+  const [networkFailed, setNetworkFailed] = useState(false);
   // Andamento del sito (docs/CHANGELOG.md §372): ogni passo raggiunto conta
   // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
   // pagina di un professionista. Dice dove ci si ferma.
@@ -1287,6 +1290,7 @@ export function GuidedRequestForm({
 
   async function handleSubmit() {
     setError(null);
+    setNetworkFailed(false);
     const problem = validateStep(1) ?? validateStep(2);
     if (problem) {
       // Un campo del passo "Dove" sbagliato: si torna lì, con l'errore sotto il campo.
@@ -1319,7 +1323,10 @@ export function GuidedRequestForm({
         );
         return;
       }
-      const response = await apiClient.createGuidedRequest(activeToken, {
+      // Rete caduta: si riprova da soli una volta, senza mai mandarla due volte
+      // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+      const trimmedDescription = description.trim();
+      const sent = await sendRequestDespiteNetwork(() => apiClient.createGuidedRequest(activeToken, {
         // In attesa di un mestiere: categoria di comodo, il server decide a chi arriva dal mestiere.
         categorySlug: waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : ((requestSlugs[0] ?? categorySlug) as ProfessionalCategorySlug),
         extraCategorySlugs: professionalProfileId || waitingTrade ? [] : requestSlugs.slice(1),
@@ -1350,7 +1357,7 @@ export function GuidedRequestForm({
         trafficSource: storedTrafficSource(),
         // Per contare in admin se la categoria proposta resta (non quando arrivava dal link).
         suggestedCategorySlug: suggestionsOn && !startedWithCategory ? (autoApplied ?? undefined) : undefined,
-      });
+      }), activeToken, trimmedDescription);
       // Solo per un intervento a domicilio: i campi destinatario/indirizzo
       // restano vuoti (mai riempiti) per una richiesta Online, confrontarli
       // avrebbe proposto di "salvare" dati vuoti su un account che magari
@@ -1374,10 +1381,11 @@ export function GuidedRequestForm({
         const differs = !snapshot || Object.keys(current).some((key) => comparable(key, current[key]!) !== comparable(key, snapshot[key] ?? ""));
         setAccountDataDiffers(differs);
       }
-      setResult({ matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 });
+      setResult(sent);
       countStepOnce("INVIATA");
       countPriceToolRequest();
     } catch (err) {
+      setNetworkFailed(isNetworkError(err));
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
@@ -2319,6 +2327,19 @@ export function GuidedRequestForm({
                 <Link href="/le-mie-richieste" style={{ color: "inherit", fontWeight: 700, textDecoration: "underline" }}>
                   Apri Le mie richieste
                 </Link>
+              </>
+            ) : null}
+            {networkFailed ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => void handleSubmit()}
+                  disabled={isSubmitting}
+                  style={{ background: "none", border: "none", padding: "6px 2px", margin: 0, font: "inherit", fontWeight: 700, color: brand.cianografiaScuro, textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}
+                >
+                  {isSubmitting ? "Riprovo…" : "Riprova"}
+                </button>
               </>
             ) : null}
           </Text>

@@ -718,6 +718,11 @@ Città, pagine vuote fuori da Google.
     - **iPhone vero**: scelta della data nella richiesta e nel preventivo
       (#410), campi dell'ora e agenda, fotocamera e "Massimo 1 minuto" del
       video (il video in 4G è già provato il 18/11).
+    - **Rete che salta** (#432, docs/changelog/2026-11-19-errore-di-rete-in-italiano.md):
+      dal telefono, in modalità aereo, premere "Accedi", "Registrati" e
+      "Invia richiesta": deve comparire "Non riusciamo a collegarci al sito"
+      con "Riprova", mai "Failed to fetch". Tolta la modalità aereo, "Riprova"
+      deve andare e la richiesta deve comparire una volta sola.
     - **Lettori di schermo**: VoiceOver (iPhone) e TalkBack (Android) sui
       percorsi richiesta, preventivo, accettazione e Oggi.
     - **Persone vere che non conoscono il sito, senza aiuto**:

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
+import { createClient, testToken } from "../fixtures/preventivi";
 
 /**
  * Rete che salta durante accesso e registrazione
@@ -53,4 +55,30 @@ test("registrazione con la risposta persa: l'account creato si apre, nessun erro
   await expect.poll(() => token(page), { timeout: 15_000 }).not.toBeNull();
   await expect(page.getByText(/fetch/i)).toHaveCount(0);
   await expect(page.getByText("Esiste già un account")).toHaveCount(0);
+});
+
+const prisma = new PrismaClient();
+test.afterAll(() => prisma.$disconnect());
+
+test("richiesta di preventivo con la risposta persa: una sola richiesta salvata e \"Richiesta inviata\"", async ({ page }) => {
+  const client = await createClient(prisma);
+  await page.addInitScript((value) => window.localStorage.setItem("professionisti_token", value), testToken(client.id));
+  let first = true;
+  await page.route(`${API_URL}/guided-requests`, async (route) => {
+    if (route.request().method() !== "POST" || !first) return route.fallback();
+    first = false;
+    // La richiesta arriva e si salva, ma la risposta si perde.
+    await route.fetch();
+    return route.abort("connectionreset");
+  });
+  const description = encodeURIComponent(`Perdita sotto il lavandino, prova rete ${Date.now()}.`);
+  await page.goto(`/preventivo?categoria=idraulico&citta=Latina&modalita=ONLINE&descrizione=${description}`);
+  await page.getByRole("group", { name: "Quando ti serve?" }).getByRole("radio", { name: "Con calma" }).check();
+  await page.getByText("Avanti", { exact: true }).click();
+  await page.getByText("Avanti", { exact: true }).click();
+  await page.getByRole("button", { name: /^Invia richiesta/ }).click();
+
+  await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: /richiesta è (arrivata|registrata)/ })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/fetch|Hai già mandato/i)).toHaveCount(0);
+  expect(await prisma.guidedRequest.count({ where: { clientId: client.id } })).toBe(1);
 });

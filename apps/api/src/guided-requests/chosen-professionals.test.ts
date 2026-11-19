@@ -129,6 +129,9 @@ describe("GuidedRequestsService.create — doppio invio", () => {
     ]);
     prisma.guidedRequest.findMany.mockResolvedValue([{ description: "perde il rubinetto  della cucina." }]);
     await expect(service.create("client-1", input)).rejects.toThrow("Hai già mandato questa richiesta pochi minuti fa");
+    // Col codice il sito riconosce, dopo una rete caduta, che il primo invio era arrivato
+    // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+    await expect(service.create("client-1", input)).rejects.toMatchObject({ response: { code: "DUPLICATE_REQUEST" } });
     expect(prisma.guidedRequest.create).not.toHaveBeenCalled();
     expect(prisma.guidedRequest.findMany.mock.calls[0]![0].where).toMatchObject({ clientId: "client-1", deletedByClientAt: null, professionalProfileId: null });
   });
