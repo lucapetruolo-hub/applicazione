@@ -57,5 +57,5 @@ Render non erano leggibili dal thread: l'orario è un indizio, non una prova.
 registrazione, pagamento e accettazione senza rete, annullamento, riprova solo
 per la rete); prova nel browser `e2e/tests/errore-di-rete.spec.ts` (accesso
 senza rete con "Riprova", registrazione con la risposta persa che entra
-nell'account creato, richiesta con la risposta persa salvata una volta sola);
+nell'account creato, richiesta con la risposta persa salvata una volta sola; dopo la #432, preventivo con la risposta persa: uno solo, riprova partita, nessun avviso in più al cliente e nessuna riga "modificato" in chat);
 prova del doppione col codice in `chosen-professionals.test.ts`; typecheck, lint, prove dell'andamento in Admin.
