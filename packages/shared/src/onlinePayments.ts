@@ -1,4 +1,5 @@
 import { formatEur, formatEurCents, quotePriceTotals } from "./professionals";
+import { formatPaymentCard } from "./paymentCard";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -517,6 +518,14 @@ export type JobPaymentSummary = {
   balanceAutoChargeAt: string | null;
   /** Annullato dal cliente dentro il preavviso: l'acconto resta al professionista (§348). */
   depositKept: boolean;
+  /**
+   * Solo per il cliente: carta usata per acconto e saldo ("Visa •••• 4242") e
+   * carta su cui arriverà il saldo automatico, per riconoscere l'addebito in
+   * banca. Null quando non c'è o il pagamento è di prima che la salvassimo.
+   */
+  depositCard?: string | null;
+  balanceCard?: string | null;
+  autoChargeCard?: string | null;
   /** Solo per il professionista: trattenuta (con l'IVA, §378), e quanto riceve. */
   appFeeEurCents?: number;
   /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§378). */
@@ -582,6 +591,13 @@ type JobPaymentRow = {
   disputeProNote?: string | null;
   disputeProPhotoUrls?: string[];
   disputeProNoteAt?: Date | null;
+  savedPaymentMethodId?: string | null;
+  depositCardBrand?: string | null;
+  depositCardLast4?: string | null;
+  depositCardWallet?: string | null;
+  balanceCardBrand?: string | null;
+  balanceCardLast4?: string | null;
+  balanceCardWallet?: string | null;
 };
 
 /** Contestazione in banca vista dal professionista (null se non c'è). */
@@ -641,6 +657,12 @@ export function toJobPaymentSummary(
     balanceAutoChargeAt: stage === "AWAITING_BALANCE" ? (jp.balanceAutoChargeAt?.toISOString() ?? null) : null,
     depositKept: !!jp.depositKeptAt,
   };
+  if (!forProfessional && method === "ONLINE") {
+    summary.depositCard = formatPaymentCard(jp.depositCardBrand, jp.depositCardLast4, jp.depositCardWallet) || null;
+    summary.balanceCard = formatPaymentCard(jp.balanceCardBrand, jp.balanceCardLast4, jp.balanceCardWallet) || null;
+    // Il saldo automatico usa la carta salvata con l'acconto (§267).
+    summary.autoChargeCard = jp.savedPaymentMethodId && stage === "AWAITING_BALANCE" ? summary.depositCard : null;
+  }
   if (forProfessional && method === "ONLINE") {
     const target = onlineTarget ?? collected;
     // Prima dello sblocco conta solo quanto il cliente ha pagato davvero: un

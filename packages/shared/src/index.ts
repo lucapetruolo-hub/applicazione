@@ -33,6 +33,7 @@ export * from "./jobIssues";
 export * from "./jobIssuesSchemas";
 export * from "./onlinePayments";
 export * from "./onlinePaymentsSchemas";
+export * from "./paymentCard";
 export * from "./onlineLimit";
 export * from "./onlineLimitSchemas";
 export * from "./bankDisputes";

@@ -2602,6 +2602,16 @@ model JobPayment {
   // non riuscito, il cliente paga con il link.
   clientStripeCustomerId       String?
   savedPaymentMethodId         String?
+  // Carta usata per l'acconto e per il saldo, solo marca, ultime 4 cifre e
+  // portafoglio (Apple Pay, Google Pay): il cliente la vede nella pagina del
+  // lavoro per riconoscere l'addebito in banca
+  // (docs/changelog/2026-11-19-entrate-e-uscite.md). Mai il numero intero.
+  depositCardBrand             String?
+  depositCardLast4             String?
+  depositCardWallet            String?
+  balanceCardBrand             String?
+  balanceCardLast4             String?
+  balanceCardWallet            String?
   balanceAutoChargedAt         DateTime?
   balanceAutoChargeFailedAt    DateTime?
   // Prezzo finale sopra il minimo del preventivo: il saldo si addebita da

@@ -71,7 +71,7 @@ function clientView(payment: JobPaymentSummary): View {
       tone: "action",
       icon: "credit-card",
       title: "Controlla il prezzo finale",
-      body: `Se va bene non devi fare nulla: ${formatIssueDeadline(payment.balanceAutoChargeAt)} addebitiamo ${eur(payment.balanceDueEurCents)} sulla carta dell'acconto. Se non sei d'accordo, segnala un problema: non addebitiamo nulla.`,
+      body: `Se va bene non devi fare nulla: ${formatIssueDeadline(payment.balanceAutoChargeAt)} addebitiamo ${eur(payment.balanceDueEurCents)} sulla carta dell'acconto${payment.autoChargeCard ? `: ${payment.autoChargeCard}` : ""}. Se non sei d'accordo, segnala un problema: non addebitiamo nulla.`,
       step: 1,
     };
   }
@@ -207,14 +207,22 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
   );
 }
 
-function AmountRow({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
+function AmountRow({ label, value, strong, muted, card }: { label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }) {
+  // Riga della carta: va a capo la carta, non l'etichetta corta (da telefono "Apple Pay (Mastercard •••• 5100)").
   return (
     <XStack justifyContent="space-between" gap="3" paddingVertical={2}>
-      <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
+      <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={card ? 0 : 1}>
         {label}
       </Text>
-      <Text fontSize={16} fontWeight={strong ? "700" : "500"} color={muted ? brand.grafite70 : brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
-        {value}
+      <Text
+        fontSize={16}
+        fontWeight={strong ? "700" : "500"}
+        color={muted ? brand.grafite70 : brand.grafite}
+        flexShrink={card ? 1 : undefined}
+        textAlign="right"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {card ? value.replace(/ •••• /g, "\u00a0••••\u00a0") : value}
       </Text>
     </XStack>
   );
@@ -290,7 +298,7 @@ export function JobPaymentStatus({
   const stage = payment.stage;
   const collected = payment.paidEurCents - payment.refundedEurCents;
 
-  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean }> = [];
+  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }> = [];
   if (audience === "client") {
     if (payment.depositEurCents !== null) rows.push({ label: payment.paidEurCents > 0 ? "Acconto pagato" : "Acconto", value: eur(payment.depositEurCents) });
     if (payment.finalAmountEurCents !== null) rows.push({ label: "Importo finale", value: eur(payment.finalAmountEurCents) });
@@ -299,6 +307,13 @@ export function JobPaymentStatus({
     if (payment.balanceDueEurCents > 0) rows.push({ label: "Da pagare", value: eur(payment.balanceDueEurCents), strong: true });
     if (payment.refundWaitingEurCents > 0) rows.push({ label: "Rimborso in arrivo", value: eur(payment.refundWaitingEurCents), strong: true });
     if (payment.refundedEurCents > payment.refundWaitingEurCents) rows.push({ label: "Rimborsato", value: eur(payment.refundedEurCents - payment.refundWaitingEurCents) });
+    // Carta usata, per riconoscere l'addebito in banca: una riga sola se acconto e saldo sono sulla stessa.
+    if (payment.depositCard && payment.balanceCard && payment.depositCard !== payment.balanceCard) {
+      rows.push({ label: "Carta dell'acconto", value: payment.depositCard, muted: true, card: true });
+      rows.push({ label: "Carta del saldo", value: payment.balanceCard, muted: true, card: true });
+    } else if (payment.depositCard || payment.balanceCard) {
+      rows.push({ label: "Carta", value: (payment.depositCard ?? payment.balanceCard) as string, muted: true, card: true });
+    }
   } else if (stage !== "AWAITING_DEPOSIT") {
     if (collected > 0 || stage === "REFUNDED") rows.push({ label: "Pagato dal cliente online", value: eur(payment.paidEurCents) });
     if (payment.refundedEurCents > 0) rows.push({ label: "Rimborsato al cliente", value: `−${eur(payment.refundedEurCents)}` });
