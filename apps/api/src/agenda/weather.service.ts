@@ -6,7 +6,7 @@ const TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000;
 /** Dopo un errore per una zona, niente nuovi tentativi per 15 minuti. */
 const RETRY_AFTER_ERROR_MS = 15 * 60 * 1000;
-/** Tetto esaurito (429): nessuna chiamata per un'ora, si usano le ultime previsioni ricevute. */
+/** Tetto esaurito (429): nessuna chiamata per un'ora. */
 const PAUSE_AFTER_LIMIT_MS = 60 * 60 * 1000;
 const CACHE_MAX = 500;
 /** Sotto questa probabilità la pioggia non vale un'icona. */
@@ -128,9 +128,9 @@ export class WeatherService {
     const cached = this.cache.get(key);
     const now = Date.now();
     if (cached && now - cached.at < CACHE_TTL_MS) return cached.response;
-    // Se il servizio ha appena dato errore, le ultime previsioni ricevute valgono più di nessuna icona
-    // (docs/changelog/2026-11-18-meteo-tre-giorni.md: tetto giornaliero esaurito su Render).
-    if (now < this.pausedUntil || now - (this.failedAt.get(key) ?? 0) < RETRY_AFTER_ERROR_MS) return cached?.response ?? {};
+    // Dopo un errore non si ritenta subito (docs/changelog/2026-11-18-meteo-tre-giorni.md: tetto giornaliero
+    // esaurito su Render). Previsioni scadute non si mostrano (decisione di Luca): meglio nessuna icona.
+    if (now < this.pausedUntil || now - (this.failedAt.get(key) ?? 0) < RETRY_AFTER_ERROR_MS) return {};
 
     const apiKey = process.env.OPEN_METEO_API_KEY?.trim();
     // Con la chiave dell'abbonamento (uso commerciale) l'indirizzo è un altro e non c'è il tetto condiviso.
@@ -147,7 +147,7 @@ export class WeatherService {
         if (response.status === 429) this.pausedUntil = now + PAUSE_AFTER_LIMIT_MS;
         this.failedAt.set(key, now);
         this.logger.warn(`Open-Meteo ha risposto ${response.status}${response.status === 429 ? ": tetto esaurito, pausa di un'ora" : ""}.`);
-        return cached?.response ?? {};
+        return {};
       }
       const daily = (await response.json()) as OpenMeteoDaily;
       if (this.cache.size >= CACHE_MAX && !this.cache.has(key)) this.cache.delete(this.cache.keys().next().value as string);
@@ -157,7 +157,7 @@ export class WeatherService {
     } catch (err) {
       this.failedAt.set(key, now);
       this.logger.warn(`Open-Meteo non raggiungibile: ${err instanceof Error ? err.message : String(err)}`);
-      return cached?.response ?? {};
+      return {};
     }
   }
 }

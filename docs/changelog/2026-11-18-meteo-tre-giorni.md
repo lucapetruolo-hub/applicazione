@@ -46,9 +46,11 @@ ancora le modifiche online", nessuna icona). Causa: Open-Meteo gratuito
 rispondeva 429 "Daily API request limit exceeded". Il tetto vale per indirizzo
 IP e su Render l'indirizzo d'uscita è condiviso con altri siti. In più il piano
 gratuito è solo per uso non commerciale.
-- Previsioni fresche per 3 ore invece di 1. Con un errore si usano le ultime
-  ricevute e la zona non si richiama per 15 minuti; con un 429 nessuna chiamata
-  per un'ora (prima ogni apertura dell'agenda ritentava e consumava il tetto).
+- Previsioni fresche per 3 ore invece di 1. Con un errore la zona non si
+  richiama per 15 minuti; con un 429 nessuna chiamata per un'ora (prima ogni
+  apertura dell'agenda ritentava e consumava il tetto). Previsioni scadute non
+  si mostrano mai, nemmeno con il servizio in errore: meglio nessuna icona
+  (decisione di Luca del 19/11, prima si usavano le ultime ricevute).
 - `OPEN_METEO_API_KEY` (in `render.yaml`): con la chiave dell'abbonamento
   commerciale le chiamate vanno a `customer-api.open-meteo.com`, senza il tetto
   condiviso. Scelta dell'abbonamento chiesta a Luca nel thread.

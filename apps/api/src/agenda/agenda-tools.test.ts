@@ -205,7 +205,7 @@ describe("meteo quando Open-Meteo dà errore", () => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
-  it("col tetto esaurito usa le ultime previsioni e non richiama il servizio per un'ora", async () => {
+  it("col tetto esaurito non mostra previsioni scadute e non richiama il servizio per un'ora", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-18T08:00:00Z"));
     const daily = { daily: { time: ["2026-11-18"], weather_code: [63], precipitation_probability_max: [90], wind_gusts_10m_max: [10] } };
@@ -213,8 +213,8 @@ describe("meteo quando Open-Meteo dà errore", () => {
     vi.stubGlobal("fetch", fetchMock);
     const service = new WeatherService();
     expect(await service.alerts(41.9, 12.5)).toEqual([{ date: "2026-11-18", kind: "rain" }]);
-    vi.setSystemTime(new Date("2026-11-18T12:00:00Z")); // previsioni scadute: nuovo tentativo, 429
-    expect(await service.alerts(41.9, 12.5)).toEqual([{ date: "2026-11-18", kind: "rain" }]);
+    vi.setSystemTime(new Date("2026-11-18T12:00:00Z")); // previsioni scadute: nuovo tentativo, 429, nessuna icona
+    expect(await service.alerts(41.9, 12.5)).toEqual([]);
     expect(await service.alerts(45.46, 9.19)).toEqual([]); // altra zona durante la pausa: nessuna chiamata
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
