@@ -751,7 +751,7 @@ function RegistratiForm() {
     <>
       <SignupChoicesSummary choice={entityChoice} onChangeChoice={() => setParam("tipo", null)} chosenTier={chosenTier} />
 
-      <div id="categorie">
+      <div id="categorie" className={error && errorField === "categories" ? "field-invalid-frame" : undefined}>
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
           Che lavori fai?
         </span>

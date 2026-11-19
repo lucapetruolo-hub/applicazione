@@ -46,3 +46,18 @@ anni di esperienza, con "Esperienza" attiva nell'indice.
 **Verifica**: la stessa prova controlla anche il bordo rosso della città, che
 sparisce insieme all'errore appena la città è scritta, e `aria-invalid` sugli
 anni.
+
+## Terzo giro (migliorie approvate da Luca, 19/11)
+
+- Da telefono, toccando un campo di ricerca (città, comuni), la pagina lascia
+  40 px sotto le barre in alto invece di 12 (`revealFieldForList`): si legge
+  anche l'etichetta sopra il campo.
+- Bordo rosso anche negli altri moduli: in **registrazione** il riquadro
+  attorno a "Che lavori fai?" (gli altri campi lo avevano già); nella
+  **richiesta di preventivo** descrizione, "Chi ti serve", "Quando ti serve?"
+  (riquadro, finché il problema del passo 1 resta), città, indirizzo, telefono
+  e i campi con `aria-invalid` (classe `.guided-request-form`). Classe comune
+  `.field-invalid-frame` per i riquadri.
+
+**Verifica**: nuova prova nella stessa spec: con "Avanti" la descrizione vuota
+diventa rossa e torna normale appena scritta.

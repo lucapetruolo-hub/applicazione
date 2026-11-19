@@ -9,7 +9,8 @@ import { testToken } from "../fixtures/preventivi";
  * già scelta; ora è bianca come gli altri campi. Premendo "Salva profilo" con
  * un campo mancante l'errore sta sopra il pulsante e, toccato, porta al campo
  * con il cursore dentro, anche se è in un'altra parte del modulo; il campo ha
- * il bordo rosso finché resta sbagliato e, corretto, l'errore sparisce.
+ * il bordo rosso finché resta sbagliato e, corretto, l'errore sparisce. Anche
+ * nella richiesta di preventivo il campo mancante diventa rosso.
  */
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name === "telefono-new-york", "Basta un telefono e un computer.");
@@ -107,4 +108,18 @@ test("l'errore del salvataggio porta al campo che manca", async ({ page }) => {
     "aria-current",
     "location",
   );
+});
+
+test.describe("richiesta di preventivo", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("con Avanti la descrizione mancante diventa rossa e torna normale appena scritta", async ({ page }) => {
+    await page.goto("/preventivo");
+    const description = page.getByLabel("Descrivi il lavoro");
+    await page.getByText("Avanti", { exact: true }).click();
+    await expect(description).toHaveAttribute("aria-invalid", "true");
+    await expect.poll(() => description.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(180, 35, 24)");
+    await description.fill("Il rubinetto del bagno gocciola");
+    await expect(description).not.toHaveAttribute("aria-invalid", "true");
+  });
 });

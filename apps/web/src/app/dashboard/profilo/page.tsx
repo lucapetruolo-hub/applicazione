@@ -1371,7 +1371,7 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="2">
             <FieldLabel>Categorie</FieldLabel>
-            <div id={PROFILE_FIELD_ID.categorie} className={invalid("categorie") ? "profile-field-invalid" : undefined}>
+            <div id={PROFILE_FIELD_ID.categorie} className={invalid("categorie") ? "field-invalid-frame" : undefined}>
               <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
             </div>
           </YStack>
