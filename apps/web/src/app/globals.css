@@ -10624,6 +10624,40 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: save-bar-in 180ms ease-out;
   }
 }
+/* Errore del salvataggio sopra il pulsante; se porta a un campo è un
+   pulsante che sembra un link (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */
+.save-bar-error:empty {
+  display: none;
+}
+.save-bar-error {
+  color: #b42318;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.save-bar-error-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.save-bar-error-go {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.save-bar-error-go::after {
+  content: " \203A";
+}
+.save-bar-error-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
 @keyframes save-bar-in {
   from {
     transform: translateY(8px);

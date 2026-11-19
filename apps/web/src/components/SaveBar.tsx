@@ -17,6 +17,8 @@ export function SaveBar({
   onSave,
   onCancel,
   saveLabel = "Salva",
+  error,
+  onErrorPress,
   children,
 }: {
   dirty: boolean;
@@ -26,10 +28,30 @@ export function SaveBar({
   saveLabel?: string;
   /** Riga sopra i pulsanti (es. la dichiarazione del profilo), solo nella posizione normale. */
   children?: ReactNode;
+  /**
+   * Errore del salvataggio, sopra il pulsante anche quando la riga resta in
+   * fondo allo schermo: prima stava in fondo alla pagina e chi premeva
+   * "Salva" in alto non lo vedeva.
+   */
+  error?: string | null;
+  /** Con questo l'errore si tocca e porta al campo da sistemare (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */
+  onErrorPress?: () => void;
 }) {
   return (
     <div className={`save-bar${dirty ? " is-dirty" : ""}`}>
       {children}
+      {/* Letto dal lettore di schermo senza spostare il fuoco (collaudo L-07). */}
+      <div role="alert" className="save-bar-error">
+        {error ? (
+          onErrorPress ? (
+            <button type="button" className="save-bar-error-link" onClick={onErrorPress}>
+              <span>{error}</span> <span className="save-bar-error-go">Vai al campo</span>
+            </button>
+          ) : (
+            <span>{error}</span>
+          )
+        ) : null}
+      </div>
       <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent={dirty ? "space-between" : "flex-start"}>
         {dirty ? (
           <Text fontSize={16} fontWeight="700" color={brand.grafite} role="status">

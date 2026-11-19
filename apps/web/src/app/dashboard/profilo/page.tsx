@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -102,6 +103,19 @@ const CANDIDATE_LANGUAGES = [
 const inputStyle = { padding: 12, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
 
+/**
+ * Campo da raggiungere toccando l'errore sopra "Salva profilo"
+ * (docs/changelog/2026-11-19-campi-obbligatori-profilo.md): un id, oppure il
+ * prezzo di una prestazione, che va prima riaperta.
+ */
+type ProfileFieldTarget = { id: string } | { serviceIndex: number; ariaLabel: string };
+const PROFILE_FIELD_ID = {
+  nome: "profilo-campo-nome",
+  citta: "profilo-campo-citta",
+  categorie: "profilo-campo-categorie",
+  anni: "profilo-campo-anni",
+} as const;
+
 /** Prezzo nel campo di testo: "60" per 60,00 € e "12,50" solo con i centesimi (§349), mai "60.00". */
 function eurInputValue(cents: number): string {
   return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2).replace(".", ",");
@@ -186,7 +200,7 @@ function ProfileIndex() {
   }, [activeId]);
 
   return (
-    <nav ref={navRef} className="profile-index" aria-label="Parti del profilo">
+    <nav ref={navRef} className="profile-index" aria-label="Parti del profilo" data-barra-ferma="">
       {PROFILE_SECTIONS.map((section) => (
         <a
           key={section.id}
@@ -347,6 +361,8 @@ export default function DashboardProfiloPage() {
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Il campo a cui porta l'errore, se è di un campo del modulo.
+  const [errorTarget, setErrorTarget] = useState<ProfileFieldTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -655,24 +671,44 @@ export default function DashboardProfiloPage() {
   /** Validazione + salvataggio del form principale; `true` se è andato a buon fine. */
   async function saveProfile(): Promise<boolean> {
     setError(null);
-    if (!businessName.trim() || businessName.trim().length < 2) {
-      setError("Inserisci il nome della tua attività.");
+    setErrorTarget(null);
+    const fail = (message: string, target: ProfileFieldTarget) => {
+      setError(message);
+      setErrorTarget(target);
       return false;
+    };
+    // Nello stesso ordine della pagina: se manca più di un campo, l'errore
+    // porta al primo che si incontra scorrendo.
+    if (!businessName.trim() || businessName.trim().length < 2) {
+      return fail("Inserisci il nome della tua attività.", { id: PROFILE_FIELD_ID.nome });
     }
     if (companyNameForPrivate) {
-      setError("Il nome è quello di una società: da privato senza partita IVA non si può usare.");
-      businessNameInputRef.current?.focus();
-      return false;
-    }
-    if (categorySlugs.length === 0) {
-      setError(NO_CATEGORY_MESSAGE);
-      return false;
+      return fail("Il nome è quello di una società: da privato senza partita IVA non si può usare.", { id: PROFILE_FIELD_ID.nome });
     }
     if (!city.trim()) {
-      setError("Indica la città in cui operi.");
-      return false;
+      return fail("Indica la città in cui operi.", { id: PROFILE_FIELD_ID.citta });
+    }
+    if (categorySlugs.length === 0) {
+      return fail(NO_CATEGORY_MESSAGE, { id: PROFILE_FIELD_ID.categorie });
+    }
+    if (yearsOfExperience.trim() && (!/^\d+$/.test(yearsOfExperience.trim()) || Number(yearsOfExperience.trim()) > 80)) {
+      return fail("Gli anni di esperienza devono essere un numero tra 0 e 80.", { id: PROFILE_FIELD_ID.anni });
     }
 
+    const notANumber = (price: string) => price.trim() !== "" && Number.isNaN(Number(price.trim().replace(",", ".")));
+    for (const [index, service] of services.entries()) {
+      const name = service.name.trim();
+      if (!name) continue;
+      const min = service.priceMin.trim();
+      const max = service.priceMax.trim();
+      const minLabel = `Prezzo minimo di ${name} in euro`;
+      const maxLabel = `Prezzo massimo di ${name} in euro`;
+      if (notANumber(min)) return fail(`Prezzo minimo non valido per "${name}".`, { serviceIndex: index, ariaLabel: minLabel });
+      if (notANumber(max)) return fail(`Prezzo massimo non valido per "${name}".`, { serviceIndex: index, ariaLabel: maxLabel });
+      if (min && max && Number(max.replace(",", ".")) < Number(min.replace(",", "."))) {
+        return fail(`Il prezzo massimo deve essere maggiore o uguale al minimo per "${name}".`, { serviceIndex: index, ariaLabel: maxLabel });
+      }
+    }
     const cleanedServices = services
       .map((service) => ({
         name: service.name.trim(),
@@ -682,25 +718,6 @@ export default function DashboardProfiloPage() {
         categorySlug: serviceCategory(service),
       }))
       .filter((service) => service.name.length > 0);
-    for (const service of cleanedServices) {
-      if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
-        setError(`Prezzo minimo non valido per "${service.name}".`);
-        return false;
-      }
-      if (service.priceMax && Number.isNaN(Number(service.priceMax.replace(",", ".")))) {
-        setError(`Prezzo massimo non valido per "${service.name}".`);
-        return false;
-      }
-      if (service.priceMin && service.priceMax && Number(service.priceMax.replace(",", ".")) < Number(service.priceMin.replace(",", "."))) {
-        setError(`Il prezzo massimo deve essere maggiore o uguale al minimo per "${service.name}".`);
-        return false;
-      }
-    }
-
-    if (yearsOfExperience.trim() && (!/^\d+$/.test(yearsOfExperience.trim()) || Number(yearsOfExperience.trim()) > 80)) {
-      setError("Gli anni di esperienza devono essere un numero tra 0 e 80.");
-      return false;
-    }
 
     setIsSubmitting(true);
     try {
@@ -759,6 +776,32 @@ export default function DashboardProfiloPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  /**
+   * Tocco sull'errore: scorre fino al campo e ci mette il cursore. L'indice in
+   * alto segue da solo la parte in vista; una prestazione chiusa si riapre.
+   */
+  function goToField(target: ProfileFieldTarget) {
+    let field: HTMLElement | null | undefined;
+    if ("id" in target) {
+      field = document.getElementById(target.id);
+    } else {
+      flushSync(() => setServices((prev) => prev.map((service, i) => (i === target.serviceIndex ? { ...service, open: true } : service))));
+      field = [...document.querySelectorAll<HTMLElement>("#profilo-prestazioni input")].find((input) => input.getAttribute("aria-label") === target.ariaLabel);
+    }
+    if (!field) return;
+    const focusable = field.matches("input, textarea, select, button")
+      ? field
+      : field.querySelector<HTMLElement>("input, button, [role='button'], [role='checkbox'], [tabindex='0']");
+    // Il campo appena sotto l'indice che resta in alto: così l'indice segna
+    // la sua parte e non quella prima, ancora in vista a metà schermo.
+    const index = document.querySelector<HTMLElement>("[data-barra-ferma]");
+    const indexBottom = index ? (Number.parseFloat(getComputedStyle(index).top) || 0) + index.offsetHeight : 0;
+    const top = window.scrollY + field.getBoundingClientRect().top - indexBottom - 72;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
+    (focusable ?? field).focus({ preventScroll: true });
   }
 
   async function handleSubmit() {
@@ -1210,6 +1253,7 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Nome attività</FieldLabel>
             <input
               ref={businessNameInputRef}
+              id={PROFILE_FIELD_ID.nome}
               aria-label="Nome attività"
               aria-invalid={companyNameForPrivate || undefined}
               aria-describedby={companyNameForPrivate ? "nome-societa-privato" : undefined}
@@ -1240,8 +1284,12 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="2">
             <FieldLabel>Città in cui operi</FieldLabel>
-            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
+            {/* Bianco con il bordo degli altri campi, come in Account: grigio
+                sembrava già scelto o non modificabile
+                (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */}
+            <YStack className="guided-city guided-city-inline" borderWidth={1} borderColor={brand.bordoCampo} borderRadius={10} backgroundColor="#ffffff">
               <Autocomplete
+                id={PROFILE_FIELD_ID.citta}
                 items={allItalianCityNames()}
                 getKey={(item) => item}
                 getLabel={(item) => item}
@@ -1294,7 +1342,9 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="2">
             <FieldLabel>Categorie</FieldLabel>
-            <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
+            <div id={PROFILE_FIELD_ID.categorie}>
+              <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
+            </div>
           </YStack>
 
           {categorySlugs.length > 0 ? (
@@ -1412,7 +1462,9 @@ export default function DashboardProfiloPage() {
             <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>
               Anni di esperienza
             </Text>
-            <input aria-label="Anni di esperienza"
+            <input
+              id={PROFILE_FIELD_ID.anni}
+              aria-label="Anni di esperienza"
               type="number"
               min={0}
               max={80}
@@ -1781,12 +1833,6 @@ export default function DashboardProfiloPage() {
           />
         ) : null}
 
-        {error ? (
-          // Letti dal lettore di schermo senza spostare il fuoco (collaudo L-07).
-          <Text role="alert" color={brand.urgenza} fontSize={16}>
-            {error}
-          </Text>
-        ) : null}
         {saved ? (
           <Text role="status" color={brand.verificato} fontSize={16}>
             Profilo salvato!
@@ -1812,7 +1858,14 @@ export default function DashboardProfiloPage() {
 
         {/* Con modifiche non salvate "Salva profilo" resta in fondo allo
             schermo (SaveBar, docs/CHANGELOG.md §349): la pagina è lunga 2.600 px. */}
-        <SaveBar dirty={isDirty} saving={isSubmitting} onSave={handleSubmit} saveLabel="Salva profilo" />
+        <SaveBar
+          dirty={isDirty}
+          saving={isSubmitting}
+          onSave={handleSubmit}
+          saveLabel="Salva profilo"
+          error={error}
+          onErrorPress={errorTarget ? () => goToField(errorTarget) : undefined}
+        />
       </YStack>
       )}
 

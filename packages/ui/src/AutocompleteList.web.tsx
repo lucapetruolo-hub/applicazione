@@ -177,7 +177,13 @@ export function AutocompleteList({ children, activeOptionId }: AutocompleteListP
   );
 }
 
-/** Bordo inferiore della barra in alto che resta ferma (header del sito), 0 se non c'è. */
+/**
+ * Bordo inferiore delle barre in alto che restano ferme, 0 se non ce ne sono:
+ * l'header del sito e quelle segnate con `data-barra-ferma` che gli si
+ * attaccano sotto scorrendo, come l'indice del Profilo pubblico. Queste
+ * contano anche prima di attaccarsi: dopo lo scorrimento coprirebbero il campo
+ * (docs/changelog/2026-11-19-campi-obbligatori-profilo.md).
+ */
 function stickyTopBottom(): number {
   let bottom = 0;
   for (const x of [window.innerWidth / 2, 8]) {
@@ -190,6 +196,10 @@ function stickyTopBottom(): number {
       }
       node = node.parentElement;
     }
+  }
+  for (const bar of document.querySelectorAll<HTMLElement>("[data-barra-ferma]")) {
+    const top = Number.parseFloat(getComputedStyle(bar).top);
+    if (Number.isFinite(top)) bottom = Math.max(bottom, top + bar.offsetHeight);
   }
   return bottom;
 }
