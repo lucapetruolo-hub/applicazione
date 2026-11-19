@@ -71,7 +71,8 @@ export function NotificationOptOutsPanel({ data }: { data: AdminNotificationOptO
         {group.role === "professional" ? (
           <>
             {" "}
-            · Urgenti anche di notte: <strong>{cell(group.urgentAtNight)}</strong>
+            · Urgenti anche di notte: <strong>{cell(group.urgentAtNight)}</strong> · Promemoria del mattino uno per uno:{" "}
+            <strong>{cell(group.morningApartOff)}</strong>
           </>
         ) : null}
       </Text>

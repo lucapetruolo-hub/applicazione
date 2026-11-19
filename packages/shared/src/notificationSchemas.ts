@@ -32,6 +32,8 @@ export const notificationPreferencesSchema = z.object({
   quietNight: z.boolean().optional(),
   /** Di notte aspettano il mattino anche le richieste urgenti (scelta di Luca, 29/10/2026: acceso di serie). */
   quietNightUrgent: z.boolean().optional(),
+  /** Professionista: i promemoria del mattino partono insieme alle 10:05 (docs/changelog/2026-11-19-email-del-mattino.md). Acceso di serie. */
+  morningTogether: z.boolean().optional(),
   /** Ora della sera (18-21) del riassunto e del riepilogo dei lavori di domani. */
   digestHour: z.number().int().min(18).max(21).optional(),
 });

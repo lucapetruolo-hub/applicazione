@@ -582,6 +582,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     if (typeof s.soundName === "string" && (NOTIFICATION_SOUND_KEYS as readonly string[]).includes(s.soundName)) base.soundName = s.soundName;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
+    if (typeof s.morningTogether === "boolean") base.morningTogether = s.morningTogether;
     if (typeof s.quietNightUrgent === "boolean") base.quietNightUrgent = s.quietNightUrgent;
     if (typeof s.digestHour === "number" && (NOTIFICATION_DIGEST_HOURS as readonly number[]).includes(s.digestHour)) base.digestHour = s.digestHour;
     if (s.items && typeof s.items === "object") {
@@ -715,6 +716,26 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "PAYOUT_IBAN_MATCHED",
   "MONTHLY_DOCUMENTS_READY",
 ]);
+
+/**
+ * Promemoria del mattino al professionista: partono tutti insieme in
+ * un'email sola "Le cose di oggi" alle 10:05 invece di 3-5 email tra le 8 e
+ * le 10 (docs/changelog/2026-11-19-email-del-mattino.md, scelta di Luca).
+ * Restano a parte l'abbonamento (avvisi di rinnovo e pagamento) e l'email
+ * del lunedì "Lavori cercati", che ha un contenuto suo.
+ */
+export const NOTIFICATION_MORNING_TYPES: ReadonlySet<string> = new Set([
+  "JOB_TO_CLOSE",
+  "AGENDA_REMINDER",
+  "AWAY_ENDING",
+  "REVIEW_REPLY_REMINDER",
+  "IDENTITY_VERIFICATION_REMINDER",
+  "PROFILE_SETUP_REMINDER",
+]);
+
+/** Ora e minuto (italiani) dell'email "Le cose di oggi": cinque minuti dopo i promemoria delle 10. */
+export const NOTIFICATION_MORNING_HOUR = 10;
+export const NOTIFICATION_MORNING_MINUTE = 5;
 
 /** Ora (italiana) del riassunto della sera e fascia della notte senza email. */
 export const NOTIFICATION_DIGEST_HOUR = 19;

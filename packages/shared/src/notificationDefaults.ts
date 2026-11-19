@@ -23,5 +23,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   digest: true,
   quietNight: true,
   quietNightUrgent: true,
+  morningTogether: true,
   digestHour: 19,
 };

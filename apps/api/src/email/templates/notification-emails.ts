@@ -2807,9 +2807,23 @@ export function chatMessageEmail(
  */
 export function heldEmailsSummary(
   items: { time: string; subject: string; url?: string }[],
-  ctx: { name: string | null; morning: boolean },
+  ctx: { name: string | null; morning: boolean; today?: boolean },
   siteUrl: string,
 ): EmailContent {
+  // Promemoria del mattino al professionista tutti insieme (docs/changelog/2026-11-19-email-del-mattino.md).
+  if (ctx.today) {
+    return {
+      kind: "notification",
+      subject: `Le cose di oggi: ${items.length} promemoria`,
+      preheader: items.slice(0, 2).map((item) => item.subject).join(" · "),
+      greeting: ctx.name,
+      title: "Le cose di oggi",
+      paragraphs: ["I promemoria della mattina, in un'unica email."],
+      detailsTitle: `${items.length} promemoria`,
+      details: items.map((item) => ({ label: item.time, value: item.subject, ...(item.url ? { url: item.url } : {}) })),
+      cta: { label: "Apri Oggi", url: `${siteUrl}/dashboard` },
+    };
+  }
   const when = ctx.morning ? "della notte" : "di oggi";
   return {
     kind: "notification",

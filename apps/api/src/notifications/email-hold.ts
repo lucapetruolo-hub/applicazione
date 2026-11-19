@@ -1,5 +1,8 @@
 import {
   NOTIFICATION_DIGEST_TYPES,
+  NOTIFICATION_MORNING_HOUR,
+  NOTIFICATION_MORNING_MINUTE,
+  NOTIFICATION_MORNING_TYPES,
   NOTIFICATION_QUIET_FROM_HOUR,
   NOTIFICATION_QUIET_TO_HOUR,
   notificationDigestHour,
@@ -15,11 +18,28 @@ import {
  * è scelto di riceverle subito. `null` = subito.
  */
 export function emailHoldUntil(prefs: NotificationPreferences, type: string, payload: unknown, now: Date = new Date()): Date | null {
+  // Promemoria del mattino: insieme alle 10:05 (docs/changelog/2026-11-19-email-del-mattino.md).
+  // Dopo quell'ora (raro: un promemoria nato nel pomeriggio) valgono le regole di sempre.
+  // Chi spegne "Promemoria del mattino tutti insieme" li riceve subito, con le regole di sempre.
+  if (prefs.morningTogether !== false && NOTIFICATION_MORNING_TYPES.has(type)) {
+    const morning = morningEmailAt(now);
+    if (morning) return morning;
+  }
   const urgent = isUrgent(payload);
   if (!urgent && prefs.digest && NOTIFICATION_DIGEST_TYPES.has(type)) return nextRomeHour(notificationDigestHour(prefs), now);
   // Le richieste urgenti aspettano solo se la persona l'ha scelto (acceso di serie, scelta di Luca).
   if (prefs.quietNight && isQuietHour(now) && (!urgent || prefs.quietNightUrgent !== false)) return nextRomeHour(NOTIFICATION_QUIET_TO_HOUR, now);
   return null;
+}
+
+/** Le 10:05 italiane di oggi, se non sono ancora passate; altrimenti `null`. */
+export function morningEmailAt(now: Date = new Date()): Date | null {
+  const wall = wallClockNow(now);
+  const minutes = wall.getUTCHours() * 60 + wall.getUTCMinutes();
+  if (minutes >= NOTIFICATION_MORNING_HOUR * 60 + NOTIFICATION_MORNING_MINUTE) return null;
+  // Cinque minuti indietro: tra le 10:00 e le 10:05 l'ora delle 10 è ancora quella di oggi.
+  const shift = NOTIFICATION_MORNING_MINUTE * 60_000;
+  return new Date(nextRomeHour(NOTIFICATION_MORNING_HOUR, new Date(now.getTime() - shift)).getTime() + shift);
 }
 
 function isUrgent(payload: unknown): boolean {

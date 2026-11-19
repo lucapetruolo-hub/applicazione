@@ -649,6 +649,7 @@ export type AdminNotificationOptOutGroup = {
   digestOff: number;
   quietNightOff: number;
   urgentAtNight: number;
+  morningApartOff: number;
   rows: {
     key: string;
     label: string;

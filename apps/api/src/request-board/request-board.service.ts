@@ -350,13 +350,15 @@ export class RequestBoardService {
 
   /**
    * Lavori cercati della settimana ("sì" di Luca del 18/11/2026,
-   * docs/changelog/2026-11-18-bacheca-cliente.md): il lunedì alle 9, a ogni
+   * docs/changelog/2026-11-18-bacheca-cliente.md): il lunedì alle 10:05 (prima
+   * alle 9, spostata con le email del mattino,
+   * docs/changelog/2026-11-19-email-del-mattino.md), a ogni
    * professionista visibile, un'email con le richieste entrate in bacheca
    * negli ultimi 7 giorni a cui potrebbe rispondere (stesso mestiere, entro
    * 100 km, le stesse regole di "Rispondi") e che non gli sono arrivate. Le
    * più vicine prima; nessuna email se non ce n'è. Si spegne dalle notifiche.
    */
-  @ScheduledJob("0 9 * * 1")
+  @ScheduledJob("5 10 * * 1", { timeZone: "Europe/Rome" })
   async sendWeeklyDigest(now: Date = new Date()): Promise<{ sent: number }> {
     if (!RequestBoardService.enabled()) return { sent: 0 };
     const rows = await this.prisma.guidedRequest.findMany({

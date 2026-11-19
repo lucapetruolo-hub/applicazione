@@ -383,6 +383,15 @@ export default function NotifichePage() {
                     ) : undefined
                   }
                 />
+                {role === "professional" ? (
+                  <SiteTile
+                    icon="sun"
+                    label="Promemoria del mattino tutti insieme"
+                    description="Lavori da chiudere, agenda, recensioni e profilo in un'unica email alle 10:05. Se lo togli, ogni promemoria arriva da solo appena c'è."
+                    checked={notificationPrefs.morningTogether ?? true}
+                    onChange={() => void save({ ...notificationPrefs, morningTogether: !(notificationPrefs.morningTogether ?? true) })}
+                  />
+                ) : null}
               </div>
             </section>
 
