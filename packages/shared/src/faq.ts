@@ -18,7 +18,7 @@ import { ONLINE_LIMIT_EUR_CENTS, ONLINE_LIMIT_FREE_DAYS, ONLINE_LIMIT_FREE_JOBS 
 import { ONLINE_APP_FEE_PERCENT, ONLINE_DEPOSIT_PERCENT, ONLINE_RELEASE_DAYS } from "./onlinePayments";
 import { MAX_AWAY_DAYS } from "./away";
 import { PAST_DUE_GRACE_DAYS, SUBSCRIPTION_TIERS } from "./plans";
-import { FAQ_HOME, type FaqAudience, type FaqItem } from "./faqHome";
+import { FAQ_CLIENT_INVOICE, FAQ_HOME, type FaqAudience, type FaqItem } from "./faqHome";
 
 export type { FaqAudience, FaqItem } from "./faqHome";
 
@@ -67,7 +67,7 @@ export const FAQ: readonly FaqItem[] = [
     topic: "Come funziona",
     question: "Quanti preventivi riceverò?",
     answer:
-      "Dipende da quanti professionisti sono liberi nella tua zona: ognuno decide se rispondere. Ti avvisiamo a ogni preventivo nuovo e la richiesta resta aperta per qualche giorno.",
+      "Dipende da quanti professionisti sono liberi nella tua zona: ognuno decide se rispondere. Ti avvisiamo a ogni preventivo nuovo e la richiesta resta aperta per qualche giorno. Se dopo 2 giorni non ne è arrivato nessuno, la richiesta compare anche in \"Lavori cercati\", senza nome, contatti né foto, dove la vedono i professionisti non ancora iscritti: la togli quando vuoi da Le mie richieste.",
   },
   {
     id: "chi-decide-prezzo",
@@ -144,14 +144,7 @@ export const FAQ: readonly FaqItem[] = [
     answer:
       "Il professionista deve motivare ogni voce aggiunta o differenza dal preventivo, e la vedi prima di pagare il saldo. Se non sei d'accordo puoi segnalarlo.",
   },
-  {
-    id: "fattura-cliente",
-    audience: "cliente",
-    topic: "Pagamenti",
-    question: "Chi mi fa la fattura o la ricevuta?",
-    answer:
-      "Il professionista, perché il lavoro lo fai fare a lui. Puoi chiedergliela con \"Chiedi la fattura\" dalla scheda del lavoro: gli arrivano i dati che servono.",
-  },
+  FAQ_CLIENT_INVOICE,
 
   // ——— Clienti: annullare e problemi ———
   {

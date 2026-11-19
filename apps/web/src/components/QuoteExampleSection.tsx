@@ -20,14 +20,16 @@ const QUOTE_ROWS = [
 ];
 
 const STEPS = [
-  { title: "Raccontaci il problema", text: "Una foto e due righe. Nessun impegno." },
+  { title: "Raccontaci il problema", text: "Una foto o un video e due righe. Nessun impegno." },
   { title: "Ricevi preventivi chiari", text: "Manodopera, materiali e tempi separati. Confronta prima di dire sì." },
   {
     title: "Scegli e prenota",
     // Niente "SMS": non esistono e Luca li ha esclusi (docs/changelog/2026-10-28-promemoria-whatsapp.md;
     // collaudo dell'08/11/2026, E6-10). "WhatsApp" scritto già ora per scelta di Luca del 09/11/2026:
     // il canale si accende al lancio con la società verificata da Meta.
-    text: "Conferma sul sito. Promemoria via email e WhatsApp prima dell'appuntamento.",
+    // "Cambi data con un tocco": la data si sposta da tutti e due (collaudo del 19/11, voce N10,
+    // docs/changelog/2026-11-19-whatsapp-nelle-scritte.md).
+    text: "Conferma sul sito. Promemoria via email e WhatsApp. Se serve, cambi data con un tocco.",
   },
 ];
 

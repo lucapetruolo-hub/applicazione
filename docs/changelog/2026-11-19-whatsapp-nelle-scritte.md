@@ -107,3 +107,27 @@ L'elenco passa da 8 a 13 righe:
 
 **Motivo**: ogni riga dice una cosa che il sito fa già oggi; nessuna promessa
 nuova.
+
+## Le novità per i clienti in home e nelle FAQ (voci N9, N10, N13, N14)
+
+**Richiesta** (Luca, 19/11/2026: "n9 sì, n10 sì, n13 sì, n14 sì"; in home si
+ritoccano solo i passi 1 e 3).
+
+**Decisione**:
+- **N9**: passo 1 di "Come funziona": "Una foto o un video e due righe.
+  Nessun impegno."
+- **N10**: passo 3: "Conferma sul sito. Promemoria via email e WhatsApp. Se
+  serve, cambi data con un tocco." (`QuoteExampleSection.tsx`).
+- **N13**: la domanda "Chi mi fa la fattura o la ricevuta?" compare anche tra
+  le domande della home (`FAQ_CLIENT_INVOICE` in
+  `packages/shared/src/faqHome.ts`, usata anche dalla pagina FAQ), con una riga
+  in più sulla detrazione: di solito serve il bonifico parlante, non la carta
+  (la stessa frase della finestra "Accetta il preventivo").
+- **N14**: FAQ "Quanti preventivi riceverò?": dopo 2 giorni senza preventivi la
+  richiesta compare anche in "Lavori cercati", senza nome, contatti né foto, e
+  si toglie da Le mie richieste (come nei Termini, punto 3).
+- **N11 non fatta** (Luca: "meglio non dare rassicurazioni che non possiamo
+  fare per tutte le situazioni di pericolo"): l'avviso di sicurezza resta dove
+  serve, nei risultati e nel modulo, ma non si pubblicizza in home. **Da non
+  riproporre.**
+- N12 (foto nelle recensioni) era già in home dalla #422.
