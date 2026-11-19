@@ -25,6 +25,13 @@ describe("email dei preventivi (collaudo 08/11)", () => {
   it("data del cliente accettata: si dice di accettare il preventivo per fissare l'appuntamento", () => {
     expect(renderEmail(notificationEmail("QUOTE_DATE_CONFIRMED", {}, ctx)!).text).toContain("Accetta il preventivo per fissare l'appuntamento");
   });
+
+  it("preventivo accettato: il professionista legge come paga il cliente (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md)", () => {
+    const text = renderEmail(notificationEmail("QUOTE_ACCEPTED", { paymentLine: "Acconto di 40,00 € già pagato online con la carta" }, ctx)!).text;
+    expect(text).toContain("Pagamento");
+    expect(text).toContain("Acconto di 40,00 € già pagato online con la carta");
+    expect(renderEmail(notificationEmail("QUOTE_ACCEPTED", {}, ctx)!).text).not.toContain("Pagamento");
+  });
 });
 
 describe("modello grafico delle email", () => {

@@ -151,7 +151,12 @@ describe("BookingsService.createFromQuote", () => {
       where: { id: "gr-1" },
       data: { status: "CLOSED", closedReason: "COMPLETED" },
     });
-    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.any(Object));
+    // Il professionista sa subito come paga il cliente, mai la carta (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+    expect(notificationsService.notify).toHaveBeenCalledWith(
+      "pro-user-1",
+      "QUOTE_ACCEPTED",
+      expect.objectContaining({ paymentMethod: "DIRECT", paymentShort: "Ti paga direttamente" }),
+    );
     // Il cliente riceve la conferma con il calendario, solo per email (§346).
     // Con il riepilogo del contratto (controllo pre-lancio 08/11, E4-04).
     expect(notificationsService.emailOnly).toHaveBeenCalledWith(

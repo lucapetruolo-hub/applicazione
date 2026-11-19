@@ -60,7 +60,8 @@ import {
   CANCELLATION_TERMS_CHANGED_CODE,
   depositKeptOnLateCancel,
   type AcceptableCancellationPhase,
-  type AcceptedTerms } from "@professionisti/shared";
+  type AcceptedTerms,
+  acceptedPaymentForPro } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { readBookingIcsToken } from "./booking-ics-token";
@@ -677,6 +678,7 @@ export class BookingsService implements OnModuleInit {
     const clientAddress = formatBookingAddress(booking) ?? (guidedRequest.address ? `${guidedRequest.address}${guidedRequest.city ? `, ${guidedRequest.city}` : ""}` : null);
     // Fattura chiesta accettando (docs/CHANGELOG.md §378): detta subito, coi dati da copiare.
     const invoice = (await this.clientInvoiceRequestsService?.forAcceptedNotice(quote.id)) ?? {};
+    const payment = acceptedPaymentForPro(paymentMethod, quotePriceTotals(quote.items), offer.depositPercent);
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
       ...invoice,
       bookingId: booking.id,
@@ -688,6 +690,11 @@ export class BookingsService implements OnModuleInit {
       clientPhone: booking.recipientPhone ?? client?.phone ?? null,
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      // Come paga il cliente, nel popup e nell'email: solo il tipo e le cifre, mai la carta
+      // (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+      paymentMethod,
+      paymentShort: payment.short,
+      paymentLine: payment.long,
     });
     // Gli altri professionisti con un preventivo ancora aperto lo sanno
     // subito, solo sul sito (collaudo F-11): prima lo scoprivano aprendo la lista.

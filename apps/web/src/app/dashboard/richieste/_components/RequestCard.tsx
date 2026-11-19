@@ -446,9 +446,11 @@ export function RequestCard({
   const revealedEmail = booking ? booking.clientEmail : null;
   const revealedAddress = booking ? (formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${gr.city}` : null)) : null;
   const whatsAppLink = buildWhatsAppLink(revealedPhone);
-  // Nome scritto nella richiesta (chi riceve il professionista), altrimenti quello dell'account.
+  // Nome scritto nella richiesta (chi riceve il professionista sul lavoro).
   const recipientFullName = booking ? [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ").trim() : "";
-  const displayedClientName = !gr.clientAccountDeleted && recipientFullName ? recipientFullName : clientName;
+  // Il nome scritto nella richiesta va sotto quello dell'account solo se è diverso (maiuscole e spazi a parte).
+  const recipientNameDiffers =
+    !gr.clientAccountDeleted && !!recipientFullName && recipientFullName.toLocaleLowerCase("it-IT").replace(/\s+/g, " ") !== clientName.toLocaleLowerCase("it-IT").replace(/\s+/g, " ").trim();
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canResendQuote = lead.quote?.status === "REJECTED" && lead.quote.canResend;
   // Un preventivo nuovo (o rimandato) è fermo per la verifica dell'identità
@@ -1307,9 +1309,10 @@ export function RequestCard({
                   {/* Riquadro rifatto con un solo stile (docs/changelog/2026-11-18-dettagli-cliente-chiari.md,
                       richiesta esplicita dell'utente: "vari formati e varie scritte, non si
                       capiscono"): un nome in grassetto, righe con icona grigia, contatti come
-                      pulsanti tutti uguali. Il nome è quello scritto nella richiesta (chi riceve
-                      il professionista sul lavoro); se l'account ha un altro nome lo dice una riga
-                      grigia sotto. Tutta la riga apre il profilo del cliente (rating), con la freccia. */}
+                      pulsanti tutti uguali. Il nome cliccabile è sempre quello dell'account (apre
+                      il profilo del cliente, con la freccia); se nella richiesta c'è un altro nome
+                      (chi riceve il professionista sul lavoro) va sotto, non cliccabile (richiesta
+                      di Luca, docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md). */}
                   <YStack gap={2}>
                     <XStack
                       alignItems="center"
@@ -1322,13 +1325,16 @@ export function RequestCard({
                       onPress={() => setShowClientProfile(true)}
                     >
                       <Text fontSize={18} fontWeight="800" color={brand.grafite}>
-                        {displayedClientName}
+                        {clientName}
                       </Text>
                       <Icon name="chevron-right" size={16} color={brand.cianografiaScuro} strokeWidth={2.25} />
                     </XStack>
-                    {displayedClientName !== clientName ? (
-                      <Text fontSize={13} color={brand.grafite70}>
-                        Richiesta dall&apos;account di {clientName}
+                    {recipientNameDiffers ? (
+                      <Text fontSize={14} color={brand.grafite70}>
+                        Nome sulla richiesta:{" "}
+                        <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+                          {recipientFullName}
+                        </Text>
                       </Text>
                     ) : null}
                   </YStack>

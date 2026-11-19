@@ -441,6 +441,8 @@ const BUILDERS: Record<string, Builder> = {
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
+      // Come paga il cliente: tipo e cifre, mai la carta (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+      ...(str(payload.paymentLine) ? [{ label: "Pagamento", value: str(payload.paymentLine)!, long: true }] : []),
       ...(invoiceLines.length > 0 ? [{ label: payload.receipt === true ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
     ];
     return {

@@ -242,10 +242,11 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "QUOTE_ACCEPTED") {
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
-    return {
-      icon: "🥳",
-      message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`,
-    };
+    // Come paga, senza aprire il lavoro (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+    const payment = text(data.paymentShort);
+    const accepted = `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`;
+    // Il lavoro può finire già con un punto ("...della cucina."): mai due punti di fila.
+    return { icon: "🥳", message: payment ? `${accepted.replace(/[.!?…\s]+$/u, "")}. ${payment}.` : accepted };
   }
   if (type === "JOB_INVOICE_REQUESTED" && data.receipt === true) {
     // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01).

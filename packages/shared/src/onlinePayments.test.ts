@@ -78,3 +78,22 @@ test("acconto pagato con la carta salvata: il saldo andrà sulla stessa carta", 
   assert.equal(toJobPaymentSummary(row, null)?.autoChargeCard, "Visa •••• 4242");
   assert.equal(toJobPaymentSummary({ ...row, balanceDirect: true }, null)?.autoChargeCard, null);
 });
+
+test("acceptedPaymentForPro: il tipo di pagamento per il professionista, mai la carta", async () => {
+  const { acceptedPaymentForPro: raw } = await import("./onlinePayments");
+  // Gli importi hanno lo spazio non separabile prima di "€".
+  const acceptedPaymentForPro = (...args: Parameters<typeof raw>) => {
+    const r = raw(...args);
+    return { short: r.short, long: r.long.replace(/\u00a0/g, " ") };
+  };
+  const one = { totalMinEurCents: 20000, totalMaxEurCents: 20000 };
+  const range = { totalMinEurCents: 15000, totalMaxEurCents: 20000 };
+  assert.equal(acceptedPaymentForPro("DIRECT", one, 20).short, "Ti paga direttamente");
+  assert.deepEqual(acceptedPaymentForPro("ONLINE", one, 20), {
+    short: "Paga online con la carta: acconto già pagato",
+    long: "Acconto di 40,00 € già pagato online con la carta. Il resto (160,00 €) online con la stessa carta a lavoro finito",
+  });
+  assert.equal(acceptedPaymentForPro("MIXED", range, 20).long, "Acconto di 30,00 € già pagato online con la carta. Il resto (da 120,00 € a 170,00 €) direttamente a te a lavoro finito");
+  assert.equal(acceptedPaymentForPro("ONLINE", one, 100).short, "Ha già pagato tutto online con la carta");
+  assert.match(acceptedPaymentForPro("ONLINE", range, 100).long, /^150,00 € già pagati online con la carta, il prezzo minimo/);
+});
