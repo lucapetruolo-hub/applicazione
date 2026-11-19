@@ -103,3 +103,13 @@ account della prova, controllo dell'avviso di Firefox).
   `z.config({ jitless: true })`: non fatto, da decidere con Luca.
 
 Verifica: prova del percorso in locale contro il sito vero, 1 su 1.
+
+## Righe "PROVA NOTTURNA" dal professionista (19/11, sera)
+
+Richiesta di Luca ("sì" alla miglioria): ogni giro lasciava al professionista
+di prova una riga scaduta "PROVA NOTTURNA" in Richieste, e l'elenco si riempiva
+(una ventina in un giorno) confondendo le prove a mano. Ora a fine prova si
+tolgono anche quelle (`removeProLeads` in `e2e/notte/percorso.spec.ts`, al più
+25 per giro per restare sotto il limite di richieste al minuto).
+
+Verifica: prova in locale contro il sito vero, 1 su 1; righe rimaste: 0.

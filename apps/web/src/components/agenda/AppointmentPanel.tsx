@@ -17,7 +17,7 @@ import {
   wallClockToday,
   type ProfessionalBooking,
 } from "@professionisti/shared";
-import { agendaPaymentLine } from "@/lib/agendaPayment";
+import { agendaPayment } from "@/lib/agendaPayment";
 
 const STATUS_PILL: Record<ProfessionalBooking["status"], { label: string; tone: string }> = {
   PENDING: { label: "Da confermare", tone: "brass" },
@@ -88,7 +88,7 @@ export function AppointmentPanel({
   const startsLater = new Date(booking.scheduledAt).toISOString().slice(0, 10) > wallClockToday().toISOString().slice(0, 10);
   const isToday = jobOccurrenceOn(booking.scheduledAt, booking.scheduledEndAt, wallClockToday().toISOString().slice(0, 10)) !== null;
   const pill = STATUS_PILL[booking.status];
-  const payment = agendaPaymentLine(booking);
+  const payment = agendaPayment(booking);
   const kindLabel = [online ? "Online" : booking.serviceMode === "HOME" ? "A domicilio" : null, booking.categoryLabel].filter(Boolean).join(" · ");
 
   async function run(action: () => Promise<void>, setBusy: (v: boolean) => void) {
@@ -176,11 +176,20 @@ export function AppointmentPanel({
         <div className="ag-sec">
           <h3>Pagamento</h3>
           <div className={`ag-pay${payment.paid ? " paid" : ""}`}>
-            <div>
-              <b>{payment.title}</b>
-              <span>{payment.detail}</span>
-            </div>
-            {payment.amount ? <div className="amt">{payment.amount}</div> : null}
+            {payment.rows.length > 0 ? (
+              <dl>
+                {payment.rows.map((row) => (
+                  <div key={row.label} className={row.strong ? "strong" : undefined}>
+                    <dt>
+                      {row.done ? <Check size={14} aria-hidden /> : null}
+                      {row.label}
+                    </dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            <p>{payment.note}</p>
           </div>
         </div>
 

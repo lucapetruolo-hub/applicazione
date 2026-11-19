@@ -22,9 +22,24 @@ test.beforeEach(async () => {
   }
 });
 
+/**
+ * Tolta la richiesta dal cliente, al professionista resta la riga "scaduta" in
+ * Richieste: una per giro, e l'elenco dell'account di prova si riempie. Si
+ * tolgono anche quelle, poche per volta per restare sotto il limite di
+ * richieste al minuto dell'API.
+ */
+async function removeProLeads() {
+  const proToken = await loginPro();
+  const leads = await api<{ id: string; guidedRequest: { description: string | null } }[]>("/professionals/me/leads", proToken);
+  for (const lead of leads.filter((entry) => entry.guidedRequest.description?.startsWith(MARK)).slice(0, 25)) {
+    await api(`/professionals/me/leads/${lead.id}`, proToken, "DELETE").catch(() => undefined);
+  }
+}
+
 test.afterEach(async () => {
   if (requestId) await api(`/guided-requests/${requestId}`, clientToken, "DELETE", {});
   requestId = null;
+  await removeProLeads();
 });
 
 test("richiesta, preventivo e accettazione fino alla pagina di Stripe", async ({ browser }) => {
