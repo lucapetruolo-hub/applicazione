@@ -10,6 +10,7 @@ import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { PageLoading } from "@/components/PageLoading";
+import { StatsTabs } from "@/components/stats/StatsTabs";
 
 /**
  * "Statistiche" del professionista (docs/CHANGELOG.md §149, richiesta
@@ -30,7 +31,7 @@ const METRICS: { key: MetricKey; label: string; icon: "eye" | "file-text" | "sen
   { key: "quotes", label: "Preventivi inviati", icon: "send", hint: "Preventivi che hai mandato" },
   { key: "won", label: "Lavori fissati nel periodo", icon: "badge-check", hint: "Preventivi accettati e appuntamenti diretti in questi giorni, anche se poi terminati o annullati" },
   { key: "completed", label: "Lavori terminati", icon: "check", hint: "Lavori che hai segnato come terminati in questi giorni" },
-  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Importi finali dei lavori terminati in questi giorni, pagati online o direttamente. I soldi passati dal sito sono in Pagamenti online e nell'estratto del mese" },
+  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Soldi arrivati in questi giorni, nel giorno in cui sono arrivati: pagamenti online e diretti meno i rimborsi, e i lavori fuori dal sito se li conti. Il dettaglio è in Entrate e uscite" },
 ];
 
 type PresetKey = "7d" | "30d" | "90d" | "365d" | "year" | "custom";
@@ -181,6 +182,7 @@ export default function DashboardStatistichePage() {
             Dalla visita al tuo profilo al lavoro pagato, nel periodo che scegli.
           </Text>
         </YStack>
+        <StatsTabs active="andamento" />
 
         {/* Filtro del periodo: vale per tutta la pagina. */}
         <div className="pstats-filter">

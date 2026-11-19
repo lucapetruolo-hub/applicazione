@@ -19,6 +19,6 @@ import { StatementsService } from "./statements.service";
   imports: [AuthModule, AdminModule, AuditLogModule, EmailModule, NotificationsModule],
   controllers: [AccountingController, AdminAccountingController, AdminCourtesyDocumentsController],
   providers: [InvoicesService, StatementsService, CourtesyCopyService, FeeReconciliationService, JobDocumentsService, QuotePdfService],
-  exports: [InvoicesService],
+  exports: [InvoicesService, StatementsService],
 })
 export class AccountingModule {}

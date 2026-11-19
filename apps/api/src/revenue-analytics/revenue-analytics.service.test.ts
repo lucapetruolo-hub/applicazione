@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bucketStatsRows } from "./revenue-analytics.service";
 
 const d = (iso: string) => new Date(iso);
-const emptyRows = { views: [], requests: [], quotes: [], won: [], completed: [], reviews: [], lateMoves: [] };
+const emptyRows = { views: [], requests: [], quotes: [], won: [], completed: [], reviews: [], lateMoves: [], income: [] };
 
 describe("bucketStatsRows", () => {
   it("crea un giorno per ogni data del periodo, anche a zero, e somma nel giorno giusto", () => {
@@ -16,6 +16,8 @@ describe("bucketStatsRows", () => {
           { updatedAt: d("2026-09-03T08:00:00Z"), professionalCompletedAt: d("2026-09-01T08:00:00Z"), finalAmountEurCents: 12000 },
           { updatedAt: d("2026-09-01T09:00:00Z"), professionalCompletedAt: null, finalAmountEurCents: null },
         ],
+        // Le entrate contano per cassa, nel giorno in cui il soldo arriva (docs/changelog/2026-11-19-entrate-e-uscite.md).
+        income: [{ date: "2026-09-01", amountEurCents: 12000 }, { date: "2026-09-03", amountEurCents: -2000 }],
       },
       d("2026-09-01T00:00:00Z"),
       d("2026-09-03T00:00:00Z"),
@@ -24,7 +26,7 @@ describe("bucketStatsRows", () => {
     expect(buckets.map((b) => b.key)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
     expect(buckets[0]).toMatchObject({ completed: 2, revenueEurCents: 12000, label: "1 Set" });
     expect(buckets[1]).toMatchObject({ views: 5, requests: 1 });
-    expect(buckets[2]).toMatchObject({ requests: 1 });
+    expect(buckets[2]).toMatchObject({ requests: 1, revenueEurCents: -2000 });
   });
 
   it("raggruppa per mese su periodi lunghi, compreso il mese di inizio a metà", () => {

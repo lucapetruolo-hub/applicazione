@@ -116,6 +116,42 @@ describe("estratto del mese: rimborsi, contestazioni e soldi bloccati", () => {
     expect(statement.blockedEurCents).toBe(summary.payoutEurCents);
     expect(row("f13").payoutNote).toBe(`Bloccati ${formatEurCents(summary.payoutEurCents!)}: partono quando il cliente conferma`);
   });
+
+  // Prova di coerenza (docs/changelog/2026-11-19-entrate-e-uscite.md): Entrate
+  // e uscite e Statistiche leggono gli stessi soldi dell'estratto, quindi per
+  // lo stesso mese le cifre devono coincidere al centesimo.
+  it("Entrate e uscite dà le stesse cifre dell'estratto del mese", async () => {
+    const service = build();
+    const { statement } = await service.build("pro-1", "2026-10");
+    const cash = await service.cashMovements("pro-1", new Date(Date.UTC(2026, 8, 30, 22)), new Date(Date.UTC(2026, 9, 31, 23)));
+    const sum = (sources: string[]) => cash.filter((m) => sources.includes(m.source)).reduce((s, m) => s + m.amountEurCents, 0);
+    expect(sum(["ONLINE", "REFUND"])).toBe(statement.totals.onlineEurCents);
+    expect(sum(["DIRECT"])).toBe(statement.totals.directEurCents);
+    expect(-sum(["FEE"])).toBe(statement.totals.feesEurCents);
+    // La contestazione aperta resta fuori, come nei totali dell'estratto; i bonifici non sono entrate.
+    expect(cash.some((m) => m.detail && m.source === "ONLINE" && m.amountEurCents === 8000)).toBe(false);
+    expect(cash.every((m) => !m.label.startsWith("Bonifico"))).toBe(true);
+  });
+});
+
+describe("estratto: acconto online e saldo pagato direttamente", () => {
+  it("il saldo diretto entra nel giorno di Lavoro terminato, una volta sola", async () => {
+    const mixed = payment("m1", "Sara", { balanceDirect: true, depositEurCents: 10000, depositPaidAt: oct(1), paidEurCents: 10000 });
+    Object.assign(mixed.booking, { id: "bk-m1", finalAmountEurCents: 60000, professionalCompletedAt: oct(15) });
+    const prisma = {
+      platformFeeEntry: { findMany: vi.fn().mockResolvedValue([hold(mixed, 10000, 854, oct(1))]) },
+      jobPayment: { findMany: vi.fn((args: { where: { paymentMethod?: string } }) => Promise.resolve(args.where.paymentMethod === "MANOVIA" ? [mixed] : [])) },
+      invoice: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null) },
+      professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ entityType: "SOLE_PROPRIETOR" }) },
+      auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new StatementsService(prisma as never, {} as never, { activeIssuer: vi.fn().mockResolvedValue(null) } as never, {} as never);
+    const { statement, csvRows } = await service.build("pro-1", "2026-10");
+    expect(statement.totals).toMatchObject({ onlineEurCents: 10000, directEurCents: 50000 });
+    expect(csvRows.filter((r) => r.kind === "Saldo pagato direttamente dal cliente")).toEqual([expect.objectContaining({ amountEurCents: 50000, date: "2026-10-15" })]);
+    const cash = await service.cashMovements("pro-1", new Date(Date.UTC(2026, 8, 30, 22)), new Date(Date.UTC(2026, 9, 31, 23)));
+    expect(cash.filter((m) => m.source === "DIRECT")).toEqual([expect.objectContaining({ amountEurCents: 50000, bookingId: "bk-m1" })]);
+  });
 });
 
 describe("lavori pagati online senza documento al cliente", () => {
