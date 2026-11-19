@@ -125,10 +125,22 @@ test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita
   await page.goto("/dashboard/profilo#profilo-prestazioni");
   const hint = page.locator(".services-why");
   await expect(hint).toContainText("Ogni lavoro che aggiungi ti fa trovare");
-  await expect(page.getByLabel("Aggiungi più lavori insieme")).toBeFocused();
+  await expect(page.locator("#profilo-prestazioni")).toBeInViewport();
+  await expect(page.getByLabel("Aggiungi più lavori insieme")).toHaveCount(0);
   await hint.scrollIntoViewIfNeeded();
   await page.screenshot({ path: "test-results/preventivo-veloce-profilo-suggerimento.png" });
   const axe = await new AxeBuilder({ page }).include("#profilo-prestazioni").analyze();
   expect(axe.violations.filter((v) => v.impact === "critical" || v.impact === "serious")).toEqual([]);
+
+  // Un tocco su un "Più cercato" porta subito al suo prezzo (docs/changelog/2026-11-19-togli-piu-lavori-insieme.md).
+  const pill = page.locator("#profilo-prestazioni").getByRole("button", { name: /^Aggiungi / }).first();
+  const pillName = ((await pill.getAttribute("aria-label")) ?? "").replace(/^Aggiungi /, "");
+  await pill.click();
+  await expect(page.getByRole("textbox", { name: `Prezzo minimo di ${pillName} in euro` })).toBeFocused();
+  // Invio nel prezzo chiude la riga come "Fatto".
+  await page.keyboard.type("50");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("textbox", { name: `Prezzo minimo di ${pillName} in euro` })).toHaveCount(0);
+  await expect(page.locator("#profilo-prestazioni .service-line").getByText(pillName, { exact: true })).toBeVisible();
   await page.context().close();
 });
