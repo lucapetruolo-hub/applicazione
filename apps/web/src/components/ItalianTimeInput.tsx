@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { PickerFieldStyles, PickerPanel, isFinePointer, usePicker, type PickerAnchor } from "@/components/PickerPopover";
 import { Clock } from "lucide-react";
 import { brand } from "@professionisti/ui";
@@ -157,8 +157,9 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 /**
  * La rotella: due colonne che scorrono e si fermano a scatti sull'ora al
- * centro, come quella dell'iPhone. Si gira col dito, con la rotella del
- * mouse, con un clic sul numero o con le frecce (ogni colonna è un elenco
+ * centro, come quella dell'iPhone. Si gira col dito, tenendo premuto il
+ * mouse e trascinando (docs/changelog/2026-11-19-rotella-ora-col-mouse.md),
+ * con la rotella del mouse, con un clic sul numero o con le frecce (ogni colonna è un elenco
  * con l'opzione scelta annunciata dal lettore di schermo).
  */
 function TimeWheelPanel({
@@ -234,6 +235,10 @@ function TimeWheelPanel({
           -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
           mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
         }
+        .it-wheel-col.dragging,
+        .it-wheel-col.dragging .it-wheel-item {
+          cursor: grabbing;
+        }
         .it-wheel-col::-webkit-scrollbar {
           display: none;
         }
@@ -308,11 +313,59 @@ function WheelColumn({
     if (items[target] !== selected) onSelect(items[target]!);
   };
 
+  // Col mouse tenuto premuto la colonna segue il puntatore come sotto un dito
+  // (il dito scorre già da solo: è lo scorrimento del telefono). Al rilascio
+  // si ferma sul numero più vicino; se ci si è mossi, il clic non sceglie.
+  const drag = useRef<{ y: number; top: number; moved: boolean } | null>(null);
+  const dragged = useRef(false);
+  const startMouseDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const node = ref.current;
+    if (!node) return;
+    drag.current = { y: e.clientY, top: node.scrollTop, moved: false };
+    dragged.current = false;
+    const move = (ev: PointerEvent) => {
+      const state = drag.current;
+      if (!state) return;
+      const delta = ev.clientY - state.y;
+      if (!state.moved && Math.abs(delta) < 4) return;
+      if (!state.moved) {
+        state.moved = true;
+        dragged.current = true;
+        // Niente scatti mentre si trascina, altrimenti la colonna "salta".
+        node.style.scrollSnapType = "none";
+        node.classList.add("dragging");
+      }
+      ev.preventDefault();
+      node.scrollTop = state.top - delta;
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      const state = drag.current;
+      drag.current = null;
+      if (!state?.moved) return;
+      node.classList.remove("dragging");
+      const target = Math.max(0, Math.min(items.length - 1, Math.round(node.scrollTop / ITEM)));
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      node.scrollTo({ top: target * ITEM, behavior: reduce ? "auto" : "smooth" });
+      // Gli scatti tornano a colonna ferma, per non strattonare lo scorrimento finale.
+      setTimeout(() => {
+        node.style.scrollSnapType = "";
+      }, 250);
+    };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  };
+
   return (
     <div
       ref={ref}
       className="it-wheel-col"
       role="listbox"
+      onPointerDown={startMouseDrag}
       aria-label={label}
       tabIndex={0}
       aria-activedescendant={`${baseId}-${index}`}
@@ -330,6 +383,11 @@ function WheelColumn({
         // serve perché il campo può stare in un <label>, che altrimenti
         // girerebbe il clic al campo togliendo il fuoco alla colonna.
         e.preventDefault();
+        // Fine di un trascinamento: il numero sotto il puntatore non va scelto.
+        if (dragged.current) {
+          dragged.current = false;
+          return;
+        }
         const option = (e.target as Element).closest<HTMLElement>("[data-index]");
         if (option) go(Number(option.dataset.index), true);
       }}

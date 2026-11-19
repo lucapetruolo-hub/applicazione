@@ -217,10 +217,11 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
   );
 }
 
-function AmountRow({ label, value, strong, muted, card }: { label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }) {
+function AmountRow({ label, value, strong, muted, card, divider }: { label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean; divider?: boolean }) {
   // Riga della carta: va a capo la carta, non l'etichetta corta (da telefono "Apple Pay (Mastercard •••• 5100)").
   return (
-    <XStack justifyContent="space-between" gap="3" paddingVertical={2}>
+    // `divider`: riga sottile sopra, stacca quello che deve ancora arrivare dai soldi già presi.
+    <XStack justifyContent="space-between" gap="3" paddingVertical={2} {...(divider ? { borderTopWidth: 1, borderTopColor: brand.filetto, marginTop: 6, paddingTop: 8 } : {})}>
       <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={card ? 0 : 1}>
         {label}
       </Text>
@@ -253,7 +254,7 @@ export function JobPaymentStatus({
   priceRange,
 }: {
   payment: JobPaymentSummary;
-  /** Solo cliente: prezzo del preventivo accettato, per dire quanto resterà da pagare online prima dell'importo finale. */
+  /** Prezzo del preventivo accettato: il totale e quanto resta a fine lavoro, prima dell'importo finale. */
   priceRange?: { minEurCents: number; maxEurCents: number };
   audience: "client" | "professional";
   /** Segnalazione di un problema aperta sul lavoro (collaudo F-09). */
@@ -311,7 +312,7 @@ export function JobPaymentStatus({
   const stage = payment.stage;
   const collected = payment.paidEurCents - payment.refundedEurCents;
 
-  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }> = [];
+  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean; divider?: boolean }> = [];
   if (audience === "client") {
     if (payment.depositEurCents !== null) rows.push({ label: payment.paidEurCents > 0 ? "Acconto pagato" : "Acconto", value: eur(payment.depositEurCents) });
     // Saldo online ancora da pagare, prima che il professionista dica l'importo finale: "da… a…" del preventivo meno l'acconto.
@@ -333,7 +334,15 @@ export function JobPaymentStatus({
     } else if (payment.depositCard || payment.balanceCard) {
       rows.push({ label: "Carta", value: (payment.depositCard ?? payment.balanceCard) as string, muted: true, card: true });
     }
-  } else if (stage !== "AWAITING_DEPOSIT") {
+  } else {
+    // Lo stesso conto del riquadro in Agenda (docs/changelog/2026-11-19-pagamento-in-agenda.md):
+    // quanto vale il lavoro, quanto è già arrivato online, quanto resta.
+    const rangeMax = priceRange?.maxEurCents ?? 0;
+    if (payment.finalAmountEurCents !== null) rows.push({ label: "Importo finale", value: eur(payment.finalAmountEurCents) });
+    else if (priceRange && rangeMax > 0 && stage !== "REFUNDED") rows.push({ label: "Totale del preventivo", value: formatServicePriceRange(priceRange.minEurCents, rangeMax) });
+    if (stage === "AWAITING_DEPOSIT" && payment.depositEurCents !== null) rows.push({ label: "Acconto online da pagare", value: eur(payment.depositEurCents) });
+  }
+  if (audience === "professional" && stage !== "AWAITING_DEPOSIT") {
     if (collected > 0 || stage === "REFUNDED") rows.push({ label: "Pagato dal cliente online", value: eur(payment.paidEurCents) });
     if (payment.refundedEurCents > 0) rows.push({ label: "Rimborsato al cliente", value: `−${eur(payment.refundedEurCents)}` });
     if (payment.refundWaitingEurCents > 0) rows.push({ label: "Di cui in attesa di fondi", value: eur(payment.refundWaitingEurCents), muted: true });
@@ -351,6 +360,15 @@ export function JobPaymentStatus({
       if ((payment.takenByStripeEurCents ?? 0) > 0) rows.push({ label: "Già preso da Stripe per un altro lavoro (rimborso o contestazione)", value: `−${eur(payment.takenByStripeEurCents ?? 0)}`, muted: true });
       rows.push({ label: stage === "RELEASED" ? "Ti arriva in banca" : held ? "Ti arriverà in banca se si chiude bene" : "Ti arriverà in banca", value: eur(payment.payoutEurCents), strong: true });
     }
+    // Quello che deve ancora arrivare sta in fondo, dopo il conto dei soldi già presi: la trattenuta qui sopra riguarda solo quelli.
+    if (stage === "DEPOSIT_PAID" && payment.finalAmountEurCents === null && priceRange && priceRange.maxEurCents - payment.paidEurCents > 0) {
+      rows.push({
+        label: "Resta a fine lavoro",
+        divider: true,
+        value: formatServicePriceRange(Math.max(0, priceRange.minEurCents - payment.paidEurCents), priceRange.maxEurCents - payment.paidEurCents),
+      });
+    }
+    if (payment.balanceDueEurCents > 0 && !payment.balanceDirect) rows.push({ label: "Resta da pagare online", value: eur(payment.balanceDueEurCents), divider: true });
   }
 
   // Saldo in attesa delle 48 ore: niente "Paga il saldo", la carta dell'acconto basta.

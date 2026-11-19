@@ -95,6 +95,18 @@ test("la rotella sceglie ore e minuti e Esc chiude solo lei", async ({ page }, t
     await page.mouse.move(hoursBox.x + hoursBox.width / 2, hoursBox.y + hoursBox.height / 2);
     await page.mouse.wheel(0, 80);
     await expect(start).toHaveValue("13:35");
+    // Tenendo premuto il mouse e trascinando in su la colonna segue il puntatore, come sotto un
+    // dito, e al rilascio si ferma su un numero intero (docs/changelog/2026-11-19-rotella-ora-col-mouse.md).
+    const midX = hoursBox.x + hoursBox.width / 2;
+    const midY = hoursBox.y + hoursBox.height / 2;
+    await page.mouse.move(midX, midY);
+    await page.mouse.down();
+    await page.mouse.move(midX, midY - 40, { steps: 4 });
+    await page.mouse.move(midX, midY - 80, { steps: 4 });
+    await page.mouse.up();
+    // Due numeri più avanti; il numero sotto il puntatore al rilascio non viene scelto dal clic.
+    await expect(start).toHaveValue("15:35");
+    await expect(hours.getByRole("option", { selected: true })).toHaveText("15");
     await page.keyboard.press("Escape");
   } else {
     // Sul telefono la rotella sale dal basso e prende tutta la larghezza.
