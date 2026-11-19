@@ -217,10 +217,11 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
   );
 }
 
-function AmountRow({ label, value, strong, muted, card }: { label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }) {
+function AmountRow({ label, value, strong, muted, card, divider }: { label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean; divider?: boolean }) {
   // Riga della carta: va a capo la carta, non l'etichetta corta (da telefono "Apple Pay (Mastercard •••• 5100)").
   return (
-    <XStack justifyContent="space-between" gap="3" paddingVertical={2}>
+    // `divider`: riga sottile sopra, stacca quello che deve ancora arrivare dai soldi già presi.
+    <XStack justifyContent="space-between" gap="3" paddingVertical={2} {...(divider ? { borderTopWidth: 1, borderTopColor: brand.filetto, marginTop: 6, paddingTop: 8 } : {})}>
       <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={card ? 0 : 1}>
         {label}
       </Text>
@@ -311,7 +312,7 @@ export function JobPaymentStatus({
   const stage = payment.stage;
   const collected = payment.paidEurCents - payment.refundedEurCents;
 
-  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }> = [];
+  const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean; divider?: boolean }> = [];
   if (audience === "client") {
     if (payment.depositEurCents !== null) rows.push({ label: payment.paidEurCents > 0 ? "Acconto pagato" : "Acconto", value: eur(payment.depositEurCents) });
     // Saldo online ancora da pagare, prima che il professionista dica l'importo finale: "da… a…" del preventivo meno l'acconto.
@@ -363,10 +364,11 @@ export function JobPaymentStatus({
     if (stage === "DEPOSIT_PAID" && payment.finalAmountEurCents === null && priceRange && priceRange.maxEurCents - payment.paidEurCents > 0) {
       rows.push({
         label: "Resta a fine lavoro",
+        divider: true,
         value: formatServicePriceRange(Math.max(0, priceRange.minEurCents - payment.paidEurCents), priceRange.maxEurCents - payment.paidEurCents),
       });
     }
-    if (payment.balanceDueEurCents > 0 && !payment.balanceDirect) rows.push({ label: "Resta da pagare online", value: eur(payment.balanceDueEurCents) });
+    if (payment.balanceDueEurCents > 0 && !payment.balanceDirect) rows.push({ label: "Resta da pagare online", value: eur(payment.balanceDueEurCents), divider: true });
   }
 
   // Saldo in attesa delle 48 ore: niente "Paga il saldo", la carta dell'acconto basta.

@@ -46,4 +46,6 @@ online". Con l'acconto non ancora pagato: totale e "Acconto online da pagare".
 riguarda solo i soldi già presi. Su un lavoro annullato il totale non compare.
 La scheda "Prossimo" dell'Agenda resta com'è (lì serve solo sapere dove andare).
 
+Una riga sottile stacca "Resta" dai soldi già presi (Luca, "sì" alla miglioria).
+
 **Verifica**: typecheck e lint; foto `richieste-*.png` nella stessa cartella.
