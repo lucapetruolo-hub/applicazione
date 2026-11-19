@@ -58,3 +58,25 @@ semplici. Data della pagina: 19 novembre 2026.
 "Come faccio un preventivo?" le voci erano "manodopera, materiali, uscita";
 nell'esempio in home e nel preventivo la stessa voce si chiama "Diritto di
 chiamata" (PR #353). Ora una parola sola ovunque (`packages/shared/src/faq.ts`).
+
+## Chiarezza: menu, "Tuttofare", "In evidenza nella tua zona" (voci C1, C3, C4)
+
+**Richiesta** (Luca, 19/11/2026: "sì" a C1, C3, C4 e C5; C2 "lasciarle").
+
+**Decisione**:
+- **C1**: la voce "Quanto costa" (barra in alto, menu da telefono, fondo
+  pagina) diventa "Quanto costa un lavoro": un professionista la scambiava
+  per il prezzo dell'abbonamento. Provato sul sito da 900 a 1440 px: resta su
+  una riga.
+- **C3**: il mestiere "Tutto Fare" si scrive "Tuttofare"
+  (`packages/shared/src/categories.ts`, il nome nel database si allinea da
+  solo all'avvio con `CategoriesSeedService`), come già nelle frasi ("Ti serve
+  un tuttofare", "Quanto costa un tuttofare") e come si cerca su Google. Lo
+  slug `tuttofare` non cambia.
+- **C4**: "Boost locale" diventa "In evidenza nella tua zona"
+  (`BoostSection.tsx`), l'ultima parola inglese rimasta in vista.
+- **C5 non fatta**: "Più lavori allo stesso cliente contano come uno" resta
+  solo sotto Plus. Su Pro i lavori sono senza limite, quindi la frase non
+  serve (scelta già scritta in `dashboard/abbonamento/page.tsx`, §362): il
+  collaudo l'aveva segnalata per errore.
+- **C2**: le due voci "Domande frequenti" in fondo restano.
