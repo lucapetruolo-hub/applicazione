@@ -14,3 +14,7 @@
 **Motivo**: uno strumento che il professionista usa ogni mese tiene l'abbonamento dopo i mesi gratis; l'Excel gratuito porta email di professionisti prima del lancio. Il sito resta un intermediario: le stime sono dichiarate stime, da confermare con il commercialista.
 
 **Verifica**: banco su database locale (`apps/api/scripts/banco-entrate-uscite.ts`, esito in `analisi/entrate-uscite/banco-esito.md` e rapporto in `analisi/entrate-uscite/rapporto-punto-1.md`): 12 mesi su 12 coincidono con le cifre fatte a mano, compresi dicembre/gennaio, rimborso il mese dopo, lavoro misto, saldo non pagato, lavoro fuori dal sito. Prova di coerenza estratto/scheda in `statements.test.ts`, prove di `packages/shared/src/cashbook.test.ts`, matrice degli accessi con le rotte nuove. Domande per il commercialista EU1-EU9 in `analisi/domande-commercialista-avvocato.md`.
+
+## Correzione: pulsante "Scarica l'Excel" illeggibile (19/11/2026)
+
+**Richiesta** (Luca): "non si legge il pulsante 'Scarica l'Excel'". **Causa**: la regola `.xg-card > div > a` (link verdi nel riquadro) era più forte di `.xg-button` e colorava di verde la scritta sul pulsante verde. **Decisione**: la regola esclude `.xg-button`; in più, da telefono, arrivati dal link dell'email il riquadro con il pulsante viene prima della spiegazione (`xg-page-download`). **Verifica**: Playwright con risposta di conferma finta, scritta bianca su #1E6B6E da computer e da telefono; foto in `anteprime/entrate-uscite/*-6-scarica-excel.png`.

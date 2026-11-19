@@ -55,7 +55,7 @@ export function ExcelGratuitoContent() {
   }
 
   return (
-    <main className="xg-page">
+    <main className={`xg-page${code ? " xg-page-download" : ""}`}>
       <div className="xg-wrap">
         <div className="xg-text">
           <p className="xg-eyebrow">Gratis per artigiani e professionisti</p>
