@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { NOTTE_API_URL, api, loginClient, loginPro, pageAs } from "./sito-vero";
+import { api, loginClient, loginPro, pageAs } from "./sito-vero";
 
 /**
  * Il percorso che porta i soldi, sul sito vero: richiesta a un professionista
@@ -31,12 +31,11 @@ test("richiesta, preventivo e accettazione fino alla pagina di Stripe", async ({
   const proToken = await loginPro();
   const pro = await api<{ id: string }>("/professionals/me", proToken);
 
-  // Il professionista di prova deve essere visibile ai clienti: se non lo è
-  // (profilo in pausa, dati fiscali mancanti, account sbagliato nel segreto
-  // NOTTE_PRO_EMAIL) lo si dice chiaro, prima di provare la richiesta.
-  const visible = await fetch(`${NOTTE_API_URL}/professionals/${pro.id}`);
-  expect(visible.status, "NOTTE_PRO_EMAIL deve essere un professionista di prova con il profilo pubblico").toBe(200);
-
+  // "Professionista non trovato" qui vuol dire che l'account del segreto
+  // NOTTE_PRO_EMAIL non può ricevere richieste (profilo sospeso o senza dati
+  // fiscali, account sbagliato). Non si controlla la pagina pubblica: dal
+  // lancio gli account di prova non si vedono più nella ricerca, ma una
+  // richiesta diretta la ricevono lo stesso.
   const created = await api<{ guidedRequestId: string }>("/guided-requests", clientToken, "POST", {
     categorySlug: "idraulico",
     description: `${MARK}: il rubinetto del bagno gocciola. Prova automatica, non è un lavoro vero.`,
@@ -52,6 +51,9 @@ test("richiesta, preventivo e accettazione fino alla pagina di Stripe", async ({
     timing: "WEEK",
     professionalProfileId: pro.id,
     boardAllowed: false,
+  }).catch((error: Error) => {
+    if (error.message.includes("Professionista non trovato")) throw new Error(`NOTTE_PRO_EMAIL non è un professionista che può ricevere richieste. ${error.message}`);
+    throw error;
   });
   requestId = created.guidedRequestId;
 

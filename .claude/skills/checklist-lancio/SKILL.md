@@ -706,6 +706,18 @@ Città, pagine vuote fuori da Google.
     Admin → Utenti → "Elimina account di prova". Dopo il `LAUNCH_DATE` lo
     script non ne crea più e, anche se ne restasse uno, la ricerca nasconde già
     gli account di prova.
+    **Due account restano**: il cliente e il professionista della prova di ogni
+    notte sul sito vero (`.github/workflows/notte.yml`, segreti
+    `NOTTE_CLIENT_EMAIL`, `NOTTE_PRO_EMAIL`, `NOTTE_PASSWORD`,
+    docs/changelog/2026-11-19-prova-notturna-sito-vero.md). Non eliminarli, o
+    rifarli e aggiornare i segreti; devono restare segnati come account di
+    prova, così non entrano nei numeri e non compaiono nella ricerca. Con le
+    chiavi Stripe vere il professionista di prova non ha più un conto Stripe
+    valido (quello di oggi è della sandbox) e un conto vero per un profilo
+    finto non si può aprire: il giorno del passaggio a Live la prova va
+    fermata a "Accetta il preventivo" (senza arrivare a Stripe), altrimenti
+    diventa rossa ogni notte. Subito dopo il lancio: Actions → Prova notturna →
+    Run workflow, e guardare che sia verde.
 
 46. **Prove a mano, tutte in un posto** (revisione del 18/11,
     docs/changelog/2026-11-19-revisione-termini-e-video.md): le prove che
