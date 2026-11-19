@@ -7,6 +7,7 @@ import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import {
   CONTENT_REPORT_TARGET_LABEL,
   NOTIFICATION_ITEMS,
+  NOTIFICATION_MORNING_TYPES,
   NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
   notificationItemChannelOn,
@@ -484,7 +485,8 @@ export class NotificationsService {
     }
     if (items.length === 0) return;
     const morning = wallClockNow(now).getUTCHours() < 12;
-    await this.emailService.send({ to: user.email, ...renderEmail(heldEmailsSummary(items, { name: user.name, morning }, frontendUrl())) });
+    const today = wanted.every((r) => NOTIFICATION_MORNING_TYPES.has(r.type));
+    await this.emailService.send({ to: user.email, ...renderEmail(heldEmailsSummary(items, { name: user.name, morning, today }, frontendUrl())) });
   }
 
   /**

@@ -3,6 +3,7 @@ import { resolveNotificationPreferences } from "@professionisti/shared";
 import { emailOffToken, readEmailOffToken } from "./email-off";
 import { emailHoldUntil, heldEmailGroups, isQuietHour, nextRomeHour } from "./email-hold";
 import { notificationOptOuts } from "./opt-outs";
+import { heldEmailsSummary } from "../email/templates/notification-emails";
 
 const prefs = resolveNotificationPreferences(null);
 // 29 ottobre 2026: ora solare, Italia = UTC+1.
@@ -32,6 +33,23 @@ describe("email rimandate", () => {
     expect(emailHoldUntil({ ...prefs, quietNightUrgent: false }, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T23:00:00Z"))).toBeNull();
     // Di giorno un'urgente parte sempre subito.
     expect(emailHoldUntil(prefs, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T09:00:00Z"))).toBeNull();
+  });
+
+  // Email del mattino del professionista (docs/changelog/2026-11-19-email-del-mattino.md).
+  it("i promemoria del mattino aspettano le 10:05, anche quelli delle 10 e della notte", () => {
+    // 8:00 italiane (29/10, UTC+1): "Lavori da chiudere" aspetta le 10:05.
+    expect(emailHoldUntil(prefs, "JOB_TO_CLOSE", {}, at("2026-10-29T07:00:00Z"))?.toISOString()).toBe("2026-10-29T09:05:00.000Z");
+    // I promemoria delle 10 partono alle 10:00:0x: stessa email delle 10:05, non il giorno dopo.
+    expect(emailHoldUntil(prefs, "AGENDA_REMINDER", {}, at("2026-10-29T09:00:03Z"))?.toISOString()).toBe("2026-10-29T09:05:00.000Z");
+    expect(emailHoldUntil(prefs, "REVIEW_REPLY_REMINDER", {}, at("2026-10-29T09:04:59Z"))?.toISOString()).toBe("2026-10-29T09:05:00.000Z");
+    // Di notte non aspetta le 7 ma le 10:05, insieme agli altri.
+    expect(emailHoldUntil(prefs, "PROFILE_SETUP_REMINDER", {}, at("2026-10-29T02:00:00Z"))?.toISOString()).toBe("2026-10-29T09:05:00.000Z");
+    // Dopo le 10:05 valgono le regole di sempre: di giorno subito.
+    expect(emailHoldUntil(prefs, "JOB_TO_CLOSE", {}, at("2026-10-29T09:05:00Z"))).toBeNull();
+    // D'estate (UTC+2) le 10:05 italiane sono le 8:05 UTC.
+    expect(emailHoldUntil(prefs, "AWAY_ENDING", {}, at("2026-07-01T06:00:00Z"))?.toISOString()).toBe("2026-07-01T08:05:00.000Z");
+    // Gli altri tipi non cambiano.
+    expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-29T07:00:00Z"))).toBeNull();
   });
 
   it("con le scelte spente parte tutto subito", () => {
@@ -101,5 +119,20 @@ describe("avvisi spenti per l'admin", () => {
     // Recensioni: email spenta di serie, nessuno l'ha accesa.
     expect(row("lavori.recensioni")).toMatchObject({ emailOffByDefault: true, emailOff: 0, emailOn: 0 });
     expect(pro?.rows.some((r) => r.key === "account" || r.key === "lavori.problemi")).toBe(false);
+  });
+});
+
+describe("email \"Le cose di oggi\"", () => {
+  it("con i soli promemoria del mattino ha titolo e pulsante suoi", () => {
+    const items = [
+      { time: "08:00", subject: "Lavoro da chiudere: Idraulico" },
+      { time: "10:00", subject: "Rispondi a una recensione" },
+    ];
+    const today = heldEmailsSummary(items, { name: "Mario", morning: true, today: true }, "https://sito.example");
+    expect(today.title).toBe("Le cose di oggi");
+    expect(today.subject).toBe("Le cose di oggi: 2 promemoria");
+    expect(today.cta).toEqual({ label: "Apri Oggi", url: "https://sito.example/dashboard" });
+    // Senza `today` resta il riassunto della notte.
+    expect(heldEmailsSummary(items, { name: "Mario", morning: true }, "https://sito.example").title).toBe("Le novità della notte");
   });
 });
