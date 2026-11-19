@@ -186,8 +186,10 @@ function ProHero({ ctaHref, ctaLabel, offerMonths }: { ctaHref: string; ctaLabel
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
             luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
-        {/* Sfumata in basso: prima finiva netta sul filetto sotto il titolo. */}
-        <GlowLights tone="chiaro" pressBoost className="glow-lights--sfuma" />
+        {/* Sfumata su tutti i lati e con i colori del velo: prima finiva netta
+            ai lati, con la grana e i colori della vecchia palette
+            (docs/changelog/2026-11-19-sfondo-attesa-ricerca.md). */}
+        <GlowLights tone="chiaro" pressBoost className="glow-lights--sfumato glow-lights--velo" />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="10 gtMd:120px">
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="3" paddingVertical={6}>

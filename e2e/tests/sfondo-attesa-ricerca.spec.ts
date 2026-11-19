@@ -17,7 +17,7 @@ test("nell'attesa della ricerca le luci sfumano senza riquadro", async ({ page }
   });
   await page.locator(".hero-examples > *").first().locator(".hero-example").first().click();
 
-  const lights = page.locator(".home-hero-lights");
+  const lights = page.locator(".glow-lights--velo");
   await expect(lights).toBeVisible();
   const look = await lights.evaluate((element) => {
     const style = getComputedStyle(element);

@@ -22,3 +22,19 @@ rosa, lilla) invece di verde e terracotta della vecchia palette
 di /cerca ritardata): prima il rettangolo, dopo nessun bordo. Prova
 `e2e/tests/sfondo-attesa-ricerca.spec.ts` (raggio 0, nessun fondo né grana,
 maschera sfumata). Foto in anteprime/sfondo-attesa-ricerca/.
+
+## Secondo giro: le altre luci chiare (stesso giorno)
+
+**Richiesta** (Luca, "sì" alla miglioria proposta): controllare se altre pagine
+hanno ancora riquadri con i colori della vecchia palette.
+
+**Trovate**: l'apertura di /per-professionisti (luci verde e terracotta con
+grana, bordi netti ai lati) e "Richiesta inviata" (stessi colori). Le altre
+luci (`tone="verde"` nella tessera "Non trovi il tuo lavoro?", `tone="scuro"`
+nel riquadro per i professionisti) stanno dentro riquadri colorati voluti e
+restano.
+
+**Decisione**: la classe è diventata generica, `.glow-lights--velo`, usata
+nei tre punti con `.glow-lights--sfumato` (sfumate su tutti i lati). Tolta
+`.glow-lights--sfuma` (solo in basso), non più usata. Foto prima/dopo di
+/per-professionisti in anteprime/sfondo-attesa-ricerca/.
