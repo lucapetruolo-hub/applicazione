@@ -12,6 +12,11 @@ collegamenti".
   a parte, "Lavori che nessuno fa ancora sul sito", con accanto quante
   richieste aspettano (da `GET /request-board/summary`), l'interruttore
   dell'email del lunedì e l'iscrizione.
+- "La tua zona" (richiesta di Luca: "gli interessano solo quelli della sua
+  zona"): scelta della provincia in cima (`BoardZonePicker`, `?provincia=`),
+  numeri solo di quella provincia, ogni mestiere porta dritto a
+  `/lavora-con-noi/<mestiere>/<provincia>`; il browser ricorda la scelta. I
+  mestieri con più richieste vengono prima.
 - Collegamenti: piede del sito ("Per i professionisti" → "Lavori cercati"),
   riga dei mestieri in fondo a "Offri i tuoi servizi" ("Altri lavori
   cercati"), menu "Il mio account" del professionista (gruppo "Lavoro", non
