@@ -80,3 +80,30 @@ chiamata" (PR #353). Ora una parola sola ovunque (`packages/shared/src/faq.ts`).
   serve (scelta già scritta in `dashboard/abbonamento/page.tsx`, §362): il
   collaudo l'aveva segnalata per errore.
 - **C2**: le due voci "Domande frequenti" in fondo restano.
+
+## Le novità di novembre in "Compreso in ogni livello" (voci N1-N8)
+
+**Richiesta** (Luca, 19/11/2026: "sì" a N1-N8): la pagina "Offri i tuoi
+servizi" elencava 8 cose comprese e non diceva nulla di Oggi, dell'email unica
+del mattino, del giro, della bacheca, del QR e del bollino, del calendario,
+dei video e del confronto con la zona.
+
+**Decisione**: nessuna sezione nuova (regola "scritte minime"): le novità
+entrano in `SUBSCRIPTION_FEATURES` (`packages/shared/src/plans.ts`), una riga
+l'una, così compaiono uguali in /per-professionisti e nella pagina Abbonamento.
+L'elenco passa da 8 a 13 righe:
+- N1 "Oggi: chi aspetta una risposta, i lavori di domani e quelli da chiudere";
+- N2 "Una sola email al mattino con le cose di oggi";
+- N3 "Giro della giornata: le tappe in ordine per fare meno strada";
+- N5 "Codice QR da stampare e bollino con le tue stelle per il tuo sito";
+- N6 "Agenda e prenotazioni online, anche nel calendario del tuo telefono";
+- N7 "Richieste di preventivo dai clienti, con foto e video del lavoro";
+- N8 "Bollino Verificato sul profilo, dopo il controllo del documento" e
+  "Statistiche della tua attività, a confronto con i colleghi della tua zona".
+- N4 (bacheca): in fondo a /per-professionisti la riga sopra i mestieri passa
+  da "Lavora con noi come:" a "Guarda i lavori cercati nella tua zona, anche
+  prima di iscriverti:" (i link portano già a `/lavora-con-noi/<mestiere>`,
+  dove c'è la bacheca "Lavori cercati").
+
+**Motivo**: ogni riga dice una cosa che il sito fa già oggi; nessuna promessa
+nuova.

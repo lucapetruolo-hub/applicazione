@@ -941,7 +941,8 @@ function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
           </Text>
           {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §296). */}
           <nav className="work-links" aria-label="Lavora con noi">
-            <span>Lavora con noi come:</span>
+            {/* Porta alla bacheca "Lavori cercati" del mestiere (collaudo del 19/11, voce N4). */}
+            <span>Guarda i lavori cercati nella tua zona, anche prima di iscriverti:</span>
             {PROFESSIONAL_CATEGORIES.map((category) => (
               <Link key={category.slug} href={`/lavora-con-noi/${category.slug}`}>
                 {category.label}
