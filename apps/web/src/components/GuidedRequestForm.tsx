@@ -2315,6 +2315,7 @@ export function GuidedRequestForm({
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
             boardAllowed={boardAllowed}
             onToggleBoard={() => setBoardAllowed((v) => !v)}
+            fromPersonalLink={viaPersonalLink}
             reach={reach}
             timing={timing}
             // Nel riepilogo non si richiede "Quando ti serve?": si legge nella riga del lavoro e si cambia con "Modifica".
@@ -2511,6 +2512,7 @@ function RequestSummary({
   onToggleForward,
   boardAllowed,
   onToggleBoard,
+  fromPersonalLink = false,
   reach,
   timing,
   urgencyControl,
@@ -2533,9 +2535,11 @@ function RequestSummary({
   slotLabel: string | null;
   forwardIfNoReply: boolean;
   onToggleForward: () => void;
-  /** "Mostra in Lavori cercati": solo per le richieste generali non urgenti. */
+  /** "Mostra in Lavori cercati" (richieste generali) o "Poi in Lavori cercati" (dopo l'inoltro): mai per le urgenti. */
   boardAllowed: boolean;
   onToggleBoard: () => void;
+  /** Dal link personale del professionista: quel cliente è suo, mai in "Lavori cercati". */
+  fromPersonalLink?: boolean;
   /** A quanti professionisti arriva (null finché non risponde l'API). */
   reach: GuidedRequestReach | null;
   timing: RequestTiming | null;
@@ -2630,6 +2634,16 @@ function RequestSummary({
             onToggle={onToggleForward}
             title="Inoltra se non risponde"
             description={`Se non risponde entro ${forwardTime}, la mandiamo ${forwardTargets}. ${professionalName} potrà comunque risponderti.`}
+          />
+        ) : null}
+        {/* Dopo l'inoltro, se non risponde nessuno (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md). */}
+        {professionalName && forwardIfNoReply && !isUrgent && !fromPersonalLink ? (
+          <SendOptionSwitch
+            id="guided-board-forward"
+            checked={boardAllowed}
+            onToggle={onToggleBoard}
+            title="Poi in Lavori cercati"
+            description="Se nessuno ti manda un preventivo neanche dopo l'inoltro, dopo 2 giorni la mostriamo anche ai professionisti non ancora iscritti. Senza nome, foto e indirizzo."
           />
         ) : null}
         {!professionalName && !chosen && !isUrgent ? (

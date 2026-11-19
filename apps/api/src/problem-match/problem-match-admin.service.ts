@@ -476,16 +476,24 @@ export class ProblemMatchAdminService {
     const [listed, optedOut, boardLeads, claimsPending, alertsPending] = await Promise.all([
       this.prisma.guidedRequest.count({ where: boardListedWhere(now) }),
       this.prisma.guidedRequest.count({ where: { boardAt: { not: null }, boardOptOut: true, createdAt: { gte: since } } }),
-      this.prisma.lead.findMany({ where: { fromBoardAt: { gte: since } }, select: { guidedRequestId: true, professionalProfileId: true }, take: 2000 }),
+      this.prisma.lead.findMany({
+        where: { fromBoardAt: { gte: since } },
+        select: { guidedRequestId: true, professionalProfileId: true, guidedRequest: { select: { professionalProfileId: true } } },
+        take: 2000,
+      }),
       this.prisma.boardClaim.count(),
       this.prisma.boardAlert.count(),
     ]);
-    const quotes = boardLeads.length
-      ? await this.prisma.quote.count({
-          where: { OR: boardLeads.map((lead) => ({ guidedRequestId: lead.guidedRequestId, professionalProfileId: lead.professionalProfileId })) },
-        })
-      : 0;
-    return { listed, optedOut, replies: boardLeads.length, quotes, claimsPending, alertsPending };
+    const quotesOf = (leads: typeof boardLeads) =>
+      leads.length
+        ? this.prisma.quote.count({
+            where: { OR: leads.map((lead) => ({ guidedRequestId: lead.guidedRequestId, professionalProfileId: lead.professionalProfileId })) },
+          })
+        : Promise.resolve(0);
+    // Richieste a un professionista scelto, entrate in bacheca dopo l'inoltro: per capire se l'inoltro rende.
+    const forwarded = boardLeads.filter((lead) => lead.guidedRequest.professionalProfileId !== null);
+    const [quotes, quotesAfterForward] = await Promise.all([quotesOf(boardLeads), quotesOf(forwarded)]);
+    return { listed, optedOut, replies: boardLeads.length, quotes, repliesAfterForward: forwarded.length, quotesAfterForward, claimsPending, alertsPending };
   }
 
   async takeovers(status: "OPEN" | "DONE") {

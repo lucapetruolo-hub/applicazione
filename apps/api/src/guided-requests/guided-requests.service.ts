@@ -575,6 +575,9 @@ export class GuidedRequestsService {
               forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
               // "Mostra in Lavori cercati" spento dal cliente: mai in bacheca.
               boardOptOut: input.boardAllowed === false,
+              // "Poi in Lavori cercati" sotto "Inoltra se non risponde": vale per
+              // l'inoltro, mai per le urgenti (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md).
+              boardAfterForward: !!targetProfile && input.forwardIfNoReply && !input.isUrgent,
               chosenProfileIds: chosenProfiles.map((profile) => profile.id),
               fromProfessionalLink,
               preferredDate: resolvedSlot?.date,
@@ -853,6 +856,8 @@ export class GuidedRequestsService {
         // "Lavori cercati": in bacheca adesso e scelta del cliente (docs/changelog/2026-11-18-bacheca-cliente.md).
         onBoard: request.boardAt !== null && !request.boardOptOut,
         boardOptOut: request.boardOptOut,
+        // Diretta con "Poi in Lavori cercati": anche lei si può togliere o rimettere.
+        boardAfterForward: request.boardAfterForward && request.forwardIfNoReply,
         description: request.description,
         city: request.city,
         address: request.address,

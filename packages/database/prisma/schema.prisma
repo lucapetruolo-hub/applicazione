@@ -1056,6 +1056,10 @@ model GuidedRequest {
   boardTrade            String?
   // Il cliente ha detto di non mostrarla nella bacheca.
   boardOptOut           Boolean                      @default(false)
+  // Richiesta a un professionista scelto con l'inoltro acceso, inviata
+  // quando il modulo mostrava "Poi in Lavori cercati": dopo l'inoltro può
+  // entrare in bacheca (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md).
+  boardAfterForward     Boolean                      @default(false)
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
