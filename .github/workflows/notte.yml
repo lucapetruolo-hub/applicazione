@@ -30,16 +30,19 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: prova-notturna
-  cancel-in-progress: false
-
 jobs:
   sito-vero:
     # Dopo un aggiornamento: solo quando è riuscito e solo per il sito pubblicato, non per le anteprime.
     if: ${{ github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && startsWith(github.event.deployment.environment, 'Production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Un giro alla volta. Sta qui e non in cima al file: Vercel manda un avviso
+    # anche per ogni anteprima e per ogni passo dell'aggiornamento, e in cima
+    # ognuno di quegli avvisi, pur saltato, annullava il giro in attesa
+    # (successo il 19/11 a due giri lanciati a mano).
+    concurrency:
+      group: prova-notturna
+      cancel-in-progress: false
     env:
       NOTTE_CLIENT_EMAIL: ${{ secrets.NOTTE_CLIENT_EMAIL }}
       NOTTE_PRO_EMAIL: ${{ secrets.NOTTE_PRO_EMAIL }}

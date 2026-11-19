@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { api, loginClient, loginPro, pageAs } from "./sito-vero";
+import { NOTTE_API_URL, api, loginClient, loginPro, pageAs } from "./sito-vero";
 
 /**
  * Il percorso che porta i soldi, sul sito vero: richiesta a un professionista
@@ -30,6 +30,12 @@ test.afterEach(async () => {
 test("richiesta, preventivo e accettazione fino alla pagina di Stripe", async ({ browser }) => {
   const proToken = await loginPro();
   const pro = await api<{ id: string }>("/professionals/me", proToken);
+
+  // Il professionista di prova deve essere visibile ai clienti: se non lo è
+  // (profilo in pausa, dati fiscali mancanti, account sbagliato nel segreto
+  // NOTTE_PRO_EMAIL) lo si dice chiaro, prima di provare la richiesta.
+  const visible = await fetch(`${NOTTE_API_URL}/professionals/${pro.id}`);
+  expect(visible.status, "NOTTE_PRO_EMAIL deve essere un professionista di prova con il profilo pubblico").toBe(200);
 
   const created = await api<{ guidedRequestId: string }>("/guided-requests", clientToken, "POST", {
     categorySlug: "idraulico",

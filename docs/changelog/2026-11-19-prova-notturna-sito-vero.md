@@ -41,3 +41,25 @@ carta di Stripe non si apre da un browser automatico fuori dalla nostra CI.
 vero con Chromium (1 + 3 prove verdi, richiesta eliminata alla fine,
 controllato dall'elenco del cliente). WebKit e Firefox girano la prima volta
 da Actions → Prova notturna → Run workflow, dopo l'unione.
+
+## Primo giro su GitHub (19/11, pomeriggio)
+
+Il primo giro a mano dopo l'unione è finito rosso per due motivi, tutti e due
+della prova e non del sito:
+- **Safari, pagine pubbliche**: il motore di Safari segna come errore le
+  richieste dei dati interrotte quando la prova cambia pagina ("due to access
+  control checks"). Ora la prova aspetta che la pagina abbia finito di
+  chiedere i dati prima di passare alla successiva. Firefox e le aree con
+  l'accesso erano già verdi.
+- **Percorso**: "Professionista non trovato". Il professionista messo nel
+  segreto `NOTTE_PRO_EMAIL` non ha il profilo pubblico. Con gli account
+  "pagamenti" il percorso è verde da qui. La prova ora lo controlla prima e
+  lo dice chiaro.
+
+L'avvio dopo l'aggiornamento del sito funziona: Vercel ha fatto partire il
+secondo giro da solo.
+- **Giri annullati**: due giri lanciati a mano sono stati annullati da
+  GitHub. La regola "un giro alla volta" stava in cima al workflow, e ogni
+  avviso di Vercel (anche di un'anteprima, poi saltato) prendeva il posto del
+  giro in attesa. Ora la regola sta sul lavoro: un avviso saltato non tocca
+  niente.

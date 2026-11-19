@@ -20,6 +20,9 @@ async function check(pages: string[], token: string | null, browser: Parameters<
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${path} esce dallo schermo`).toBe(true);
     // Chi ha fatto l'accesso non deve essere rimandato alla pagina di accesso.
     if (token) expect(new URL(page.url()).pathname, path).not.toBe("/accedi");
+    // Si aspetta che la pagina abbia finito di chiedere i dati: il motore di
+    // Safari segna come errore una richiesta interrotta dal cambio di pagina.
+    await page.waitForLoadState("networkidle");
   }
   expect(errors, "errori del browser").toEqual([]);
   await page.context().close();
