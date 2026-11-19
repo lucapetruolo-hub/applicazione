@@ -49,5 +49,8 @@ export async function pageAs(browser: Browser, token: string | null): Promise<{ 
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(`${page.url()}: ${error.message}`));
+  // Le richieste non riuscite, con il motivo dato dal browser: servono a capire un errore qui sopra.
+  page.on("requestfailed", (request) => console.log(`[richiesta non riuscita] ${page.url()} -> ${request.method()} ${request.url()} (${request.failure()?.errorText ?? "?"}) sw=${Boolean(request.serviceWorker())} tipo=${request.resourceType()}`));
+  page.on("console", (message) => { if (message.type() === "error") console.log(`[console] ${page.url()}: ${message.text()}`); });
   return { page, errors };
 }
