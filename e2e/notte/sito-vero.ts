@@ -1,4 +1,4 @@
-import type { Browser, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { NOTTE_WEB_URL } from "../playwright.notte.config";
 
 /**
@@ -33,9 +33,9 @@ async function login(email: string): Promise<string> {
 export const loginClient = () => login(secret("NOTTE_CLIENT_EMAIL"));
 export const loginPro = () => login(secret("NOTTE_PRO_EMAIL"));
 
-/** Pagina del sito vero con l'accesso già fatto; raccoglie gli errori del browser. */
-export async function pageAs(browser: Browser, token: string | null): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({
+/** Finestra del browser sul sito vero, con l'accesso già fatto se c'è il token. */
+export async function contextAs(browser: Browser, token: string | null): Promise<BrowserContext> {
+  return browser.newContext({
     storageState: {
       cookies: [],
       origins: [
@@ -46,12 +46,31 @@ export async function pageAs(browser: Browser, token: string | null): Promise<{ 
       ],
     },
   });
-  const page = await context.newPage();
+}
+
+/**
+ * Raccoglie gli errori del browser di una pagina finché non si chiama `stop`.
+ * Si ferma prima di lasciare la pagina: il sito chiede alcuni dati a pagina
+ * ferma (l'ordine dei mestieri, qualche secondo dopo l'apertura) e il motore
+ * di Safari segna come errore una richiesta interrotta dall'uscita, cosa che
+ * succede a ogni visitatore e che il sito già gestisce. Nel registro restano
+ * comunque le richieste non riuscite e le risposte con errore.
+ */
+export function watch(page: Page): { errors: string[]; stop: () => void } {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(`${page.url()}: ${error.message}`));
-  // Le richieste non riuscite, con il motivo dato dal browser: servono a capire un errore qui sopra.
-  page.on("requestfailed", (request) => console.log(`[richiesta non riuscita] ${page.url()} -> ${request.method()} ${request.url()} (${request.failure()?.errorText ?? "?"}) sw=${Boolean(request.serviceWorker())} tipo=${request.resourceType()}`));
+  let watching = true;
+  page.on("pageerror", (error) => {
+    if (watching) errors.push(`${page.url()}: ${error.message}`);
+    else console.log(`[errore dopo l'uscita, non contato] ${page.url()}: ${error.message}`);
+  });
+  page.on("requestfailed", (request) => console.log(`[richiesta non riuscita] ${page.url()} -> ${request.method()} ${request.url()} (${request.failure()?.errorText ?? "?"})`));
   page.on("response", (response) => { if (response.status() >= 400) console.log(`[risposta ${response.status()}] ${page.url()} -> ${response.request().method()} ${response.url()}`); });
-  page.on("console", (message) => { if (message.type() === "error") console.log(`[console] ${page.url()}: ${message.text()}`); });
-  return { page, errors };
+  return { errors, stop: () => { watching = false; } };
+}
+
+/** Pagina del sito vero con l'accesso già fatto; raccoglie gli errori del browser. */
+export async function pageAs(browser: Browser, token: string | null): Promise<{ page: Page; errors: string[] }> {
+  const context = await contextAs(browser, token);
+  const page = await context.newPage();
+  return { page, errors: watch(page).errors };
 }

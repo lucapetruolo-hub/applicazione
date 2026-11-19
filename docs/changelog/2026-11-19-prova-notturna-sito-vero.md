@@ -63,3 +63,20 @@ secondo giro da solo.
   avviso di Vercel (anche di un'anteprima, poi saltato) prendeva il posto del
   giro in attesa. Ora la regola sta sul lavoro: un avviso saltato non tocca
   niente.
+
+## Safari rosso a giri alterni: la causa (19/11, pomeriggio)
+
+Dopo la prima correzione Safari sulle pagine pubbliche era ancora rosso in un
+giro su due. Causa trovata con un giro di diagnosi sul ramo: la barra in alto
+chiede l'ordine dei mestieri "a pagina ferma" (`SiteHeader`,
+`prefetchCategoryOrder`). Safari non ha `requestIdleCallback`, quindi la
+richiesta parte 1,5 secondi dopo l'apertura: a volte dopo che la prova aveva
+già visto la pagina ferma, e il passaggio alla pagina dopo la interrompeva. Il
+motore di Safari lo segna come errore ("due to access control checks"); il sito
+lo gestisce già (`loadPopularOrder` ha il suo `catch`) e succede a ogni
+visitatore che cambia pagina in fretta. Non è un difetto del sito.
+
+Ora ogni pagina si apre in una scheda sua e gli errori si contano finché la
+pagina è aperta, non mentre la si chiude. Nel registro del giro restano
+scritte le richieste non riuscite, le risposte con errore e gli errori
+arrivati dopo l'uscita, per capire subito un prossimo rosso.
