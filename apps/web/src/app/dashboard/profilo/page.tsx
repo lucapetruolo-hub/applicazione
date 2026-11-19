@@ -267,7 +267,7 @@ const BIO_EXAMPLE =
 
 export default function DashboardProfiloPage() {
   const router = useRouter();
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, refreshUser } = useAuth();
 
   const [businessName, setBusinessName] = useState("");
   // Tipo dichiarato (Dati fiscali, altrimenti quello della registrazione): da
@@ -743,6 +743,11 @@ export default function DashboardProfiloPage() {
         await apiClient.updateEngagementRadius(token as string, { engagementRadiusKm, urgentEngagementRadiusKm });
         setSavedRadius({ engagementRadiusKm, urgentEngagementRadiusKm });
       }
+      // Primo profilo: l'account nel browser deve sapere che ora c'è. Prima
+      // Oggi, aperto senza ricaricare, credeva ancora di no e "Completa
+      // profilo" riportava qui invece che al passo che manca, i dati fiscali
+      // (docs/changelog/2026-11-19-completa-profilo-passo-giusto.md).
+      if (user?.professionalProfileId === null) await refreshUser().catch(() => undefined);
       setSaved(true);
       setSavedRemoteAvailable(remoteAvailable);
       setNeedsConfirmation(false);
