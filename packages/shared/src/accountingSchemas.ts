@@ -102,3 +102,7 @@ export const courtesyDetailsSchema = z.object({
   withholding: z.boolean().optional(),
 });
 export type CourtesyDetailsInput = z.infer<typeof courtesyDetailsSchema>;
+
+/** "Fatta" del professionista sulla fattura chiesta dal cliente (pagina Oggi). */
+export const clientInvoiceDoneSchema = z.object({ done: z.boolean() });
+export type ClientInvoiceDoneInput = z.infer<typeof clientInvoiceDoneSchema>;
