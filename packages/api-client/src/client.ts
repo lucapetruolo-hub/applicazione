@@ -330,6 +330,8 @@ export type ClientGuidedRequest = {
   onBoard?: boolean;
   /** Il cliente ha tolto la richiesta da "Lavori cercati". */
   boardOptOut?: boolean;
+  /** Richiesta a un professionista scelto che dopo l'inoltro può entrare in "Lavori cercati". */
+  boardAfterForward?: boolean;
   description: string;
   city: string;
   /** Via, dove il professionista dovrà andare a svolgere il lavoro. */

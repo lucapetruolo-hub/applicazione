@@ -118,6 +118,10 @@ export type BoardAdminCounts = {
   replies: number;
   /** Preventivi mandati per quelle richieste. */
   quotes: number;
+  /** Di quelle risposte, quante su richieste a un professionista scelto e poi inoltrate (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md). */
+  repliesAfterForward: number;
+  /** Preventivi da quelle risposte su richieste inoltrate. */
+  quotesAfterForward: number;
   /** Richieste tenute da parte per chi deve ancora finire il profilo. */
   claimsPending: number;
   /** Persone che aspettano l'email "Avvisami". */
