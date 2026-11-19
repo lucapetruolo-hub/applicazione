@@ -9650,6 +9650,32 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
   mask-image: radial-gradient(closest-side, #000 55%, transparent);
 }
+/* Attesa della ricerca nella home (docs/changelog/2026-11-19-sfondo-attesa-ricerca.md):
+   niente fondo né grana propri, che facevano vedere un rettangolo di un altro
+   colore sopra il velo del sito; restano solo le luci, con i colori del velo
+   e della barra di attesa (azzurro, lilla, rosa). */
+.home-hero-lights {
+  background: none;
+}
+.home-hero-lights::after {
+  content: none;
+}
+/* Più verso il centro: con la sfumatura ai lati, negli angoli non si vedrebbero. */
+.home-hero-lights .glow-lights__light--one {
+  top: 0;
+  left: 8%;
+  background: radial-gradient(circle, rgba(63, 143, 176, 0.28), transparent 65%);
+}
+.home-hero-lights .glow-lights__light--two {
+  bottom: 0;
+  right: 8%;
+  background: radial-gradient(circle, rgba(228, 138, 163, 0.26), transparent 65%);
+}
+.home-hero-lights .glow-lights__light--three {
+  top: 10%;
+  right: 30%;
+  background: radial-gradient(circle, rgba(142, 124, 200, 0.24), transparent 65%);
+}
 
 /* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
    (docs/CHANGELOG.md §295). Testo piccolo e discreto, link con area di

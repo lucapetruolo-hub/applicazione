@@ -199,8 +199,11 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
             §10). */}
         {/* Senza riquadro verde le luci compaiono solo durante l'attesa della
             ricerca per problema, chiare sul pesca
-            (docs/changelog/2026-11-11-home-caroselli-larghi.md). */}
-        {searching ? <GlowLights tone="chiaro" radius={40} speed={3} /> : null}
+            (docs/changelog/2026-11-11-home-caroselli-larghi.md). Sfumate verso i
+            lati e con i colori del velo: con il riquadro di 40 px del vecchio
+            hero verde, nell'attesa si vedeva un rettangolo di un altro sfondo
+            attorno all'apertura (docs/changelog/2026-11-19-sfondo-attesa-ricerca.md). */}
+        {searching ? <GlowLights tone="chiaro" speed={3} className="glow-lights--sfumato home-hero-lights" /> : null}
 
         <div className={`is_View ${styles.content}`}>
           {/* Tolta la frase "Non chiamare a caso. Chiamalo giusto." sopra il
