@@ -31,6 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/problemi-e-rimborsi`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/sicurezza`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/contatti`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${SITE_URL}/lavora-con-noi`, changeFrequency: "daily", priority: 0.5 },
     // "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296).
     ...PROFESSIONAL_CATEGORIES.map((category) => ({
       url: `${SITE_URL}/lavora-con-noi/${category.slug}`,

@@ -64,7 +64,7 @@ export function SiteHeader() {
   // Pagine per chi offre un servizio: a chi non ha un account il pulsante in
   // alto propone l'iscrizione, non la richiesta di preventivo da cliente
   // (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md).
-  const isProPage = pathname === "/per-professionisti" || pathname.startsWith("/per-professionisti/") || pathname.startsWith("/lavora-con-noi/");
+  const isProPage = pathname === "/per-professionisti" || pathname.startsWith("/per-professionisti/") || pathname === "/lavora-con-noi" || pathname.startsWith("/lavora-con-noi/");
   const showProSignup = !isLoading && !user && isProPage;
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,

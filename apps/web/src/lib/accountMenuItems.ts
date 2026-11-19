@@ -33,6 +33,8 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
       // usata in giro, finiva tagliata a destra (T12, docs/CHANGELOG.md §311).
       { href: "/dashboard/agenda", label: "Agenda", icon: "calendar" },
       { href: "/dashboard/richieste", label: "Richieste e lavori", shortLabel: "Richieste", icon: "file-text" },
+      // Bacheca dei clienti che aspettano un preventivo (docs/changelog/2026-11-19-pagina-lavori-cercati.md).
+      { href: "/lavora-con-noi", label: "Lavori cercati", icon: "search" },
       { href: "/chat", label: "Messaggi", icon: "message-circle" },
       // Rubrica dei clienti del sito e dei lavori aggiunti in agenda (docs/changelog/2026-11-08-rubrica-clienti.md).
       { href: "/dashboard/clienti", label: "I miei clienti", shortLabel: "Clienti", icon: "users" },

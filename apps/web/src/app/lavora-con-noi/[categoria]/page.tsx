@@ -90,6 +90,7 @@ export default async function WorkWithUsPage(props: { params: Promise<PageParams
   const breadcrumbs = breadcrumbJsonLd([
     { label: "Home", href: "/" },
     { label: "Per i professionisti", href: "/per-professionisti" },
+    { label: "Lavori cercati", href: "/lavora-con-noi" },
     { label: page.workTitle },
   ]);
   const register = page.isCategory ? `/registrati?ruolo=professionista&categoria=${page.slug}` : "/registrati?ruolo=professionista";

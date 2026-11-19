@@ -94,6 +94,7 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
   const breadcrumbs = breadcrumbJsonLd([
     { label: "Home", href: "/" },
     { label: "Per i professionisti", href: "/per-professionisti" },
+    { label: "Lavori cercati", href: "/lavora-con-noi" },
     ...(isProfessionalCategorySlug(found.trade) ? [{ label: found.label, href: `/lavora-con-noi/${found.trade}` }] : []),
     { label: `Provincia di ${found.provinceName}` },
   ]);

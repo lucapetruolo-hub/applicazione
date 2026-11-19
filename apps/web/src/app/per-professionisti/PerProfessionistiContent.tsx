@@ -981,6 +981,8 @@ function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
                 {category.label}
               </Link>
             ))}
+            {/* Tutti i mestieri, anche quelli che il sito non ha ancora (docs/changelog/2026-11-19-pagina-lavori-cercati.md). */}
+            <Link href="/lavora-con-noi">Altri lavori cercati</Link>
           </nav>
         </YStack>
       </Band>
