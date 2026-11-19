@@ -19,7 +19,7 @@ import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
-import { SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
+import { FIRST_PROFILE_JOURNEY, SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
 import { PageLoading } from "@/components/PageLoading";
 import { ArrivalTimesNotice, tomorrowBandsWithoutArrival } from "@/components/ArrivalTimesNotice";
@@ -162,19 +162,24 @@ export default function DashboardTodayPage() {
     );
   }
 
+  // Senza profilo: Oggi come sempre, con il percorso intero e il profilo
+  // pubblico come primo passo, così si vede cosa viene dopo
+  // (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
   if (profileMissing || noProfileYet) {
+    const firstName = user.businessName ?? user.name ?? "";
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
-        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
-            Completa il tuo profilo per iniziare
-          </Text>
-          <Text color={brand.grafite70} textAlign="center">
-            Serve un profilo completo (nome attività, categoria, città) per comparire in ricerca e ricevere richieste.
-          </Text>
-          <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button tabIndex={-1} variant="primary">Completa profilo</Button>
-          </Link>
+      <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={1180} gap="6">
+          <YStack gap="1">
+            <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
+              Oggi
+            </Text>
+            <Text color={brand.grafite70}>
+              {firstName ? `Ciao ${firstName}, ` : ""}
+              {new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
+            </Text>
+          </YStack>
+          <SetupJourneyHero steps={FIRST_PROFILE_JOURNEY} />
         </YStack>
       </YStack>
     );

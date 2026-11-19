@@ -6383,6 +6383,12 @@ a.admin-kpi:hover {
 .toast-more {
   pointer-events: auto;
 }
+/* Con una finestra aperta (aria-modal) i popup aspettano e ricompaiono alla
+   chiusura: da telefono coprivano i pulsanti di "Profilo salvato"
+   (docs/changelog/2026-11-19-completa-profilo-migliorie.md). */
+body:has([aria-modal="true"]) .toast-stack {
+  display: none;
+}
 .toast-card {
   width: 100%;
   display: flex;

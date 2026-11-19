@@ -8,7 +8,7 @@ import { loadMyProfessionalProfile, loadMySubscription, loadMyVerificationStatus
 import { useAuth } from "@/lib/AuthContext";
 import { CardButton } from "@/components/CardButton";
 
-export type JourneyStepKey = "fiscal" | "plan" | "identity" | "payments";
+export type JourneyStepKey = "profile" | "fiscal" | "plan" | "identity" | "payments";
 export type JourneyStepState = "done" | "waiting" | "current" | "locked";
 
 export type JourneyStep = {
@@ -138,6 +138,28 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
 
   return steps;
 }
+
+/**
+ * Il percorso per chi non ha ancora un profilo (Oggi, richiesta di Luca,
+ * docs/changelog/2026-11-19-completa-profilo-migliorie.md): prima c'era solo
+ * "Completa profilo" e non si capiva cosa veniva dopo. Primo passo il profilo
+ * pubblico (senza nome, mestiere e città i dati fiscali non si salvano), poi
+ * gli stessi passi che Oggi mostra dopo il primo salvataggio.
+ */
+export const FIRST_PROFILE_JOURNEY: JourneyStep[] = [
+  {
+    key: "profile",
+    icon: "user-round",
+    title: "Profilo pubblico",
+    short: "Profilo",
+    state: "current",
+    text: "Nome, mestiere e città, circa 2 minuti. È quello che vedono i clienti.",
+    action: { href: "/dashboard/profilo", label: "Crea il profilo pubblico" },
+  },
+  { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "locked", text: "Dopo il profilo. Servono per comparire nelle ricerche." },
+  { key: "identity", icon: "id-card", title: "Verifica identità", short: "Identità", state: "locked", text: "Dopo i dati fiscali. Serve per rispondere ai preventivi." },
+  { key: "payments", icon: "credit-card", title: "Pagamenti online", short: "Pagamenti", state: "locked", optional: true, text: "Dopo la verifica dell'identità." },
+];
 
 export const journeyDone = (steps: JourneyStep[]) => steps.every((step) => step.state === "done");
 export const journeyCurrent = (steps: JourneyStep[]) => steps.find((step) => step.state === "current") ?? null;
@@ -450,6 +472,7 @@ function SetupJourneyCompact({ steps, step }: { steps: JourneyStep[]; step: Jour
  * così il pallino sparisce appena il passo è fatto.
  */
 const STEP_MENU_HREF: Record<JourneyStepKey, string> = {
+  profile: "/dashboard/profilo",
   fiscal: "/dashboard/fiscale",
   plan: "/dashboard/abbonamento",
   identity: "/dashboard/verifica-identita",
