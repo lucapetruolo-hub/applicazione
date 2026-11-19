@@ -79,6 +79,13 @@ export class RequestBoardController {
     return this.demands.get(`${slug}|${code}`, () => this.board.demand(slug, code));
   }
 
+  /** Riquadro "Lavori cercati" nella pagina Oggi: solo le richieste a cui chi chiede può rispondere. */
+  @UseGuards(JwtAuthGuard)
+  @Get("near-me")
+  nearMe(@Req() req: AuthenticatedRequest) {
+    return this.board.nearMe(req.user.userId);
+  }
+
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post("reply")

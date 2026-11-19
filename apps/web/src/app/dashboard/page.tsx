@@ -23,6 +23,8 @@ import { FIRST_PROFILE_JOURNEY, SetupJourneyCard, SetupJourneyHero, journeyNeeds
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
 import { PageLoading } from "@/components/PageLoading";
 import { ArrivalTimesNotice, tomorrowBandsWithoutArrival } from "@/components/ArrivalTimesNotice";
+import { replyHref } from "@/components/requestBoard/BoardCards";
+import type { BoardNearMe } from "@professionisti/shared";
 
 /** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
 function later<T>(apply: (value: T) => void): (value: T) => void {
@@ -733,6 +735,13 @@ export default function DashboardTodayPage() {
                 </>
                 )}
               </div>
+              {/* Richieste di "Lavori cercati" a cui può rispondere (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md):
+                  sotto il lavoro di oggi, solo quando ce ne sono. */}
+              {ready && token ? (
+                <div className="today-slot" style={{ order: 5 }}>
+                  <BoardNearbySection token={token} />
+                </div>
+              ) : null}
               <div className="today-slot" style={{ order: 6 }}>
                 {insightsFailed || (quietStart && (!insights || insightsEmpty(insights))) ? null : (
                   <TodaySection title="Il tuo andamento" subtitle={insights && !insightsEmpty(insights) ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
@@ -786,6 +795,50 @@ export default function DashboardTodayPage() {
         </div>
       </YStack>
     </YStack>
+  );
+}
+
+/**
+ * "Lavori cercati vicino a te" (proposta A, "sì" di Luca del 19/11/2026,
+ * docs/changelog/2026-11-19-lavori-cercati-in-oggi.md): le richieste in
+ * bacheca del suo mestiere entro 100 km che non gli sono arrivate, le più
+ * vicine prima, al massimo 3. Senza richieste il riquadro non c'è.
+ */
+function BoardNearbySection({ token }: { token: string }) {
+  const [data, setData] = useState<BoardNearMe | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .getBoardNearMe(token)
+      .then((result) => {
+        if (!cancelled) setData(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+  if (!data || data.total === 0) return null;
+  return (
+    <TodaySection
+      title="Lavori cercati vicino a te"
+      subtitle="Clienti che aspettano ancora un preventivo: puoi rispondere."
+      count={data.total}
+      action={{ href: "/lavora-con-noi", label: data.total > data.cards.length ? `Tutte le ${data.total}` : "Sulla mappa" }}
+    >
+      {data.cards.map((card) => (
+        <Link key={card.id} href={replyHref(card)} className="today-row">
+          <span className="today-row-main">
+            <strong>{card.title}</strong>
+            <span className="today-row-sub">
+              {card.tradeLabel} · {card.place}
+              {card.km > 0 ? ` · ${card.km} km da te` : ""}
+            </span>
+          </span>
+          <span className="today-row-cta">Rispondi</span>
+        </Link>
+      ))}
+    </TodaySection>
   );
 }
 

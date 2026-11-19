@@ -6,6 +6,7 @@ import type {
   BoardPage,
   BoardMapBounds,
   BoardMapResult,
+  BoardNearMe,
   BoardSummary,
   BoardReplyResult,
   BoardAlertInput,
@@ -1575,6 +1576,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       const query = params.toString();
       return request<BoardMapResult>(`/request-board/map${query ? `?${query}` : ""}`, { cache: "no-store" });
     },
+    /** Riquadro "Lavori cercati" nella pagina Oggi: richieste a cui il professionista può rispondere. */
+    getBoardNearMe: (token: string) => request<BoardNearMe>("/request-board/near-me", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Mestiere e provincia con almeno una scheda, per i link e per Google. */
     getRequestBoardSummary: () => request<BoardSummary>("/request-board/summary", { cache: "no-store" }),
     /** Richieste del mese per mestiere e provincia (null sotto le 10), per le pagine /cerca. */

@@ -321,3 +321,10 @@ export function insideBoardBounds(point: { lat: number; lon: number }, bounds: B
   if (!bounds) return true;
   return point.lat <= bounds.north && point.lat >= bounds.south && point.lon <= bounds.east && point.lon >= bounds.west;
 }
+
+/**
+ * Riquadro "Lavori cercati" nella pagina Oggi del professionista ("sì" di
+ * Luca del 19/11/2026): le richieste a cui può rispondere, con la distanza
+ * dalla sua zona in km (0 per un lavoro online).
+ */
+export type BoardNearMe = { cards: (BoardCard & { km: number })[]; total: number };

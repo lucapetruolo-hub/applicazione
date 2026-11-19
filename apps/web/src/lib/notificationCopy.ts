@@ -29,6 +29,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   REQUEST_WITHDRAWN: { icon: "↩️", message: "Il cliente ha ritirato una richiesta: non gli serve più." },
   // Richiesta tenuta da parte da "Lavori cercati", arrivata con il profilo visibile (docs/changelog/2026-11-17-bacheca-rispondi.md).
   BOARD_CLAIM_ARRIVED: { icon: "📌", message: "La richiesta che avevi scelto in Lavori cercati è nel tuo elenco: manda il preventivo." },
+  // Richiesta nuova in "Lavori cercati" a cui può rispondere (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md).
+  BOARD_NEARBY: { icon: "📍", message: "C'è una richiesta nuova vicino a te in Lavori cercati." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   QUOTE_DEPOSIT_REFUNDED: { icon: "↩️", message: "Il preventivo non si poteva più confermare: ti abbiamo rimborsato l'acconto." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
@@ -320,6 +322,11 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "BOARD_CLAIM_ARRIVED" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
     return { icon: "📌", message: `La richiesta che avevi scelto è nel tuo elenco (${text(data.category)}${where}): manda il preventivo.` };
+  }
+  if (type === "BOARD_NEARBY" && text(data.category)) {
+    const where = text(data.city) ? ` a ${text(data.city)}` : "";
+    const others = typeof data.count === "number" && data.count > 1 ? ` e altre ${data.count - 1}` : "";
+    return { icon: "📍", message: `Lavori cercati: una richiesta nuova vicino a te (${text(data.category)}${where})${others}. Puoi rispondere.` };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";

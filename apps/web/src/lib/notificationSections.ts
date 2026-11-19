@@ -1,4 +1,5 @@
 import type { UnreadNotification } from "./AuthContext";
+import { isProfessionalCategorySlug } from "@professionisti/shared";
 
 /**
  * A quale sezione/tab appartiene ogni tipo di notifica — usato per i
@@ -6,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * esplicita dell'utente: "indica anche in quale sezione c'è stato
  * l'aggiornamento"), non solo il totale nell'header.
  */
-const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "BOOKING_DATE_CHANGE_UNANSWERED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN", "REQUEST_WITHDRAWN", "BOARD_CLAIM_ARRIVED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
+const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "BOOKING_DATE_CHANGE_UNANSWERED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN", "REQUEST_WITHDRAWN", "BOARD_CLAIM_ARRIVED", "BOARD_NEARBY", "TIMELINE_MESSAGE_FROM_CLIENT"]);
 const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "JOB_INVOICE_REQUESTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "BOOKING_CLIENT_CONFIRMED", "BOOKING_CLIENT_CANT_COME", "BOOKING_CLIENT_CANT_COME_UNDONE", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "JOB_TO_CLOSE", "RECURRING_VISIT_SKIPPED", "RECURRING_JOB_STOPPED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
@@ -106,6 +107,15 @@ function payloadString(n: UnreadNotification, key: string): string | null {
  * comunicazione parallelo all'URL già usato per `open`/`tab`.
  */
 export function notificationDeepLink(type: string, payload: unknown): string | null {
+  // Richiesta nuova in "Lavori cercati" (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md):
+  // una sola porta a "Rispondi", più di una alla pagina con la mappa.
+  if (type === "BOARD_NEARBY") {
+    const id = getPayloadValue(payload, "boardRequestId");
+    const count = typeof payload === "object" && payload !== null ? (payload as { count?: unknown }).count : undefined;
+    if (!id || (typeof count === "number" && count > 1)) return "/lavora-con-noi";
+    const trade = getPayloadValue(payload, "boardTrade");
+    return `/rispondi?richiesta=${encodeURIComponent(id)}${trade && isProfessionalCategorySlug(trade) ? `&categoria=${trade}` : ""}`;
+  }
   // Promemoria (docs/CHANGELOG.md §130): stesso tipo per entrambi i ruoli,
   // il lato è nel payload (`audience`), non deducibile dal solo `type`.
   if (type === "REQUEST_REMINDER") {
