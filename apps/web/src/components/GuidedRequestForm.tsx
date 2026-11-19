@@ -833,6 +833,10 @@ export function GuidedRequestForm({
   // §349): resta finché quel campo non cambia (`value` è il valore al momento
   // dell'errore), così sparisce da solo appena si corregge.
   const [fieldError, setFieldError] = useState<{ field: StepField; message: string; value: string } | null>(null);
+  // Un problema del passo 1 (descrizione, mestiere, quando) è stato mostrato:
+  // il suo campo resta rosso finché non è a posto
+  // (docs/changelog/2026-11-19-campi-obbligatori-profilo.md).
+  const [stepOneProblemShown, setStepOneProblemShown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
   // La chiamata non è arrivata al sito: accanto all'errore compare "Riprova".
@@ -1188,6 +1192,7 @@ export function GuidedRequestForm({
   function showProblem(problem: StepProblem) {
     if (!problem.field) {
       setError(problem.message);
+      if (problem.focus) setStepOneProblemShown(true);
       const target = problem.focus;
       if (target) setTimeout(() => focusStepOneTarget(target), 50);
       return;
@@ -1438,7 +1443,10 @@ export function GuidedRequestForm({
   const cityInput = (
     // `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154).
     // A domicilio stessa misura e bordo degli altri campi dell'indirizzo (`.guided-city-inline`).
-    <div id="guided-field-citta" className={serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}>
+    <div
+      id="guided-field-citta"
+      className={`${serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}${fieldInvalid("citta") ? " guided-invalid" : ""}`}
+    >
       <YStack
         borderWidth={1}
         borderColor={serviceMode === "HOME" ? brand.bordoCampo : brand.filetto}
@@ -1481,9 +1489,10 @@ export function GuidedRequestForm({
     </YStack>
   );
 
+  const stepOneInvalid = stepOneProblemShown ? validateStep(1)?.focus : undefined;
   return (
     <>
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+    <YStack className="guided-request-form" width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={560} gap="5">
         <YStack gap="3">
           <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
@@ -1660,6 +1669,7 @@ export function GuidedRequestForm({
           <div className="guided-description-wrap">
             <textarea aria-label="Descrivi il lavoro"
               ref={descriptionRef}
+              aria-invalid={stepOneInvalid === "descrizione" || undefined}
               className={suggestionsOn ? "guided-description-input" : "guided-description-input guided-description-input--semplice"}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -1891,7 +1901,7 @@ export function GuidedRequestForm({
         </YStack>
 
         {waitingTrade ? (
-          <YStack gap="2" id="guided-field-categorie">
+          <YStack gap="2" id="guided-field-categorie" className={stepOneInvalid === "categorie" ? "field-invalid-frame" : undefined}>
             <FieldLabel>Chi ti serve</FieldLabel>
             <WaitingTradeChoice
               trade={waitingTrade}
@@ -1903,7 +1913,7 @@ export function GuidedRequestForm({
             />
           </YStack>
         ) : suggestionsOn || !selectedCategory ? (
-          <YStack gap="2" id="guided-field-categorie">
+          <YStack gap="2" id="guided-field-categorie" className={stepOneInvalid === "categorie" ? "field-invalid-frame" : undefined}>
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
               {/* "Chi ti serve" al posto di "Categorie", più parlato (scelta di Luca,
                   docs/changelog/2026-11-15-scelta-categoria-suggerita.md). */}
@@ -2020,7 +2030,7 @@ export function GuidedRequestForm({
             orari e solo se non se n'è scelto uno, perché il giorno scelto dice
             già quando serve; su /urgente è già "Oggi" e non si chiede. */}
         {!isUrgentInitial && !finalPreferredDate ? (
-          <div className="guided-options is-urgent-card">
+          <div className={`guided-options is-urgent-card${stepOneInvalid === "quando" ? " field-invalid-frame" : ""}`}>
             <UrgencyControl
               idPrefix="guided-urgency-1"
               timing={timing}
@@ -2082,7 +2092,7 @@ export function GuidedRequestForm({
 
             <YStack gap="1">
               <FieldLabel>Telefono</FieldLabel>
-              <div id="guided-field-telefono">
+              <div id="guided-field-telefono" className={fieldInvalid("telefono") ? "guided-invalid" : undefined}>
                 <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
               </div>
               {fieldErrorFor("telefono")}
@@ -2169,7 +2179,7 @@ export function GuidedRequestForm({
                 <FieldLabel>Indirizzo</FieldLabel>
                 {/* Via e città insieme: la scelta dall'elenco compila città,
                     civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §264). */}
-                <div id="guided-field-indirizzo">
+                <div id="guided-field-indirizzo" className={fieldInvalid("indirizzo") ? "guided-invalid" : undefined}>
                 <AddressAutocompleteInput
                   value={addressText}
                   onChange={(next) => {

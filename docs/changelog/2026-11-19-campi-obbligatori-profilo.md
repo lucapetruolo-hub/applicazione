@@ -30,3 +30,34 @@ a quel campo.
 computer): città bianca come l'indirizzo; nome e città vuoti, l'errore porta
 al nome; poi alla città, con l'errore visibile in fondo allo schermo; poi agli
 anni di esperienza, con "Esperienza" attiva nell'indice.
+
+## Secondo giro (migliorie approvate da Luca, 19/11)
+
+- Il campo dell'errore ha il **bordo rosso** (e `aria-invalid`) finché resta
+  sbagliato: nome, città, mestieri (riquadro rosso attorno alle tessere),
+  anni, prezzo della prestazione.
+- **L'errore sparisce da solo** appena il campo è corretto: il messaggio non è
+  più salvato come testo ma ricalcolato dal campo (`profileProblem` in
+  `apps/web/src/app/dashboard/profilo/page.tsx`). Gli errori del server
+  restano finché non si salva di nuovo.
+- **"Le mie richieste"**, modifica di una richiesta: la città è bianca con il
+  bordo degli altri campi, come nel profilo (prima grigia).
+
+**Verifica**: la stessa prova controlla anche il bordo rosso della città, che
+sparisce insieme all'errore appena la città è scritta, e `aria-invalid` sugli
+anni.
+
+## Terzo giro (migliorie approvate da Luca, 19/11)
+
+- Da telefono, toccando un campo di ricerca (città, comuni), la pagina lascia
+  40 px sotto le barre in alto invece di 12 (`revealFieldForList`): si legge
+  anche l'etichetta sopra il campo.
+- Bordo rosso anche negli altri moduli: in **registrazione** il riquadro
+  attorno a "Che lavori fai?" (gli altri campi lo avevano già); nella
+  **richiesta di preventivo** descrizione, "Chi ti serve", "Quando ti serve?"
+  (riquadro, finché il problema del passo 1 resta), città, indirizzo, telefono
+  e i campi con `aria-invalid` (classe `.guided-request-form`). Classe comune
+  `.field-invalid-frame` per i riquadri.
+
+**Verifica**: nuova prova nella stessa spec: con "Avanti" la descrizione vuota
+diventa rossa e torna normale appena scritta.
