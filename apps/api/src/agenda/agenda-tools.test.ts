@@ -203,7 +203,16 @@ describe("orderStops (docs/changelog/2026-11-11-fasce-ampie.md)", () => {
 describe("meteo quando Open-Meteo dà errore", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
+  });
+  it("spento (senza WEATHER_ENABLED=true) non chiama Open-Meteo e non dà icone", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("WEATHER_ENABLED", "");
+    expect(await new WeatherService().alerts(41.9, 12.5)).toEqual([]);
+    expect(await new WeatherService().forecast(41.9, 12.5)).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
   it("col tetto esaurito non mostra previsioni scadute e non richiama il servizio per un'ora", async () => {
     vi.useFakeTimers();
@@ -211,6 +220,7 @@ describe("meteo quando Open-Meteo dà errore", () => {
     const daily = { daily: { time: ["2026-11-18"], weather_code: [63], precipitation_probability_max: [90], wind_gusts_10m_max: [10] } };
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(daily))).mockResolvedValue(new Response("{}", { status: 429 }));
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("WEATHER_ENABLED", "true");
     const service = new WeatherService();
     expect(await service.alerts(41.9, 12.5)).toEqual([{ date: "2026-11-18", kind: "rain" }]);
     vi.setSystemTime(new Date("2026-11-18T12:00:00Z")); // previsioni scadute: nuovo tentativo, 429, nessuna icona

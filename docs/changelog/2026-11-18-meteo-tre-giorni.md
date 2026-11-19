@@ -55,3 +55,11 @@ gratuito è solo per uso non commerciale.
   commerciale le chiamate vanno a `customer-api.open-meteo.com`, senza il tetto
   condiviso. Scelta dell'abbonamento chiesta a Luca nel thread.
 - Prova: `apps/api/src/agenda/agenda-tools.test.ts` ("meteo quando Open-Meteo dà errore").
+
+**Meteo spento** (Luca, 19/11: "disattiviamo per ora il meteo, sarebbe un
+abbonamento di 30 euro in più che possiamo evitare almeno all'inizio"):
+`WEATHER_ENABLED` (in `render.yaml`) accende il meteo solo se vale "true".
+Senza, `WeatherService` non chiama Open-Meteo: niente icone in Agenda né riga
+del meteo in "Oggi" (che già sparisce senza dati, §349). Privacy: Open-Meteo
+citato "quando il meteo è attivo". Per riaccenderlo: abbonamento Open-Meteo,
+`OPEN_METEO_API_KEY` e `WEATHER_ENABLED=true` su Render.

@@ -123,6 +123,9 @@ export class WeatherService {
   }
 
   private async daily(latitude: number, longitude: number): Promise<OpenMeteoDaily> {
+    // Meteo spento finché non serve l'abbonamento commerciale (decisione di Luca del 19/11,
+    // docs/changelog/2026-11-18-meteo-tre-giorni.md): nessuna chiamata, nessuna icona in Agenda e in Oggi.
+    if (process.env.WEATHER_ENABLED?.trim() !== "true") return {};
     // Circa un chilometro di precisione: basta per il meteo e riusa la cache tra vicini.
     const key = `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
     const cached = this.cache.get(key);

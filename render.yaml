@@ -150,6 +150,10 @@ services:
       # gratuita, con un tetto giornaliero condiviso con gli altri siti di Render.
       - key: OPEN_METEO_API_KEY
         sync: false
+      # "true" accende il meteo in Agenda e in Oggi. Spento dal 19/11 (decisione
+      # di Luca): il gratuito è solo per uso non commerciale e ha un tetto condiviso.
+      - key: WEATHER_ENABLED
+        sync: false
       # Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md):
       # "true" la accende (serve anche ANTHROPIC_API_KEY). Spenta finché il
       # banco di prova con le foto non supera la soglia.
