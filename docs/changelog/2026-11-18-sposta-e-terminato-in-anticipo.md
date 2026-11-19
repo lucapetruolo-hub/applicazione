@@ -115,3 +115,8 @@ nuovo, "CAMBIARE LA DATA E CHIUDERE IL LAVORO", che dice:
 Versione `2026-11-19` in `TERMS_CHANGES` (`packages/shared/src/termsChanges.ts`).
 Vale da subito, senza avviso, come le altre prima del lancio (`notify: false`).
 I preventivi già accettati non cambiano (punto 12).
+
+In questa PR c'è anche una correzione a una prova:
+`apps/api/src/accounting/quote-pdf.service.test.ts` falliva dal 19/11. Usava
+l'ora vera e l'appuntamento finto del 20/11 era ormai dentro il preavviso. Ora
+la prova gira sempre con un'ora fissa, il 10/11.
