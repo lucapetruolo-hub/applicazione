@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, hasCategoryPrices } from "@professionisti/shared";
+import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, hasCategoryPrices, priceToolVisible } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
@@ -36,6 +36,10 @@ export default async function PricesIndexPage() {
     }),
   );
   const available = withPrices.filter((category) => category !== null);
+  // "Cerca il prezzo di un lavoro" porta allo strumento della home solo quando
+  // la home lo mostra (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md).
+  const priceIndex = await apiClient.getServicePriceIndex().catch(() => null);
+  const homeToolShown = priceIndex !== null && priceToolVisible(priceIndex);
   const others = PROFESSIONAL_CATEGORIES.filter((category) => !available.includes(category));
 
   return (
@@ -80,9 +84,11 @@ export default async function PricesIndexPage() {
         <Link className="price-page-cta" href="/preventivo">
           Chiedi un preventivo gratis
         </Link>
-        <Link className="price-page-link" href="/#quanto-costa">
-          Cerca il prezzo di un lavoro
-        </Link>
+        {homeToolShown ? (
+          <Link className="price-page-link" href="/#quanto-costa">
+            Cerca il prezzo di un lavoro
+          </Link>
+        ) : null}
       </div>
     </div>
   );

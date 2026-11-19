@@ -131,3 +131,25 @@ ritoccano solo i passi 1 e 3).
   serve, nei risultati e nel modulo, ma non si pubblicizza in home. **Da non
   riproporre.**
 - N12 (foto nelle recensioni) era già in home dalla #422.
+
+## "Quanto costa in media?" nascosta finché mancano i prezzi (voce T4)
+
+**Richiesta** (Luca, 19/11/2026, scheda di scelta: "Nascondi la sezione"): in
+home il titolo prometteva una media e sotto c'erano dieci righe "Su
+preventivo".
+
+**Decisione**: la sezione compare solo quando almeno 3 lavori hanno un prezzo
+medio (`priceToolVisible`, `MIN_PRICED_SERVICES_FOR_PRICE_TOOL` in
+`packages/shared/src/categoryPrices.ts`). Sotto la soglia in home restano solo
+le domande; chi tocca "Quanto costa un lavoro" (`/#quanto-costa`) arriva a
+`/prezzi`, e in `/prezzi` il link "Cerca il prezzo di un lavoro" compare solo
+quando lo strumento è in home.
+
+**Cambia una decisione**: il 07/11/2026 Luca aveva scelto "mai nascosta" con la
+frase "Stiamo raccogliendo i prezzi veri"
+(docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). Il 19/11,
+con le tre strade davanti (frase, nascondere, lasciare), ha scelto di
+nasconderla. Compare da sola quando i professionisti veri mettono i prezzi:
+gli account di prova non contano.
+
+**Verifica**: `e2e/tests/quanto-costa.spec.ts` crea tre lavori con prezzo.
