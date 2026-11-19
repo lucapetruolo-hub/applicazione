@@ -411,7 +411,7 @@ export const FAQ: readonly FaqItem[] = [
     topic: "Agenda e clienti",
     question: "Il cliente riceve un promemoria dell'appuntamento?",
     answer:
-      "Sì, per email circa 24 ore prima, con i pulsanti \"Ci sarò\" e \"Non posso più\": così sai in anticipo se qualcosa cambia. Il cliente può spegnere questi avvisi dalle sue notifiche.",
+      "Sì, per email e, se lo ha acceso, su WhatsApp, circa 24 ore prima, con i pulsanti \"Ci sarò\" e \"Non posso più\": così sai in anticipo se qualcosa cambia. Il cliente può spegnere questi avvisi dalle sue notifiche.",
   },
   {
     id: "calendario-telefono",

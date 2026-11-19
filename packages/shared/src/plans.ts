@@ -83,7 +83,7 @@ export const SUBSCRIPTION_FEATURES = [
   "Richieste di preventivo dai clienti",
   "Preventivi e chat con i clienti",
   "Agenda e prenotazioni online",
-  "Promemoria via email, così il cliente non si dimentica",
+  "Promemoria via email e WhatsApp, così il cliente non si dimentica",
   "Recensioni da lavori fatti tramite il sito",
   "Statistiche della tua attività",
   // Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md).
