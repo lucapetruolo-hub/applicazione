@@ -14,6 +14,9 @@ export const TOKEN_STORAGE_KEY = "professionisti_token";
 
 /** `type` porta la notifica di origine — usato da ToastStack per sapere dove navigare al click (richiesta esplicita dell'utente). */
 export type NotificationToast = { id: string; icon: string; message: string; type: string; payload: unknown };
+/** Notifiche arrivate entro questo tempo dall'ultimo popup lo aggiornano invece di aggiungerne un altro. */
+const TOAST_BURST_MS = 10_000;
+
 export type UnreadNotification = { id: string; type: string; payload: unknown; createdAt: string };
 
 type AuthContextValue = {
@@ -76,6 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // generare un toast tutte insieme — solo quelle arrivate DOPO vengono
   // segnalate. Azzerato ad ogni cambio utente (login/logout).
   const seenNotificationIdsRef = useRef<Set<string> | null>(null);
+  // Ultimo popup di una raffica: le notifiche che arrivano entro pochi
+  // secondi lo aggiornano ("Hai N nuovi aggiornamenti") invece di aggiungerne
+  // un altro (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+  const toastBurstRef = useRef<{ id: string; count: number; at: number } | null>(null);
+  const toastSeqRef = useRef(0);
   const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPreferences | null>(null);
   // Letto dentro `checkForNewNotifications` (callback stabile) per sapere
   // se mostrare il popup e suonare, senza ricrearla a ogni cambio.
@@ -191,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnreadCount(0);
     setNotificationPrefsState(null);
     seenNotificationIdsRef.current = null;
+    toastBurstRef.current = null;
     setToasts([]);
     setUnreadNotifications([]);
   }, []);
@@ -250,39 +259,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then(({ notificationSoundKind }) => playNotificationSound(prefs.soundName, notificationSoundKind(toAnnounce)))
         .catch(() => playNotificationSound(prefs.soundName));
     }
-    if (!prefs.popups) return;
-    if (toAnnounce.length === 1) {
-      // Caso comune: un solo evento in questo giro di poll, stesso
-      // messaggio simpatico specifico di sempre.
+    if (!prefs.popups || toAnnounce.length === 0) return;
+    // Raffica: al primo profilo arrivano insieme le richieste già aperte in
+    // zona, una notifica ciascuna, e ogni evento in tempo reale faceva un
+    // controllo suo. Prima ne usciva un popup per giro, fino a coprire tutto
+    // lo schermo del telefono (e con lo stesso id `batch-<ms>` React ne
+    // disegnava più del limite di 3). Ora quello che arriva entro
+    // TOAST_BURST_MS dall'ultimo popup ancora aperto lo aggiorna.
+    const now = Date.now();
+    const burst = toastBurstRef.current && now - toastBurstRef.current.at < TOAST_BURST_MS ? toastBurstRef.current : null;
+    const count = (burst?.count ?? 0) + toAnnounce.length;
+    if (count === 1) {
+      // Caso comune: un solo evento, con il suo messaggio simpatico di sempre.
       // I testi di tutte le notifiche si caricano solo qui, al primo
       // popup: prima stavano nel JavaScript di ogni pagina, anche per chi
       // visita senza account (docs/changelog/2026-11-09-meno-javascript-comune.md).
       const fresh = toAnnounce[0]!;
+      toastBurstRef.current = { id: fresh.id, count: 1, at: now };
       void import("./notificationCopy").then(({ notificationCopy }) => {
+        // Nel frattempo è arrivato altro: c'è già il popup che li conta tutti.
+        if (toastBurstRef.current?.id !== fresh.id) return;
         const { icon, message } = notificationCopy(fresh.type, fresh.payload);
         setToasts((prev) => [...prev, { id: fresh.id, icon, message, type: fresh.type, payload: fresh.payload }]);
       });
-    } else if (toAnnounce.length > 1) {
-      // Più eventi arrivati nello stesso giro (48s): un toast per
-      // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
-      // volta, dato che i toast non spariscono più da soli (richiesta
-      // esplicita dell'utente) — proprio il rischio di "notification
-      // fatigue" segnalato nel Verbale Cognitivo (F7.2). Un solo toast
-      // aggregato al posto di N: il click apre la pagina/tab del primo
-      // evento del gruppo (i tipi coinvolti puntano comunque sempre a una
-      // delle stesse due pagine, /dashboard o /le-mie-richieste — mai una
-      // destinazione sbagliata, al più non la più recente del gruppo).
-      setToasts((prev) => [
-        ...prev,
-        {
-          id: `batch-${Date.now()}`,
-          icon: "🔔",
-          message: `Hai ${toAnnounce.length} nuovi aggiornamenti.`,
-          type: toAnnounce[0]!.type,
-          payload: toAnnounce[0]!.payload,
-        },
-      ]);
+      return;
     }
+    // Più eventi insieme: un solo popup che li conta (Verbale Cognitivo F7.2,
+    // "notification fatigue": i popup non spariscono da soli, ognuno va
+    // chiuso). Il clic apre la pagina del primo evento del gruppo.
+    const id = `batch-${now}-${++toastSeqRef.current}`;
+    const replaces = burst?.id;
+    const first = toAnnounce[0]!;
+    toastBurstRef.current = { id, count, at: now };
+    setToasts((prev) => [
+      ...prev.filter((t) => t.id !== replaces),
+      { id, icon: "🔔", message: `Hai ${count} nuovi aggiornamenti.`, type: first.type, payload: first.payload },
+    ]);
   }, []);
 
   const checkForNewNotifications = useCallback(async () => {
@@ -312,6 +324,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [announceNotifications]);
 
   const dismissToast = useCallback((id: string) => {
+    // Chiuso il popup della raffica: quello che arriva dopo ne apre uno nuovo, da 1.
+    if (toastBurstRef.current?.id === id) toastBurstRef.current = null;
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 

@@ -42,20 +42,15 @@ test("dopo il primo salvataggio Oggi porta ai dati fiscali, non di nuovo al prof
     [new URL(WEB_URL).origin, token] as const,
   );
 
-  // Le notifiche di benvenuto dell'account nuovo arrivano come popup sopra la
-  // pagina e coprono i pulsanti a caso: questa prova non le riguarda, si nascondono.
-  await page.addInitScript(() => {
-    document.addEventListener("DOMContentLoaded", () => {
-      const style = document.createElement("style");
-      style.textContent = ".toast-stack { display: none !important; }";
-      document.head.appendChild(style);
-    });
-  });
-
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "Completa il tuo profilo per iniziare" })).toBeVisible();
-  // Senza profilo il primo passo è proprio il profilo: nome, mestiere e città.
-  await page.getByRole("link", { name: "Completa profilo" }).click();
+  // Senza profilo Oggi mostra tutto il percorso, con il profilo pubblico come
+  // primo passo (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+  const steps = page.getByRole("list", { name: "Passi per completare il profilo" });
+  await expect(steps).toBeVisible();
+  // Da telefono con quattro passi si legge solo il nome di quello da fare.
+  await expect(steps.getByRole("listitem")).toHaveCount(4);
+  await expect(steps.getByRole("listitem").first()).toContainText("Profilo");
+  await page.getByRole("link", { name: "Crea il profilo pubblico" }).click();
   await expect(page).toHaveURL(/\/dashboard\/profilo/);
   await expect(page.getByRole("heading", { name: "Ora il tuo profilo pubblico" })).toBeVisible();
 
@@ -68,11 +63,24 @@ test("dopo il primo salvataggio Oggi porta ai dati fiscali, non di nuovo al prof
   // Senza Stripe nella prova niente piano: la domanda sugli orari, poi "Più tardi" torna su Oggi senza ricaricare.
   const saved = page.getByRole("dialog", { name: "Profilo salvato" });
   await expect(saved).toBeVisible();
+  // Con la finestra aperta i popup delle notifiche di benvenuto aspettano:
+  // prima da telefono coprivano "Più tardi".
+  await expect(page.locator(".toast-stack")).toBeHidden();
   await saved.getByRole("button", { name: "Più tardi" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await expect(page.getByRole("heading", { name: "Completa il profilo", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Completa il tuo profilo per iniziare" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Crea il profilo pubblico" })).toHaveCount(0);
+  // Al primo profilo arrivano insieme le richieste già aperte in zona: un solo
+  // popup che le conta, non uno per giro fino a coprire lo schermo. Lo si
+  // chiude come farebbe la persona prima di andare avanti.
+  await page.waitForTimeout(3000);
+  expect(await page.locator(".toast-card").count()).toBeLessThanOrEqual(1);
+  const toasts = page.locator(".toast-stack");
+  for (let i = 0; i < 20 && (await toasts.count()) > 0; i++) {
+    const more = toasts.locator(".toast-more");
+    await ((await more.count()) > 0 ? more : toasts.getByRole("button", { name: "Chiudi la notifica" }).first()).click();
+  }
   await page.getByRole("link", { name: "Compila i dati fiscali" }).click();
   await expect(page).toHaveURL(/\/dashboard\/fiscale/);
 });
