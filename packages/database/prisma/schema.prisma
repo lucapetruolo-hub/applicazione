@@ -492,6 +492,8 @@ model ProfessionalProfile {
   timelineEvents         ConversationEvent[]
   chatReplyDismissals    ChatReplyDismissal[]
   externalJobs           ExternalJob[]
+  expenses               ProfessionalExpense[]
+  cashbookSettings       ProfessionalCashbookSettings?
   clientNotes            ProfessionalClientNote[]
   // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
   // file ("MANOVIA — fiscale, pagamenti, DAC7"). Modello separato,
@@ -3965,4 +3967,72 @@ model BookingReschedule {
 
   @@index([professionalProfileId, createdAt])
   @@map("booking_reschedules")
+}
+
+// Entrate e uscite (docs/changelog/2026-11-19-entrate-e-uscite.md): spese
+// scritte a mano dal professionista, con la foto dello scontrino facoltativa.
+// Restano sue: la conservazione dei documenti fiscali è un suo obbligo, la
+// foto qui è solo un aiuto. Si cancellano con il profilo.
+enum ExpenseCategory {
+  MATERIALS
+  VEHICLE
+  TOOLS
+  PHONE
+  INSURANCE
+  TRAINING
+  SOCIAL_SECURITY
+  OTHER
+}
+
+model ProfessionalExpense {
+  id                    String          @id @default(uuid())
+  professionalProfileId String
+  // Giorno della spesa (ora italiana), come scritto dal professionista.
+  spentOn               DateTime        @db.Date
+  amountEurCents        Int
+  category              ExpenseCategory
+  description           String?
+  receiptPhotoUrl       String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, spentOn])
+  @@map("professional_expenses")
+}
+
+// Scelte della scheda Entrate e uscite: lavori fuori sito nelle entrate,
+// stima dell'imposta del forfettario (coefficiente e aliquota) e aliquota IVA
+// per separare l'IVA dagli incassi. Senza riga valgono i valori di partenza
+// (DEFAULT_CASHBOOK_SETTINGS in packages/shared).
+model ProfessionalCashbookSettings {
+  professionalProfileId String   @id
+  includeExternalJobs   Boolean  @default(true)
+  // Chiave di FORFETTARIO_COEFFICIENTS; null = stima spenta.
+  taxCoefficient        String?
+  taxRatePercent        Int?
+  vatRatePercent        Int      @default(22)
+  updatedAt             DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_cashbook_settings")
+}
+
+// Excel gratuito "Entrate e uscite" dalla pagina /per-professionisti
+// (docs/changelog/2026-11-19-entrate-e-uscite.md): l'email riceve il link al
+// file. Il consenso alle novità vale solo dopo il clic sul link (doppia
+// conferma) ed è facoltativo. Righe cancellate dopo 25 mesi senza consenso.
+model FreeSpreadsheetSignup {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  token              String    @unique
+  marketingConsent   Boolean   @default(false)
+  confirmedAt        DateTime?
+  downloads          Int       @default(0)
+  lastSentAt         DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+
+  @@map("free_spreadsheet_signups")
 }

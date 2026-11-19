@@ -17,6 +17,7 @@ import {
   statementCsv,
   toJobPaymentSummary,
   type AccountantSettingsInput,
+  type CashbookMovement,
   type CourtesyYearSummary,
   type MonthlyStatement,
   type JobPaymentSummary,
@@ -46,6 +47,7 @@ export function stripeRefOfEntry(dedupeKey: string | null, paymentIntentId: stri
 }
 
 const BOOKING_SELECT = {
+  id: true,
   scheduledAt: true,
   recipientName: true,
   recipientSurname: true,
@@ -55,6 +57,7 @@ const BOOKING_SELECT = {
 } as const;
 
 type BookingInfo = {
+  id: string;
   scheduledAt: Date;
   recipientName: string | null;
   recipientSurname: string | null;
@@ -143,6 +146,18 @@ export class StatementsService {
     private readonly courtesyCopyService: CourtesyCopyService,
   ) {}
 
+  /**
+   * Foglio Entrate e uscite dell'anno, allegato all'email di gennaio al
+   * commercialista (docs/changelog/2026-11-19-entrate-e-uscite.md). Lo
+   * registra CashbookService all'avvio: così questo servizio non dipende da
+   * quello (che a sua volta legge l'estratto).
+   */
+  private yearCsvProvider: ((professionalProfileId: string, year: number) => Promise<{ fileName: string; csv: string; movements: number }>) | null = null;
+
+  setYearCsvProvider(provider: (professionalProfileId: string, year: number) => Promise<{ fileName: string; csv: string; movements: number }>): void {
+    this.yearCsvProvider = provider;
+  }
+
   private requireMonth(month: string): void {
     if (!isAccountingMonth(month) || month > romeMonthOf(new Date())) throw new BadRequestException("Mese non valido.");
   }
@@ -195,6 +210,28 @@ export class StatementsService {
     month: string,
   ): Promise<{ statement: MonthlyStatement; csvRows: StatementCsvRow[]; movements: number; invoices: Invoice[] }> {
     const { start, end } = romeMonthRange(month);
+    const { cash: _cash, ...rest } = await this.collect(professionalProfileId, start, end, month);
+    return rest;
+  }
+
+  /**
+   * I soldi del sito entrati e usciti tra `start` (compreso) ed `end`
+   * (escluso), riga per riga, per la scheda Entrate e uscite e le
+   * Statistiche (docs/changelog/2026-11-19-entrate-e-uscite.md): lo stesso
+   * calcolo dell'estratto, così le cifre coincidono per costruzione. Senza i
+   * bonifici (sono soldi già contati quando il cliente ha pagato) e, come nei
+   * totali dell'estratto, senza i pagamenti contestati in banca.
+   */
+  async cashMovements(professionalProfileId: string, start: Date, end: Date): Promise<CashbookMovement[]> {
+    return (await this.collect(professionalProfileId, start, end, null)).cash;
+  }
+
+  private async collect(
+    professionalProfileId: string,
+    start: Date,
+    end: Date,
+    month: string | null,
+  ): Promise<{ statement: MonthlyStatement; csvRows: StatementCsvRow[]; movements: number; invoices: Invoice[]; cash: CashbookMovement[] }> {
     const inMonth = { gte: start, lt: end };
     const paymentSelect = { id: true, paymentMethod: true, payoutSentAt: true, payoutPaidAt: true, stripePaymentIntentId: true, stripePayoutId: true, booking: { select: BOOKING_SELECT } } as const;
     const [entries, direct, payouts, otherInvoices, feeInvoice, fiscal, online, issuer] = await Promise.all([
@@ -212,12 +249,12 @@ export class StatementsService {
         where: { professionalProfileId, type: "MANOVIA_TO_PROFESSIONAL", status: "ISSUED", source: { not: "JOB_FEES" }, issuedAt: inMonth },
         orderBy: { issuedAt: "asc" },
       }),
-      this.prisma.invoice.findFirst({ where: { professionalProfileId, source: "JOB_FEES", periodMonth: month, status: "ISSUED" } }),
+      month ? this.prisma.invoice.findFirst({ where: { professionalProfileId, source: "JOB_FEES", periodMonth: month, status: "ISSUED" } }) : Promise.resolve(null),
       this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { entityType: true } }),
       // Tutti i pagamenti online: stato dei soldi come in "Pagamenti online" (G-14), rimborsi (G-12) e contestazioni (G-15).
       this.prisma.jobPayment.findMany({
         where: { booking: { professionalProfileId }, paymentMethod: "MANOVIA" },
-        include: { booking: { select: { finalAmountEurCents: true, ...BOOKING_SELECT } } },
+        include: { booking: { select: { finalAmountEurCents: true, professionalCompletedAt: true, ...BOOKING_SELECT } } },
       }),
       // Le nostre fatture partono con l'apertura del sito: finché non partono l'estratto non le promette (G-16).
       this.invoicesService.activeIssuer(new Date(end.getTime() - 1)),
@@ -264,11 +301,13 @@ export class StatementsService {
     };
 
     const csvRows: StatementCsvRow[] = [];
-    const feeDocument = (invoice: { series: string | null; year: number | null; number: number | null } | null) =>
+    // Le stesse righe per la scheda Entrate e uscite, con la fonte del soldo.
+    const cash: (CashbookMovement & { jobPaymentId?: string })[] = [];
+    const feeDocument = (invoice: { series: string | null; year: number | null; number: number | null } | null, at: Date) =>
       invoice
         ? `Fattura ${invoiceNumberLabel(invoice.series, invoice.year, invoice.number)}`
         : feeInvoiceExpected
-          ? `Fattura delle trattenute di ${accountingMonthLabel(month)}`
+          ? `Fattura delle trattenute di ${accountingMonthLabel(romeMonthOf(at))}`
           : "Nessuna fattura: prima dell'apertura del sito";
     for (const e of entries) {
       const booking = e.jobPayment?.booking;
@@ -279,6 +318,10 @@ export class StatementsService {
       if (e.kind === "HOLD" && e.paymentEurCents > 0) {
         row.onlineEurCents += e.paymentEurCents;
         csvRows.push({ date, kind: "Pagamento online del cliente", job: row.job, client: row.client ?? "", amountEurCents: e.paymentEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(booking, receipts), stripeRef });
+        cash.push({ date, source: "ONLINE", label: "Pagamento online del cliente", detail: row.job, amountEurCents: e.paymentEurCents, vatEurCents: null, document: clientDocumentOf(booking, receipts), bookingId: booking?.id, jobPaymentId: e.jobPaymentId ?? undefined });
+      }
+      if (e.grossEurCents !== 0) {
+        cash.push({ date, source: "FEE", label: e.kind === "HOLD" ? "Nostra trattenuta" : e.description, detail: row.job, amountEurCents: -e.grossEurCents, vatEurCents: -e.vatEurCents, document: feeDocument(e.invoice, e.occurredAt), bookingId: booking?.id });
       }
       csvRows.push({
         date,
@@ -288,7 +331,7 @@ export class StatementsService {
         amountEurCents: -e.grossEurCents,
         taxableEurCents: -e.taxableEurCents,
         vatEurCents: -e.vatEurCents,
-        document: feeDocument(e.invoice),
+        document: feeDocument(e.invoice, e.occurredAt),
         stripeRef,
       });
     }
@@ -297,6 +340,21 @@ export class StatementsService {
       row.directEurCents += jp.grossAmountEurCents;
       row.payoutNote = payoutNoteOf(jp, null, null);
       csvRows.push({ date: romeDayIso(jp.directReportedAt ?? start), kind: "Pagamento diretto del cliente", job: row.job, client: row.client ?? "", amountEurCents: jp.grossAmountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts) });
+      cash.push({ date: romeDayIso(jp.directReportedAt ?? start), source: "DIRECT", label: "Pagamento diretto del cliente", detail: row.job, amountEurCents: jp.grossAmountEurCents, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts), bookingId: jp.booking.id });
+    }
+    // Acconto online e saldo pagato direttamente (MIXED, §237): il saldo il
+    // cliente lo dà al professionista a lavoro finito, nel giorno di "Lavoro
+    // terminato". Prima del 19/11 l'estratto non lo mostrava affatto.
+    for (const jp of online) {
+      const at = jp.booking.professionalCompletedAt;
+      if (!jp.balanceDirect || !at || at < start || at >= end || jp.booking.finalAmountEurCents === null) continue;
+      const deposit = jp.depositPaidAt ? (jp.depositEurCents ?? 0) : 0;
+      const balance = jp.booking.finalAmountEurCents - deposit;
+      if (balance <= 0) continue;
+      const row = rowFor(jp.id, jp.booking, at);
+      row.directEurCents += balance;
+      csvRows.push({ date: romeDayIso(at), kind: "Saldo pagato direttamente dal cliente", job: row.job, client: row.client ?? "", amountEurCents: balance, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts) });
+      cash.push({ date: romeDayIso(at), source: "DIRECT", label: "Saldo pagato direttamente dal cliente", detail: row.job, amountEurCents: balance, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts), bookingId: jp.booking.id });
     }
     for (const jp of payouts) {
       const row = rowFor(jp.id, jp.booking, jp.payoutPaidAt ?? start);
@@ -312,6 +370,7 @@ export class StatementsService {
         const row = rowFor(jp.id, jp.booking, at);
         row.refundsEurCents += amountEurCents;
         csvRows.push({ date: romeDayIso(at), kind, job: row.job, client: row.client ?? "", amountEurCents: -amountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts), stripeRef: jp.stripePaymentIntentId ?? "" });
+        cash.push({ date: romeDayIso(at), source: "REFUND", label: kind, detail: row.job, amountEurCents: -amountEurCents, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts), bookingId: jp.booking.id, jobPaymentId: jp.id });
       };
       let logged = 0;
       for (const log of refundLogs) {
@@ -346,6 +405,15 @@ export class StatementsService {
       }
     }
     for (const invoice of otherInvoices) {
+      cash.push({
+        date: romeDayIso(invoice.issuedAt ?? invoice.createdAt),
+        source: "PLATFORM_INVOICE",
+        label: INVOICE_SOURCE_LABEL[invoice.source],
+        detail: "",
+        amountEurCents: -invoice.amountEurCents,
+        vatEurCents: -(invoice.vatEurCents + invoice.roundingEurCents),
+        document: `Fattura ${invoiceNumberLabel(invoice.series, invoice.year, invoice.number)}`,
+      });
       csvRows.push({
         date: romeDayIso(invoice.issuedAt ?? invoice.createdAt),
         kind: INVOICE_SOURCE_LABEL[invoice.source],
@@ -367,10 +435,16 @@ export class StatementsService {
       online.filter((jp) => !jp.stripeDisputeStatus || !DISPUTE_PENDING_STATUSES.includes(jp.stripeDisputeStatus)).map((jp) => summaries.get(jp.id) ?? null),
     ).blockedEurCents;
     const counted = sorted.filter((r) => !r.disputed);
+    const disputedIds = new Set(sorted.filter((r) => r.disputed && r.jobPaymentId).map((r) => r.jobPaymentId));
+    const cashCounted: CashbookMovement[] = cash
+      .filter((m) => !(m.jobPaymentId && disputedIds.has(m.jobPaymentId) && (m.source === "ONLINE" || m.source === "REFUND")))
+      .map(({ jobPaymentId: _id, ...m }) => m)
+      .sort((a, b) => a.date.localeCompare(b.date));
     return {
+      cash: cashCounted,
       statement: {
-        month,
-        monthLabel: accountingMonthLabel(month),
+        month: month ?? "",
+        monthLabel: month ? accountingMonthLabel(month) : "",
         totals: {
           onlineEurCents: counted.reduce((sum, r) => sum + r.onlineEurCents - r.refundsEurCents, 0),
           directEurCents: sorted.reduce((sum, r) => sum + r.directEurCents, 0),
@@ -433,9 +507,11 @@ export class StatementsService {
         const { statement, csvRows, movements, invoices } = await this.build(r.professionalProfileId, month);
         const yearly = closedYear !== null ? await this.courtesyCopyService.yearSummaryForProfile(r.professionalProfileId, closedYear) : null;
         const withYearly = yearly && yearly.receipts.length > 0 ? yearly : null;
-        if (movements === 0 && !withYearly) continue;
+        const yearSheet = closedYear !== null && this.yearCsvProvider ? await this.yearCsvProvider(r.professionalProfileId, closedYear) : null;
+        const withSheet = yearSheet && yearSheet.movements > 0 ? yearSheet : null;
+        if (movements === 0 && !withYearly && !withSheet) continue;
         const who = professionalFiscalName(r, r.professionalProfile.businessName) ?? "";
-        const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly, movements > 0 ? invoices.length : 0));
+        const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly, movements > 0 ? invoices.length : 0, withSheet ? closedYear : null));
         const attachments: { filename: string; content: string | Buffer; contentType: string }[] = [];
         if (movements > 0) {
           attachments.push(
@@ -457,6 +533,7 @@ export class StatementsService {
             { filename: `documenti-clienti-${withYearly.year}.csv`, content: courtesyYearCsv(withYearly), contentType: "text/csv; charset=utf-8" },
           );
         }
+        if (withSheet) attachments.push({ filename: withSheet.fileName, content: withSheet.csv, contentType: "text/csv; charset=utf-8" });
         if (!(await this.claimStatementSend(r.professionalProfileId, month))) continue;
         const ok = await this.emailService.send({ to: r.accountantEmail!, subject: email.subject, html: email.html, text: email.text, attachments });
         if (ok) sent += 1;
@@ -489,16 +566,26 @@ export class StatementsService {
  * gennaio c'è anche (o solo) il riepilogo dell'anno dei documenti dati ai
  * clienti (§390).
  */
-export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null, invoiceCount = 0): EmailContent {
+export function accountantStatementEmail(
+  who: string,
+  statement: MonthlyStatement | null,
+  yearly: CourtesyYearSummary | null = null,
+  invoiceCount = 0,
+  cashbookYear: number | null = null,
+): EmailContent {
   const eur = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
   const yearlyWhat = "le ricevute per prestazione occasionale date ai clienti nell'anno, in PDF e nel foglio di calcolo";
+  const sheetLine = cashbookYear
+    ? [`In allegato anche il foglio **Entrate e uscite del ${cashbookYear}**: i soldi entrati e usciti nell'anno, nel giorno in cui si sono mossi, con le spese che ${who} ha segnato sul sito.`]
+    : [];
+  const year = yearly?.year ?? cashbookYear ?? "";
   return {
     kind: "external",
     subject: statement
       ? `Estratto di ${statement.monthLabel}${yearly ? ` e riepilogo del ${yearly.year}` : ""} di ${who}`
-      : `Riepilogo del ${yearly?.year ?? ""} di ${who}`,
+      : `Riepilogo del ${year} di ${who}`,
     greeting: null,
-    title: statement ? `Estratto di ${statement.monthLabel}` : `Riepilogo del ${yearly?.year ?? ""}`,
+    title: statement ? `Estratto di ${statement.monthLabel}` : `Riepilogo del ${year}`,
     paragraphs: statement
       ? [
           `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato l'estratto in PDF e il foglio di calcolo con ogni movimento.`,
@@ -506,8 +593,14 @@ export function accountantStatementEmail(who: string, statement: MonthlyStatemen
           invoiceCount > 0
             ? `In allegato anche ${invoiceCount === 1 ? "la nostra fattura del mese" : `le nostre ${invoiceCount} fatture del mese`} in PDF. L'originale elettronico è nel cassetto fiscale del professionista.`
             : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
+          ...sheetLine,
         ]
-      : [`Le mandiamo il **riepilogo del ${yearly?.year ?? ""}** di **${who}**, come ci ha chiesto: ${yearlyWhat}. A dicembre non ci sono stati movimenti, quindi niente estratto del mese.`],
+      : [
+          yearly
+            ? `Le mandiamo il **riepilogo del ${year}** di **${who}**, come ci ha chiesto: ${yearlyWhat}. A dicembre non ci sono stati movimenti, quindi niente estratto del mese.`
+            : `Le mandiamo il **riepilogo del ${year}** di **${who}**, come ci ha chiesto. A dicembre non ci sono stati movimenti, quindi niente estratto del mese.`,
+          ...sheetLine,
+        ],
     details: [
       ...(statement
         ? [

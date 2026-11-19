@@ -1,4 +1,8 @@
 import type {
+  CashbookOverview,
+  CashbookSettings,
+  ExpenseInput,
+  FreeSpreadsheetSignupInput,
   BoardPage,
   BoardSummary,
   BoardReplyResult,
@@ -3490,6 +3494,34 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Statistiche sul periodo scelto (date "YYYY-MM-DD"), docs/CHANGELOG.md §149. */
     myProfessionalStats: (token: string, from: string, to: string) =>
       request<ProfessionalStats>(`/professionals/me/stats?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Entrate e uscite dell'anno (docs/changelog/2026-11-19-entrate-e-uscite.md). */
+    cashbook: (token: string, year: number) =>
+      request<CashbookOverview>(`/cashbook/${year}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    cashbookYearCsv: (token: string, year: number) =>
+      request<{ fileName: string; csv: string }>(`/cashbook/${year}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    updateCashbookSettings: (token: string, input: CashbookSettings) =>
+      request<CashbookSettings>("/cashbook/settings", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    createExpense: (token: string, input: ExpenseInput) =>
+      request<{ id: string }>("/cashbook/expenses", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    updateExpense: (token: string, id: string, input: ExpenseInput) =>
+      request<{ id: string }>(`/cashbook/expenses/${encodeURIComponent(id)}`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    deleteExpense: (token: string, id: string) =>
+      request<{ ok: true }>(`/cashbook/expenses/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+
+    uploadReceiptPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/cashbook/receipt-photo", token, file, "image"),
+
+    /** Excel gratuito: l'email riceve il link per scaricarlo. */
+    freeSpreadsheetSignup: (input: FreeSpreadsheetSignupInput) =>
+      request<{ ok: true }>("/free-spreadsheet", { method: "POST", body: JSON.stringify(input) }),
+
+    freeSpreadsheetConfirm: (token: string) =>
+      request<{ fileUrl: string }>("/free-spreadsheet/confirm", { method: "POST", body: JSON.stringify({ token }) }),
 
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

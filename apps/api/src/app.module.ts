@@ -26,6 +26,8 @@ import { WaitlistModule } from "./waitlist/waitlist.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StatsModule } from "./stats/stats.module";
 import { ExternalJobsModule } from "./external-jobs/external-jobs.module";
+import { CashbookModule } from "./cashbook/cashbook.module";
+import { FreeSpreadsheetModule } from "./free-spreadsheet/free-spreadsheet.module";
 import { ProfessionalClientsModule } from "./professional-clients/professional-clients.module";
 import { ContentReportsModule } from "./content-reports/content-reports.module";
 import { ContactModule } from "./contact/contact.module";
@@ -98,6 +100,8 @@ import { RequestBoardModule } from "./request-board/request-board.module";
     NotificationsModule,
     StatsModule,
     ExternalJobsModule,
+    CashbookModule,
+    FreeSpreadsheetModule,
     ProfessionalClientsModule,
     ContentReportsModule,
     ContactModule,

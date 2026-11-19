@@ -171,6 +171,7 @@ async function seed() {
 
   const notificationA = await prisma.notification.create({ data: { userId: users.clientA.id, channel: "PUSH", type: "QUOTE_RECEIVED", payload: {} } });
   const externalJobA = await prisma.externalJob.create({ data: { professionalProfileId: profileA.id, clientName: "Cliente esterno", scheduledAt: start } });
+  const expenseA = await prisma.professionalExpense.create({ data: { professionalProfileId: profileA.id, spentOn: new Date("2026-03-03T00:00:00Z"), amountEurCents: 1000, category: "MATERIALS" } });
   const reportA = await prisma.contentReport.create({
     data: {
       reporterId: users.clientB.id,
@@ -200,6 +201,7 @@ async function seed() {
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,
+      expenseA: expenseA.id,
       reportA: reportA.id,
     },
   };

@@ -330,6 +330,7 @@ Una riga corta per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 - [x] Fatture e documenti: `COM` e `ABB`, estratto mensile, fattura chiesta dal cliente, modello di ricevuta occasionale, PDF dal server, quadratura Stripe, SdI con `OPENAPI_TOKEN_SDI`
+- [x] Entrate e uscite in Statistiche (un solo calcolo con l'estratto, `apps/api/src/cashbook/`) ed Excel gratuito su `/per-professionisti/excel-gratuito`
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 - [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, admin "Mestieri richiesti" (§392-§393)
 - [x] Verifica dei professionisti: CF e P.IVA con Openapi, documento + selfie Didit prima del primo preventivo, badge "Verificato" (§253-§255)

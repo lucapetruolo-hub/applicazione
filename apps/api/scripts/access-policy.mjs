@@ -49,6 +49,9 @@ const publicRoutes = [
   "GET /categories",
   "GET /categories/popular",
   "POST /contact",
+  // Excel gratuito "Entrate e uscite" dalla pagina per i professionisti (docs/changelog/2026-11-19-entrate-e-uscite.md).
+  "POST /free-spreadsheet",
+  "POST /free-spreadsheet/confirm",
   "GET /general-requests/availability",
   "GET /guided-requests/reach",
   "GET /health",
@@ -228,6 +231,10 @@ const selfProfessional = [
   "POST /billing/subscription/return-to-base",
   "POST /external-jobs",
   "GET /external-jobs/me",
+  // Entrate e uscite: spese e scelte di chi chiama (docs/changelog/2026-11-19-entrate-e-uscite.md).
+  "PUT /cashbook/settings",
+  "POST /cashbook/expenses",
+  "POST /cashbook/receipt-photo",
   "GET /professionals/me",
   "PUT /professionals/me",
   "GET /professionals/me/availability",
@@ -267,6 +274,7 @@ const booking = (extra = {}) => ({ kind: "owned", owners: BOTH, params: (f) => (
 const request = (extra = {}) => ({ kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.requestA }), ...extra });
 const quote = (extra = {}) => ({ kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.quoteA }), ...extra });
 const lead = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.leadA }) };
+const expense = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ id: f.expenseA }), body: () => ({ spentOn: "2026-03-03", amountEurCents: 1000, category: "MATERIALS" }) };
 const externalJob = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.externalJobA }) };
 const invoice = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ id: f.invoiceA }) };
 // Estratto di un mese: dati di chi chiama, il mese non è di nessuno.
@@ -334,6 +342,8 @@ const owned = {
   "GET /documents/courtesy/:bookingId/pdf": courtesy,
   "PUT /documents/courtesy/:bookingId/details": { ...courtesy, body: () => ({ customerName: "Cliente A" }) },
 
+  "PUT /cashbook/expenses/:id": expense,
+  "DELETE /cashbook/expenses/:id": expense,
   "DELETE /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id/status": { ...externalJob, body: () => ({ status: "COMPLETED" }) },
@@ -420,6 +430,8 @@ export const POLICY = {
   // Riepilogo dell'anno dei documenti dati ai clienti: dati di chi chiama (§382).
   "GET /documents/client-documents/:year/pdf": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
   "GET /documents/client-documents/:year/csv": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
+  "GET /cashbook/:year": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
+  "GET /cashbook/:year/csv": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
   ...owned,
 };
 

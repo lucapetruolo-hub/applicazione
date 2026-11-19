@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import type { PrismaClient } from "@professionisti/database";
 import type { ProfessionalStats, ProfessionalStatsBucket, ProfessionalStatsTotals } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { CashbookService, romeRangeOfDays } from "../cashbook/cashbook.service";
 
 const TRAILING_MONTHS = 12;
 const MONTH_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
@@ -52,6 +53,13 @@ type StatsRows = {
   quotes: { createdAt: Date }[];
   won: { createdAt: Date }[];
   completed: { updatedAt: Date; professionalCompletedAt: Date | null; finalAmountEurCents: number | null }[];
+  /**
+   * Entrate per cassa, giorno di Roma (AAAA-MM-GG) e importo: soldi entrati
+   * davvero (pagamenti online e diretti meno rimborsi, lavori fuori dal sito
+   * con l'interruttore), lo stesso calcolo di Entrate e uscite e
+   * dell'estratto (docs/changelog/2026-11-19-entrate-e-uscite.md).
+   */
+  income: { date: string; amountEurCents: number }[];
   reviews: { rating: number }[];
   /** Spostamenti chiesti dentro il preavviso (BookingReschedule.late). */
   lateMoves: { proposedBy: string }[];
@@ -69,7 +77,7 @@ function totalsOf(rows: StatsRows): ProfessionalStatsTotals {
     quotes: rows.quotes.length,
     won: rows.won.length,
     completed: rows.completed.length,
-    revenueEurCents: rows.completed.reduce((sum, b) => sum + (b.finalAmountEurCents ?? 0), 0),
+    revenueEurCents: rows.income.reduce((sum, m) => sum + m.amountEurCents, 0),
     reviews: rows.reviews.length,
     ratingAvg: rows.reviews.length > 0 ? Math.round((ratingSum / rows.reviews.length) * 10) / 10 : null,
     lateMovesByYou: rows.lateMoves.filter((m) => m.proposedBy === "PROFESSIONAL").length,
@@ -106,9 +114,11 @@ export function bucketStatsRows(rows: StatsRows, start: Date, endInclusive: Date
   for (const r of rows.requests) add(r.createdAt, "requests", 1);
   for (const q of rows.quotes) add(q.createdAt, "quotes", 1);
   for (const w of rows.won) add(w.createdAt, "won", 1);
-  for (const c of rows.completed) {
-    add(completedAtOf(c), "completed", 1);
-    add(completedAtOf(c), "revenueEurCents", c.finalAmountEurCents ?? 0);
+  for (const c of rows.completed) add(completedAtOf(c), "completed", 1);
+  // Le entrate hanno già il giorno di Roma: la chiave è la data stessa (o il mese).
+  for (const m of rows.income) {
+    const bucket = buckets.get(granularity === "day" ? m.date : m.date.slice(0, 7));
+    if (bucket) bucket.revenueEurCents += m.amountEurCents;
   }
   return Array.from(buckets.values());
 }
@@ -165,7 +175,10 @@ function completedAtOf(booking: { updatedAt: Date; professionalCompletedAt: Date
  */
 @Injectable()
 export class RevenueAnalyticsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly cashbookService: CashbookService,
+  ) {}
 
   /** Risolve il profilo professionista dell'utente autenticato — stesso pattern già in uso in `ProfessionalsService.requireMyProfileId`, duplicato qui per non introdurre una dipendenza incrociata tra i due moduli per un'unica riga. */
   async resolveMyProfessionalProfileId(userId: string): Promise<string> {
@@ -215,7 +228,8 @@ export class RevenueAnalyticsService {
   private async loadStatsRows(professionalProfileId: string, start: Date, endInclusive: Date): Promise<StatsRows> {
     const endExclusive = new Date(endInclusive.getTime() + DAY_MS);
     const createdIn = { gte: start, lt: endExclusive };
-    const [views, requests, quotes, won, completed, reviews, lateMoves] = await Promise.all([
+    const days = romeRangeOfDays(dayKey(start), dayKey(endInclusive));
+    const [views, requests, quotes, won, completed, reviews, lateMoves, income] = await Promise.all([
       this.prisma.profileViewDay.findMany({ where: { professionalProfileId, day: { gte: start, lte: endInclusive } }, select: { day: true, count: true } }),
       this.prisma.lead.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.quote.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
@@ -237,8 +251,9 @@ export class RevenueAnalyticsService {
       }),
       // Spostamenti all'ultimo momento (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
       this.prisma.bookingReschedule.findMany({ where: { professionalProfileId, late: true, createdAt: createdIn }, select: { proposedBy: true } }),
+      this.cashbookService.incomeMovements(professionalProfileId, days.start, days.end),
     ]);
-    return { views, requests, quotes, won, completed, reviews, lateMoves };
+    return { views, requests, quotes, won, completed, reviews, lateMoves, income: income.map((m) => ({ date: m.date, amountEurCents: m.amountEurCents })) };
   }
 
   async getSummary(professionalProfileId?: string): Promise<RevenueAnalyticsSummary> {

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { AdminModule } from "../admin/admin.module";
+import { CashbookModule } from "../cashbook/cashbook.module";
 import { RevenueAnalyticsService } from "./revenue-analytics.service";
 import { AdminRevenueAnalyticsController } from "./admin-revenue-analytics.controller";
 import { ProfessionalRevenueAnalyticsController } from "./professional-revenue-analytics.controller";
@@ -13,7 +14,7 @@ import { ProfessionalRevenueAnalyticsController } from "./professional-revenue-a
 // bootstrap di Nest va in crash-loop risolvendo le dipendenze di
 // JwtAuthGuard, usata dal controller di questo modulo insieme ad AdminGuard.
 @Module({
-  imports: [AuthModule, AdminModule],
+  imports: [AuthModule, AdminModule, CashbookModule],
   controllers: [AdminRevenueAnalyticsController, ProfessionalRevenueAnalyticsController],
   providers: [RevenueAnalyticsService],
 })

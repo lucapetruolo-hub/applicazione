@@ -24,8 +24,26 @@ function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream
   uploadStream.end(file.buffer);
 }
 
+/**
+ * Il "public_id" di Cloudinary da un indirizzo come
+ * https://res.cloudinary.com/<cloud>/image/upload/v123/receipts/abc.jpg →
+ * "receipts/abc". Solo indirizzi di immagini caricate (upload).
+ */
+export function cloudinaryPublicId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname !== "res.cloudinary.com") return null;
+  const match = /^\/[^/]+\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i.exec(parsed.pathname);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 /** Toglie il file temporaneo dal disco, anche se il caricamento non è riuscito. */
-async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
+export async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
   const path = temporaryUploadPath(file.path);
   if (path) await unlink(path).catch(() => undefined);
 }
@@ -126,6 +144,23 @@ export class CloudinaryService {
       throw new BadRequestException(`Caricamento immagine non riuscito: ${message}`);
     } finally {
       await removeTemporaryFile(file);
+    }
+  }
+
+  /**
+   * Cancella da Cloudinary un'immagine caricata da noi, dal suo indirizzo
+   * (foto degli scontrini, docs/changelog/2026-11-19-entrate-e-uscite.md).
+   * Non blocca mai chi la chiama: se Cloudinary non risponde resta il file,
+   * non il collegamento.
+   */
+  async deleteImageByUrl(url: string | null | undefined): Promise<boolean> {
+    const publicId = cloudinaryPublicId(url);
+    if (!this.isConfigured || !publicId) return false;
+    try {
+      const result = (await cloudinary.uploader.destroy(publicId, { resource_type: "image", invalidate: true })) as { result?: string };
+      return result.result === "ok" || result.result === "not found";
+    } catch {
+      return false;
     }
   }
 

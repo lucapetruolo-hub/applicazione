@@ -67,6 +67,7 @@ export function PerProfessionistiContent({ founders = null }: { founders?: Found
       <ProSteps />
       <ProOnlinePayment />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
+      <ProFreeSpreadsheet />
       <ProFaq offerMonths={founders?.offerMonths ?? null} />
       <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
     </YStack>
@@ -755,6 +756,35 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
           {isProfessional ? "Poi confermi il livello e il pagamento." : "Ti iscrivi, poi confermi il livello e il pagamento."}
         </Text>
       </YStack>
+    </Band>
+  );
+}
+
+/**
+ * Excel gratuito "Entrate e uscite" (docs/changelog/2026-11-19-entrate-e-uscite.md,
+ * decisione di Luca del 19/11/2026: acceso già prima del lancio): per chi non
+ * è ancora pronto a iscriversi. Sul sito gli stessi conti si fanno da soli.
+ */
+function ProFreeSpreadsheet() {
+  return (
+    <Band id="excel-gratuito">
+      <div className="pro-grid pro-grid--senza-bordo">
+        <YStack paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" flex={1}>
+          <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="28px gtSm:34px" lineHeight="34px gtSm:40px" letterSpacing={-0.3} color={brand.inchiostro}>
+            Entrate e uscite, gratis in un Excel
+          </Text>
+          <Text color={brand.grafite70} fontSize="5" lineHeight="26px" maxWidth={620}>
+            Un foglio già pronto: scrivi i soldi che ricevi e le spese, lui calcola da solo i totali di ogni mese e quanto ti resta. Da dare al tuo
+            commercialista a fine anno.
+          </Text>
+          <Text color={brand.grafite70} fontSize={15} lineHeight="22px" maxWidth={620}>
+            Iscritto al sito? Lo trovi già fatto in Statistiche, con i pagamenti dei lavori dentro.
+          </Text>
+          <Link href="/per-professionisti/excel-gratuito" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 17 }}>
+            Scarica l&apos;Excel gratuito
+          </Link>
+        </YStack>
+      </div>
     </Band>
   );
 }
