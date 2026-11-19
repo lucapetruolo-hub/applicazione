@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Search, X } from "lucide-react";
 import {
   MAX_PROFESSIONAL_SERVICES,
@@ -84,6 +84,17 @@ export function ServicesEditor({
   const [showAllSuggested, setShowAllSuggested] = useState<Record<string, boolean>>({});
   const [showMore, setShowMore] = useState(false);
   const ids = useId();
+  // Dopo un tocco su un "Più cercato" il cursore va sul prezzo della riga nuova
+  // (docs/changelog/2026-11-19-togli-piu-lavori-insieme.md).
+  const focusPriceOf = useRef<number | null>(null);
+  useEffect(() => {
+    if (focusPriceOf.current === null) return;
+    const input = document.getElementById(`${ids}-prezzo-${focusPriceOf.current}`);
+    focusPriceOf.current = null;
+    if (!(input instanceof HTMLInputElement)) return;
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ block: "nearest" });
+  });
   const moreId = `${ids}-scopri`;
 
   const named = services.filter((service) => service.name.trim()).length;
@@ -198,7 +209,11 @@ export function ServicesEditor({
                       borderColor={brand.cianografia}
                       backgroundColor={brand.cianografiaVelo}
                       cursor="pointer"
-                      onPress={() => add(name, group.slug)}
+                      onPress={() => {
+                        if (full) return;
+                        focusPriceOf.current = services.length;
+                        add(name, group.slug, true);
+                      }}
                       role="button"
                       aria-label={`Aggiungi ${name}`}
                     >
@@ -270,6 +285,7 @@ export function ServicesEditor({
                             </select>
                             <XStack gap="2" alignItems="center" flexWrap="nowrap">
                               <input
+                                id={`${ids}-prezzo-${index}`}
                                 aria-label={`Prezzo minimo di ${label} in euro`}
                                 value={service.priceMin}
                                 onChange={(e) => patch(index, { priceMin: e.target.value })}

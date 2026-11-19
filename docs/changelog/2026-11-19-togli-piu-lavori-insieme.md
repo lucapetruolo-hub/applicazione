@@ -21,3 +21,16 @@ senza più mettere il cursore nella casella che non c'è.
 **Verifica**: type check e lint del sito, prove di `packages/shared`; la prova
 `e2e/tests/preventivo-veloce.spec.ts` ora controlla che la sezione sia in vista
 e che la casella non ci sia più.
+
+## Cursore sul prezzo dopo un "Più cercato"
+
+**Richiesta** (Luca, stessa giornata): dopo un tocco su un "Più cercato dai
+clienti", mettere subito il cursore sul prezzo, così si fa tutto in un passo.
+
+**Decisione**: il tocco aggiunge la prestazione con la riga già aperta e il
+cursore nel campo "Da €" (sul telefono si apre la tastiera dei numeri). Il
+prezzo resta facoltativo: si può toccare un altro "Più cercato" o "Fatto".
+La pagina scorre solo quanto basta per mostrare il campo.
+
+**Verifica**: lint e type check; `e2e/tests/preventivo-veloce.spec.ts` tocca
+il primo "Più cercato" e controlla che il cursore sia sul suo prezzo minimo.

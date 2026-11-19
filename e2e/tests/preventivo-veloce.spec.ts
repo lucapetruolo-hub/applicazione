@@ -131,5 +131,11 @@ test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita
   await page.screenshot({ path: "test-results/preventivo-veloce-profilo-suggerimento.png" });
   const axe = await new AxeBuilder({ page }).include("#profilo-prestazioni").analyze();
   expect(axe.violations.filter((v) => v.impact === "critical" || v.impact === "serious")).toEqual([]);
+
+  // Un tocco su un "Più cercato" porta subito al suo prezzo (docs/changelog/2026-11-19-togli-piu-lavori-insieme.md).
+  const pill = page.locator("#profilo-prestazioni").getByRole("button", { name: /^Aggiungi / }).first();
+  const pillName = ((await pill.getAttribute("aria-label")) ?? "").replace(/^Aggiungi /, "");
+  await pill.click();
+  await expect(page.getByRole("textbox", { name: `Prezzo minimo di ${pillName} in euro` })).toBeFocused();
   await page.context().close();
 });
