@@ -38,8 +38,17 @@ function textOf(model: unknown): string {
 
 describe("PDF del preventivo: annullare", () => {
   // Pagamenti online accesi (onlinePaymentsEnabled legge solo la presenza della chiave).
-  beforeEach(() => vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta"));
-  afterEach(() => vi.unstubAllEnvs());
+  // Ora fissa prima del preavviso: con l'ora vera le prove scadevano il 19/11/2026
+  // alle 08:00, quando l'appuntamento finto del 20/11 entrava nel preavviso.
+  beforeEach(() => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-15T10:00:00.000Z"));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
 
   it("con l'acconto trattenuto dice fino a quando si annulla gratis e che dopo non è rimborsabile", async () => {
     const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
@@ -51,7 +60,6 @@ describe("PDF del preventivo: annullare", () => {
   // Dentro il preavviso la data "fino a…" sarebbe già passata
   // (docs/changelog/2026-11-13-annullare-data-passata.md).
   it("dentro il preavviso non dà una data già passata", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-19T12:00:00.000Z"));
     try {
       const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
@@ -61,7 +69,7 @@ describe("PDF del preventivo: annullare", () => {
       expect(text).toContain("Pagando online, l'acconto di 16,00 € non è rimborsabile, anche se annulli.");
       expect(text).not.toContain("annullamento gratuito fino a");
     } finally {
-      vi.useRealTimers();
+      vi.setSystemTime(new Date("2026-11-15T10:00:00.000Z"));
     }
   });
 
