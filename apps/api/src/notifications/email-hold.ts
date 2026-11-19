@@ -20,7 +20,8 @@ import {
 export function emailHoldUntil(prefs: NotificationPreferences, type: string, payload: unknown, now: Date = new Date()): Date | null {
   // Promemoria del mattino: insieme alle 10:05 (docs/changelog/2026-11-19-email-del-mattino.md).
   // Dopo quell'ora (raro: un promemoria nato nel pomeriggio) valgono le regole di sempre.
-  if (NOTIFICATION_MORNING_TYPES.has(type)) {
+  // Chi spegne "Promemoria del mattino tutti insieme" li riceve subito, con le regole di sempre.
+  if (prefs.morningTogether !== false && NOTIFICATION_MORNING_TYPES.has(type)) {
     const morning = morningEmailAt(now);
     if (morning) return morning;
   }

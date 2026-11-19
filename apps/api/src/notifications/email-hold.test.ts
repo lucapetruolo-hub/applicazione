@@ -52,6 +52,15 @@ describe("email rimandate", () => {
     expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-29T07:00:00Z"))).toBeNull();
   });
 
+  it("con \"Promemoria del mattino tutti insieme\" spento ogni promemoria parte da solo", () => {
+    const apart = { ...prefs, morningTogether: false };
+    expect(prefs.morningTogether).toBe(true);
+    // Di giorno subito, di notte alle 7 come gli altri avvisi.
+    expect(emailHoldUntil(apart, "JOB_TO_CLOSE", {}, at("2026-10-29T07:00:00Z"))).toBeNull();
+    expect(emailHoldUntil(apart, "PROFILE_SETUP_REMINDER", {}, at("2026-10-29T02:00:00Z"))?.toISOString()).toBe("2026-10-29T06:00:00.000Z");
+    expect(resolveNotificationPreferences({ morningTogether: false }).morningTogether).toBe(false);
+  });
+
   it("con le scelte spente parte tutto subito", () => {
     const off = { ...prefs, digest: false, quietNight: false };
     expect(emailHoldUntil(off, "NEW_REVIEW", {}, at("2026-10-29T09:00:00Z"))).toBeNull();

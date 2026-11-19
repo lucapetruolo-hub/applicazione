@@ -32,6 +32,8 @@ export type NotificationOptOutGroup = {
   quietNightOff: number;
   /** Con la notte senza email accesa, chi vuole comunque le richieste urgenti subito. */
   urgentAtNight: number;
+  /** Professionisti che vogliono i promemoria del mattino uno per uno (docs/changelog/2026-11-19-email-del-mattino.md). */
+  morningApartOff: number;
   rows: NotificationOptOutRow[];
 };
 
@@ -87,6 +89,7 @@ export function notificationOptOuts(users: { prefs: unknown; role: "professional
       digestOff: count((prefs) => !prefs.digest),
       quietNightOff: count((prefs) => !prefs.quietNight),
       urgentAtNight: count((prefs) => !!prefs.quietNight && prefs.quietNightUrgent === false),
+      morningApartOff: count((prefs) => prefs.morningTogether === false),
       rows,
     };
   });

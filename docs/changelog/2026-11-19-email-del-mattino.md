@@ -33,3 +33,19 @@ dell'identità e profilo da completare (tutti alle 10). Il lunedì in più
 **Verifica**: prove in `email-hold.test.ts` (le 8, le 10:00:03, le 10:04:59,
 la notte, dopo le 10:05, l'ora legale, gli altri tipi invariati; titolo e
 pulsante di "Le cose di oggi"); tutte le prove dell'API; TypeScript.
+
+## Interruttore e "Lavori cercati" alle 10:05 (19/11/2026)
+
+**Richiesta** (Luca, 19/11/2026): sì alle due migliorie proposte nella PR.
+
+**Decisione**:
+- In Notifiche (solo professionisti) l'interruttore "Promemoria del mattino
+  tutti insieme", acceso di serie (`morningTogether`). Spento, ogni promemoria
+  del mattino parte appena c'è, con le regole di sempre (di notte aspetta le
+  7). In Admin → Statistiche si conta chi lo spegne.
+- L'email del lunedì "Lavori cercati" parte alle 10:05 italiane invece che
+  alle 9: la mattina del lunedì il professionista riceve al massimo "Le cose
+  di oggi" e "Lavori cercati", alla stessa ora, invece di email sparse.
+
+**Verifica**: prova dell'interruttore in `email-hold.test.ts`; prove dell'API;
+TypeScript di API e sito.

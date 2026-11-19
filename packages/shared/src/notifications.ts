@@ -582,6 +582,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     if (typeof s.soundName === "string" && (NOTIFICATION_SOUND_KEYS as readonly string[]).includes(s.soundName)) base.soundName = s.soundName;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
+    if (typeof s.morningTogether === "boolean") base.morningTogether = s.morningTogether;
     if (typeof s.quietNightUrgent === "boolean") base.quietNightUrgent = s.quietNightUrgent;
     if (typeof s.digestHour === "number" && (NOTIFICATION_DIGEST_HOURS as readonly number[]).includes(s.digestHour)) base.digestHour = s.digestHour;
     if (s.items && typeof s.items === "object") {
