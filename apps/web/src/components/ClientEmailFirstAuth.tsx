@@ -9,7 +9,10 @@ import { EmailSuggestion } from "@/components/EmailSuggestion";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
+import { isNetworkError, retryOnNetworkError } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
+import { registerDespiteNetwork } from "@/lib/registerDespiteNetwork";
+import { FormErrorNotice } from "@/components/FormErrorNotice";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 import { ButtonWaitBar, SlowWaitHint, useLeavingWait, useWaitBar } from "@/components/WaitBar";
@@ -98,6 +101,8 @@ export function ClientEmailFirstAuth({
   // (docs/CHANGELOG.md §278). Nullo: errore generale, sopra il pulsante.
   const [errorField, setErrorField] = useState<"email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Azione da ripetere con "Riprova" quando la chiamata non è arrivata al sito.
+  const [retry, setRetry] = useState<(() => void) | null>(null);
   // Accesso fatto, la pagina o la finestra successiva sta arrivando: l'attesa continua.
   const [leaving, startLeaving] = useLeavingWait();
   const busy = isSubmitting || leaving;
@@ -124,15 +129,19 @@ export function ClientEmailFirstAuth({
     document.getElementById(inputId)?.focus();
   }
 
-  async function run(action: () => Promise<void>, google = false) {
+  async function run(action: () => Promise<void>, google = false, again?: () => void) {
     setError(null);
     setErrorField(null);
+    setRetry(null);
     setViaGoogle(google);
     setIsSubmitting(true);
     try {
       await action();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      // La chiamata non è arrivata al sito: "Riprova" accanto all'errore
+      // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+      if (again && isNetworkError(err)) setRetry(() => again);
       if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message, "new-password");
       else setError(message);
     } finally {
@@ -147,10 +156,10 @@ export function ClientEmailFirstAuth({
       return;
     }
     void run(async () => {
-      const { status } = await apiClient.emailStatus(parsed.data.email);
+      const { status } = await retryOnNetworkError(() => apiClient.emailStatus(parsed.data.email));
       setEmail(parsed.data.email);
       setStep(status);
-    });
+    }, false, handleContinue);
   }
 
   function handlePassword() {
@@ -178,8 +187,8 @@ export function ClientEmailFirstAuth({
       try {
         const { token, isNewUser } =
           step === "new"
-            ? await apiClient.register(email, password, undefined, "CLIENT", true, true, turnstileToken ?? undefined)
-            : await apiClient.login(email, password);
+            ? await registerDespiteNetwork(() => apiClient.register(email, password, undefined, "CLIENT", true, true, turnstileToken ?? undefined), email, password)
+            : await retryOnNetworkError(() => apiClient.login(email, password));
         await login(token);
         startLeaving();
         onAuthenticated(isNewUser);
@@ -188,26 +197,21 @@ export function ClientEmailFirstAuth({
         if (step === "new") setTurnstileReset((n) => n + 1);
         throw err;
       }
-    });
+    }, false, handlePassword);
   }
 
   function handleGoogle(idToken: string) {
     // La dicitura sotto il pulsante vale anche per Google: consenso inviato
     // insieme, il server lo registra solo se crea davvero l'account.
     void run(async () => {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, "CLIENT", true, true, true);
+      const { token, isNewUser } = await retryOnNetworkError(() => apiClient.verifyGoogle(idToken, "CLIENT", true, true, true));
       await login(token);
       startLeaving();
       onAuthenticated(isNewUser);
-    }, true);
+    }, true, () => handleGoogle(idToken));
   }
 
-  const errorText =
-    error && !errorField ? (
-      <Text role="alert" color={brand.urgenza} fontSize={16}>
-        {error}
-      </Text>
-    ) : null;
+  const errorText = error && !errorField ? <FormErrorNotice message={error} onRetry={retry ?? undefined} retrying={busy} /> : null;
   const errorFor = (field: "email" | "password" | "confirm") => (error && errorField === field ? error : undefined);
 
   if (step === "email") {

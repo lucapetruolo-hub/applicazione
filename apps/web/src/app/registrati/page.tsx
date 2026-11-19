@@ -22,7 +22,10 @@ import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radius
 import { MagneticButton } from "@/components/MagneticButton";
 import { AuthField } from "@/components/AuthField";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
+import { isNetworkError, retryOnNetworkError } from "@professionisti/api-client";
+import { registerDespiteNetwork } from "@/lib/registerDespiteNetwork";
 import { apiClient } from "@/lib/apiClient";
+import { FormErrorNotice } from "@/components/FormErrorNotice";
 import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -457,6 +460,8 @@ function RegistratiForm() {
   // va sotto quel campo. Nullo: errore generale, sopra "Registrati".
   const [errorField, setErrorField] = useState<"categories" | "email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // La chiamata non è arrivata al sito: accanto all'errore compare "Riprova".
+  const [networkFailed, setNetworkFailed] = useState(false);
   // Account creato o accesso fatto, la pagina successiva sta arrivando:
   // l'attesa resta visibile (al massimo 20 s) invece di tornare "Registrati".
   const [leaving, startLeaving] = useLeavingWait();
@@ -559,6 +564,7 @@ function RegistratiForm() {
   async function handleRegister() {
     setError(null);
     setErrorField(null);
+    setNetworkFailed(false);
     // Dall'alto in basso: categorie, email, password, conferma, spunta. Il
     // consenso si controlla per ultimo, qui vale come già dato.
     const result = registerSchema.safeParse({
@@ -605,17 +611,19 @@ function RegistratiForm() {
 
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.register(
-        result.data.email,
-        result.data.password,
-        result.data.name,
-        result.data.role,
-        legalConsent,
-        legalConsent,
-        turnstileToken ?? undefined,
-        result.data.categorySlugs,
-        result.data.entityType,
-      );
+      const send = () =>
+        apiClient.register(
+          result.data.email,
+          result.data.password,
+          result.data.name,
+          result.data.role,
+          legalConsent,
+          legalConsent,
+          turnstileToken ?? undefined,
+          result.data.categorySlugs,
+          result.data.entityType,
+        );
+      const { token, isNewUser } = await registerDespiteNetwork(send, result.data.email, result.data.password);
       writeSignupDraft(null);
       const me = await login(token);
       if (isNewUser && me && !me.emailVerified) {
@@ -626,6 +634,7 @@ function RegistratiForm() {
       afterAuth(isNewUser);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      setNetworkFailed(isNetworkError(err));
       if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message);
       else setError(message);
       // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
@@ -637,11 +646,15 @@ function RegistratiForm() {
 
   async function completeGoogleAuth(idToken: string, accepted: boolean, adult: boolean, viaModal: boolean) {
     setIsSubmitting(true);
+    setNetworkFailed(false);
     // Dal pulsante di Google la barra va in cima; dalla finestra del consenso
     // dentro "Accetta e continua".
     setGoogleWait(!viaModal);
     try {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value);
+      // Con Google ripetere non crea un secondo account: la seconda volta è un accesso.
+      const { token, isNewUser } = await retryOnNetworkError(() =>
+        apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value),
+      );
       writeSignupDraft(null);
       await login(token);
       afterAuth(isNewUser);
@@ -872,11 +885,7 @@ function RegistratiForm() {
 
           <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 
-          {error && !errorField ? (
-            <Text role="alert" color={brand.urgenza} fontSize={16}>
-              {error}
-            </Text>
-          ) : null}
+          {error && !errorField ? <FormErrorNotice message={error} onRetry={networkFailed ? () => void handleRegister() : undefined} retrying={busy} /> : null}
 
           <MagneticButton block>
           <Button variant="primary" onPress={handleRegister} disabled={busy} opacity={busy && googleWait ? 0.6 : 1}>

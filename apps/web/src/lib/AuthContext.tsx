@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, startTransition, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { ApiError, type CurrentUser } from "@professionisti/api-client";
+import { ApiError, isNetworkError, type CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
 import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser } from "./agendaOffline";
@@ -126,7 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Anche un 429 (troppe richieste) o un errore del server non dicono
         // che il token non vale più: solo 401/403 disconnettono (§311, visto
         // nelle prove nel browser in CI).
-        const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
+        // Dal 19/11 il client trasforma il `TypeError` di rete in `ApiError` con stato 0
+        // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md): conta come rete anche quello.
+        const isNetworkFailure = isNetworkError(err) || err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
         const sessionRejected = err instanceof ApiError ? err.status === 401 || err.status === 403 : !isNetworkFailure;
         // Troppe richieste o server in difficoltà: si riprova due volte prima di arrendersi.
         if (err instanceof ApiError && (err.status === 429 || err.status >= 500) && attempt < 2) {

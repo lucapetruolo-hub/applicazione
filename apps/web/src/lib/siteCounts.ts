@@ -139,6 +139,8 @@ export function submitFormOf(method: string, path: string): SubmitFormKey | null
   if (method.toUpperCase() !== "POST") return null;
   const clean = path.split("?")[0] ?? path;
   if (clean === "/auth/register" || clean === "/auth/google/verify") return "REGISTRAZIONE";
+  if (clean === "/auth/login") return "ACCESSO";
+  if (clean === "/billing/subscription/checkout" || clean === "/billing/boost/checkout" || /^\/bookings\/[^/]+\/job-payment\/checkout\/[^/]+$/.test(clean)) return "PAGAMENTO";
   if (clean === "/guided-requests" || clean === "/guided-requests/photos") return "RICHIESTA";
   if (clean === "/quotes") return "PREVENTIVO";
   if (clean.startsWith("/bookings/from-quote/")) return "ACCETTAZIONE";

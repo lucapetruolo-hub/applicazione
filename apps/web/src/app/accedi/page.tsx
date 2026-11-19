@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BRAND, emailPasswordSchema, safeInternalPath } from "@professionisti/shared";
 import { Button, Text, YStack, brand } from "@professionisti/ui";
+import { isNetworkError, retryOnNetworkError } from "@professionisti/api-client";
+import { FormErrorNotice } from "@/components/FormErrorNotice";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -42,6 +44,8 @@ function AccediForm() {
   // Errore di un campo (email o password): va sotto quel campo (§279).
   const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // La chiamata non è arrivata al sito: accanto all'errore compare "Riprova".
+  const [networkFailed, setNetworkFailed] = useState(false);
   // Accesso con Google in corso: barra in cima (il pulsante è quello di Google).
   const [googleBusy, setGoogleBusy] = useState(false);
   useWaitBar(googleBusy);
@@ -57,6 +61,7 @@ function AccediForm() {
   async function handleLogin() {
     setError(null);
     setErrorField(null);
+    setNetworkFailed(false);
     const result = emailPasswordSchema.safeParse({ email: email.trim(), password });
     if (!result.success) {
       const issue = result.error.issues[0];
@@ -69,11 +74,13 @@ function AccediForm() {
 
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.login(result.data.email, result.data.password);
+      // Rete caduta o sito che si aggiorna: si riprova da soli una volta dopo 2 secondi.
+      const { token } = await retryOnNetworkError(() => apiClient.login(result.data.email, result.data.password));
       const currentUser = await login(token);
       startLeaving();
       router.push(destinationAfterLogin(currentUser?.isProfessional));
     } catch (err) {
+      setNetworkFailed(isNetworkError(err));
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
@@ -83,6 +90,7 @@ function AccediForm() {
   async function handleGoogleCredential(idToken: string) {
     setError(null);
     setErrorField(null);
+    setNetworkFailed(false);
     setGoogleBusy(true);
     try {
       // createIfMissing=false: da questa pagina "Accedi con Google" non deve
@@ -91,7 +99,7 @@ function AccediForm() {
       // nessun account, l'API rifiuta esplicitamente (vedi catch sotto) e si
       // rimanda alla scelta cliente/professionista su /registrati, dove
       // createIfMissing resta true (comportamento di default).
-      const { token } = await apiClient.verifyGoogle(idToken, undefined, false);
+      const { token } = await retryOnNetworkError(() => apiClient.verifyGoogle(idToken, undefined, false));
       const currentUser = await login(token);
       const destination = destinationAfterLogin(currentUser?.isProfessional);
       // La barra in cima continua finché arriva la pagina.
@@ -172,11 +180,7 @@ function AccediForm() {
             onSubmitEditing={handleLogin}
           />
 
-          {error && !errorField ? (
-            <Text role="alert" color={brand.urgenza} fontSize={16}>
-              {error}
-            </Text>
-          ) : null}
+          {error && !errorField ? <FormErrorNotice message={error} onRetry={networkFailed ? () => void handleLogin() : undefined} retrying={busy} /> : null}
 
           <Button variant="primary" onPress={handleLogin} disabled={busy || googleBusy} opacity={googleBusy ? 0.6 : 1}>
             Accedi
