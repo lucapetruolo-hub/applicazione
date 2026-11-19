@@ -21,3 +21,12 @@ WhatsApp il promemoria parte solo a chi ha confermato il numero in Notifiche.
 insieme (checklist di lancio, punto 22).
 
 **Verifica**: `pnpm lint` e prove di `packages/shared`.
+
+## Home, riquadro per i professionisti (voce T2)
+
+**Richiesta** (Luca, 19/11/2026: "sì"): "Agenda, preventivi e fatturazione in
+un'unica dashboard" diventa "Agenda, preventivi e documenti in un posto solo"
+(`apps/web/src/components/ProCtaSection.tsx`).
+
+**Motivo**: il sito non fa le fatture del professionista (CLAUDE.md §6: mai
+nulla all'Agenzia delle Entrate per conto suo) e "dashboard" è gergo.
