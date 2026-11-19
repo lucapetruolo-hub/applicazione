@@ -90,6 +90,19 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Spostare la data e lavoro terminato in anticipo (Luca, docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    version: "2026-11-19",
+    publishedAt: "2026-11-19",
+    effectiveAt: "2026-11-19",
+    summary: [
+      "Dopo l'accettazione anche il professionista può proporre un'altra data, e si può spostare una sola visita di un lavoro ricorrente: finché l'altro non accetta resta la data fissata, e senza risposta prima dell'appuntamento la proposta scade.",
+      "Se è il professionista a chiedere per primo di spostare l'appuntamento, finché la proposta aspetta risposta il cliente può annullare senza perdere l'acconto.",
+      "Prima del giorno fissato il lavoro si chiude solo dopo che il cliente ha confermato che è già finito.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {
