@@ -1,9 +1,11 @@
 import { extname } from "node:path";
 import { createReadStream } from "node:fs";
 import { unlink } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { createHash, randomBytes } from "node:crypto";
+import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { temporaryUploadPath } from "../common/media-upload";
+import { DailyBudget, sharedBudgetStore } from "../common/daily-budget";
+import { opsAlert } from "../common/ops-alert";
 import { v2 as cloudinary } from "cloudinary";
 
 /**
@@ -28,9 +30,47 @@ async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
   if (path) await unlink(path).catch(() => undefined);
 }
 
+/**
+ * Tetti ai video caricati direttamente su Cloudinary
+ * (docs/changelog/2026-11-19-revisione-termini-e-video.md): ogni permesso vale
+ * per un solo video, quindi contare i permessi vuol dire contare i video.
+ */
+export const VIDEO_UPLOAD_USER_DAILY_LIMIT = 20;
+export const VIDEO_UPLOAD_DAILY_LIMIT = 1500;
+export const VIDEO_LIMIT_MESSAGE = "Per oggi hai caricato tutti i video possibili. Puoi mandare foto, oppure riprovare domani.";
+
 @Injectable()
 export class CloudinaryService {
   private readonly isConfigured: boolean;
+
+  /** Tetto di tutto il sito, uguale su tutte le copie dell'API (tabella daily_budget_usage). */
+  private readonly videoBudget = new DailyBudget(
+    VIDEO_UPLOAD_DAILY_LIMIT,
+    () => opsAlert("video-upload-budget", "Tetto giornaliero dei video raggiunto: fino a mezzanotte non si caricano altri video."),
+    "VIDEO_UPLOAD_DAILY_LIMIT",
+    "video-cloudinary",
+    undefined,
+    (used, limit) => opsAlert("video-upload-budget-80", `Video caricati oggi: ${used} su ${limit}. Se serve, alza VIDEO_UPLOAD_DAILY_LIMIT su Render.`),
+  );
+
+  /**
+   * Un video in più oggi per questo utente e per il sito? Prima l'utente,
+   * così chi ha finito i suoi non consuma il tetto di tutti. Dell'utente si
+   * tiene solo un'impronta, come per gli indirizzi della ricerca con foto.
+   */
+  async takeVideoUpload(userId: string, now: Date = new Date()): Promise<boolean> {
+    const today = now.toISOString().slice(0, 10);
+    const raw = Number(process.env.VIDEO_UPLOAD_USER_DAILY_LIMIT?.trim() || NaN);
+    const limit = Number.isInteger(raw) && raw >= 0 ? raw : VIDEO_UPLOAD_USER_DAILY_LIMIT;
+    if (limit === 0) return false;
+    const print = createHash("sha256").update(`${userId}|${today}`).digest("hex").slice(0, 24);
+    try {
+      if ((await sharedBudgetStore().take(`video-utente:${print}`, today, limit)) === null) return false;
+    } catch {
+      return false;
+    }
+    return this.videoBudget.take(now);
+  }
 
   constructor() {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -112,11 +152,11 @@ export class CloudinaryService {
   }
 
   /**
-   * Permesso firmato per caricare UN video direttamente dal browser a
+   * Permesso firmato per caricare UN video (uno solo) direttamente dal browser a
    * Cloudinary, senza passare dal nostro server
    * (docs/changelog/2026-11-18-video-che-carica-ancora.md, decisione di Luca:
    * con tanto traffico un video da 50 MB teneva occupata l'API per tutto il
-   * caricamento). La firma copre cartella, ora e trasformazione: il browser
+   * caricamento). La firma copre cartella, nome del file, ora e trasformazione: il browser
    * non può cambiarle. La trasformazione all'arrivo sostituisce l'originale,
    * così Cloudinary tiene solo la copia piccola:
    * - 480p (lato lungo al massimo 854 px, scelta di Luca del 18/11);
@@ -133,6 +173,11 @@ export class CloudinaryService {
     if (!this.isConfigured || !cloudName || !apiKey || !apiSecret) return null;
     const params = {
       folder,
+      // Nome a caso firmato e niente sovrascrittura: il permesso vale per un
+      // solo video. Prima la stessa firma andava bene per un'ora per quanti
+      // video si voleva (docs/changelog/2026-11-19-revisione-termini-e-video.md).
+      overwrite: "false",
+      public_id: randomBytes(12).toString("hex"),
       timestamp: String(Math.floor(Date.now() / 1000)),
       transformation: `c_limit,w_854,h_854,du_${maxSeconds + 5},q_auto`,
     };
@@ -157,12 +202,18 @@ export class CloudinaryService {
    * bitrate — che non è il caso di introdurre senza una richiesta esplicita
    * in merito).
    */
-  async uploadMedia(file: Express.Multer.File, folder: string): Promise<string> {
+  async uploadMedia(file: Express.Multer.File, folder: string, opts: { videoUserId?: string } = {}): Promise<string> {
     if (!this.isConfigured) {
       await removeTemporaryFile(file);
       throw new BadRequestException(
         "Il caricamento non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
       );
+    }
+    // Stesso tetto dei video caricati direttamente, così il ripiego
+    // dall'API non lo aggira (docs/changelog/2026-11-19-revisione-termini-e-video.md).
+    if (opts.videoUserId && file.mimetype.startsWith("video/") && !(await this.takeVideoUpload(opts.videoUserId))) {
+      await removeTemporaryFile(file);
+      throw new HttpException(VIDEO_LIMIT_MESSAGE, HttpStatus.TOO_MANY_REQUESTS);
     }
 
     const isVideo = file.mimetype.startsWith("video/");

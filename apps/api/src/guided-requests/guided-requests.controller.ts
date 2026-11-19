@@ -5,6 +5,8 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -41,7 +43,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
-import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { CloudinaryService, VIDEO_LIMIT_MESSAGE } from "../cloudinary/cloudinary.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "./guided-requests.service";
 import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
@@ -125,7 +127,7 @@ export class GuidedRequestsController {
       },
     }),
   )
-  async uploadPhoto(@UploadedFile() file?: Express.Multer.File) {
+  async uploadPhoto(@Req() req: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("Nessuna immagine o video caricato.");
     }
@@ -133,7 +135,7 @@ export class GuidedRequestsController {
     // già usata per l'immagine profilo per le foto, compressione "auto" per
     // i video: foto da cellulare possono pesare diversi MB, "ridimensionale
     // per occupare meno memoria" richiesta esplicita dell'utente.
-    const imageUrl = await this.cloudinaryService.uploadMedia(file, "guided-requests");
+    const imageUrl = await this.cloudinaryService.uploadMedia(file, "guided-requests", { videoUserId: req.user.userId });
     return { imageUrl };
   }
 
@@ -167,11 +169,11 @@ export class GuidedRequestsController {
       },
     }),
   )
-  async uploadTimelinePhoto(@UploadedFile() file?: Express.Multer.File) {
+  async uploadTimelinePhoto(@Req() req: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("Nessun file caricato.");
     }
-    const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates");
+    const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates", { videoUserId: req.user.userId });
     return { imageUrl };
   }
 
@@ -182,10 +184,16 @@ export class GuidedRequestsController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post("video-upload")
-  signVideoUpload(@Body() body?: { forChat?: unknown }) {
+  async signVideoUpload(@Req() req: AuthenticatedRequest, @Body() body?: { forChat?: unknown }) {
     const folder = body?.forChat === true ? "timeline-updates" : "guided-requests";
     const ticket = this.cloudinaryService.signDirectVideoUpload(folder, MEDIA_VIDEO_MAX_SECONDS);
     if (!ticket) throw new ServiceUnavailableException("Caricamento diretto dei video non configurato.");
+    // Un permesso = un video: tetto al giorno per utente e per il sito
+    // (docs/changelog/2026-11-19-revisione-termini-e-video.md). Il sito non
+    // ripiega sull'API dopo un 429.
+    if (!(await this.cloudinaryService.takeVideoUpload(req.user.userId))) {
+      throw new HttpException(VIDEO_LIMIT_MESSAGE, HttpStatus.TOO_MANY_REQUESTS);
+    }
     return ticket;
   }
 

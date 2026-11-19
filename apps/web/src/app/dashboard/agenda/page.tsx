@@ -88,6 +88,8 @@ const AGENDA_FILTER_ITEMS = [
   { value: "free", label: "Orari liberi", swatch: "ag-swatch-free" },
 ] as const satisfies readonly { value: AgendaFilter; label: string; swatch: string }[];
 const ASIDE_HIDDEN_KEY = "agenda-colonna-nascosta";
+/** Voci spente di "Mostra", ricordate su questo browser come le tappe del giro (docs/changelog/2026-11-19-revisione-termini-e-video.md). */
+const FILTERS_OFF_KEY = "agenda-voci-nascoste";
 const VIEW_KEY = "agenda-vista";
 const CALENDAR_VIEWS: CalendarView[] = ["day", "week", "month", "year"];
 const DEFAULT_DURATION_MIN = 60;
@@ -351,8 +353,31 @@ function DashboardAgendaContent() {
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
   const hiddenFilters = AGENDA_FILTER_ITEMS.filter((item) => !filters.has(item.value));
+  // Le voci spente si ricordano: ora che si vedono sempre ("Nascosti" e la
+  // riga sopra il calendario, #417) non si dimenticano per sbaglio.
+  useEffect(() => {
+    try {
+      const saved: unknown = JSON.parse(window.localStorage.getItem(FILTERS_OFF_KEY) ?? "[]");
+      const off = Array.isArray(saved) ? ALL_FILTERS.filter((value) => saved.includes(value)) : [];
+      // Letto dopo il primo disegno: sul server localStorage non esiste.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (off.length > 0) setFilters(new Set(ALL_FILTERS.filter((value) => !off.includes(value))));
+    } catch {
+      // localStorage non disponibile o valore rovinato: tutte le voci accese.
+    }
+  }, []);
+  function changeFilters(next: Set<AgendaFilter>) {
+    setFilters(next);
+    try {
+      const off = ALL_FILTERS.filter((value) => !next.has(value));
+      if (off.length > 0) window.localStorage.setItem(FILTERS_OFF_KEY, JSON.stringify(off));
+      else window.localStorage.removeItem(FILTERS_OFF_KEY);
+    } catch {
+      // Non salvata: vale solo per questa visita.
+    }
+  }
   function showAllFilters() {
-    setFilters(new Set(ALL_FILTERS));
+    changeFilters(new Set(ALL_FILTERS));
   }
   const [weather, setWeather] = useState<Map<string, WeatherDayAlert>>(new Map());
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
@@ -2124,14 +2149,12 @@ function DashboardAgendaContent() {
                     type="button"
                     className="ag-filter"
                     aria-pressed={filters.has(item.value)}
-                    onClick={() =>
-                      setFilters((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(item.value)) next.delete(item.value);
-                        else next.add(item.value);
-                        return next;
-                      })
-                    }
+                    onClick={() => {
+                      const next = new Set(filters);
+                      if (next.has(item.value)) next.delete(item.value);
+                      else next.add(item.value);
+                      changeFilters(next);
+                    }}
                   >
                     <i className={item.swatch} aria-hidden />
                     {item.label}
