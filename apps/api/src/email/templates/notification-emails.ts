@@ -2807,9 +2807,26 @@ export function chatMessageEmail(
  */
 export function heldEmailsSummary(
   items: { time: string; subject: string; url?: string }[],
-  ctx: { name: string | null; morning: boolean; today?: boolean },
+  ctx: { name: string | null; morning: boolean; today?: boolean; leads?: { urgent: number } },
   siteUrl: string,
 ): EmailContent {
+  // Solo nuove richieste (le richieste già aperte in zona al primo profilo, o
+  // quelle arrivate di notte): un conteggio e un pulsante, non un elenco che
+  // con tante richieste diventava lunghissimo
+  // (docs/changelog/2026-11-19-completa-profilo-migliorie.md, scelta di Luca).
+  if (ctx.leads) {
+    const urgent = ctx.leads.urgent > 0 ? ` (${ctx.leads.urgent === 1 ? "1 urgente" : `${ctx.leads.urgent} urgenti`})` : "";
+    return {
+      kind: "notification",
+      subject: `Ci sono ${items.length} richieste nella tua zona`,
+      preheader: "Clienti vicino a te aspettano un preventivo.",
+      greeting: ctx.name,
+      title: `Ci sono ${items.length} richieste nella tua zona${urgent}`,
+      paragraphs: ["Clienti vicino a te aspettano un preventivo: aprile e rispondi a quelle che ti interessano."],
+      cta: { label: "Vedi le richieste", url: `${siteUrl}/dashboard/richieste` },
+      after: ["Se preferisci le email subito, puoi sceglierlo dalle preferenze di notifica."],
+    };
+  }
   // Promemoria del mattino al professionista tutti insieme (docs/changelog/2026-11-19-email-del-mattino.md).
   if (ctx.today) {
     return {

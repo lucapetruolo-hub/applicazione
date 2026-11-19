@@ -145,3 +145,15 @@ describe("email \"Le cose di oggi\"", () => {
     expect(heldEmailsSummary(items, { name: "Mario", morning: true }, "https://sito.example").title).toBe("Le novità della notte");
   });
 });
+
+// docs/changelog/2026-11-19-completa-profilo-migliorie.md: solo nuove richieste, un conteggio e un pulsante.
+describe("riassunto delle sole nuove richieste", () => {
+  it("dice quante sono, quante urgenti, e non le elenca", () => {
+    const items = Array.from({ length: 12 }, (_, i) => ({ time: "15:00", subject: `Nuova richiesta ${i}`, url: `https://sito.example/r/${i}` }));
+    const email = heldEmailsSummary(items, { name: "Mario", morning: false, leads: { urgent: 2 } }, "https://sito.example");
+    expect(email.subject).toBe("Ci sono 12 richieste nella tua zona");
+    expect(email.title).toBe("Ci sono 12 richieste nella tua zona (2 urgenti)");
+    expect(email.details).toBeUndefined();
+    expect(email.cta).toEqual({ label: "Vedi le richieste", url: "https://sito.example/dashboard/richieste" });
+  });
+});

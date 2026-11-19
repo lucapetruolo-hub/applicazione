@@ -46,3 +46,7 @@ richieste, poi "Compila i dati fiscali". Anteprime in
   le segna come rimandate e `HeldEmailsService` (ogni 5 minuti) manda un solo
   riassunto; se nel frattempo il professionista le legge sul sito, nessuna
   email. Prova in `guided-request-user-state.service.test.ts`.
+- **Riassunto delle sole nuove richieste** (sì di Luca): quando il riassunto
+  contiene solo `NEW_LEAD`, `heldEmailsSummary` non elenca più una riga per
+  richiesta ma dice "Ci sono N richieste nella tua zona" (con quante urgenti)
+  e un solo pulsante "Vedi le richieste". Prova in `email-hold.test.ts`.

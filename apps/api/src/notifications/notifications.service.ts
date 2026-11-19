@@ -491,7 +491,10 @@ export class NotificationsService {
     if (items.length === 0) return;
     const morning = wallClockNow(now).getUTCHours() < 12;
     const today = wanted.every((r) => NOTIFICATION_MORNING_TYPES.has(r.type));
-    await this.emailService.send({ to: user.email, ...renderEmail(heldEmailsSummary(items, { name: user.name, morning, today }, frontendUrl())) });
+    // Solo nuove richieste: "Ci sono N richieste nella tua zona" con un pulsante.
+    const isUrgent = (r: HeldEmailRow) => Boolean(r.payload && typeof r.payload === "object" && (r.payload as Record<string, unknown>).isUrgent === true);
+    const leads = wanted.every((r) => r.type === "NEW_LEAD") ? { urgent: wanted.filter(isUrgent).length } : undefined;
+    await this.emailService.send({ to: user.email, ...renderEmail(heldEmailsSummary(items, { name: user.name, morning, today, leads }, frontendUrl())) });
   }
 
   /**
