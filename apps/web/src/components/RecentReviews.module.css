@@ -76,3 +76,10 @@
   height: 40px;
   border-radius: 20px;
 }
+
+/* "Foto del cliente" accanto alle miniature (docs/changelog/2026-11-19-foto-recensioni-in-home.md). */
+.photosLabel {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--c-grafite70);
+}

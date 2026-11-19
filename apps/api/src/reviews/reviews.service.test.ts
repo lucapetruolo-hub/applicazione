@@ -47,8 +47,9 @@ function buildService(booking: Record<string, unknown>, holdData: Record<string,
   };
   const metrics = { recordReview: vi.fn() };
   const notifications = { notify: vi.fn() };
-  const service = new ReviewsService(prisma as never, metrics as never, notifications as never);
-  return { service, prisma, notifications, metrics };
+  const photoCheck = { checkInBackground: vi.fn() };
+  const service = new ReviewsService(prisma as never, metrics as never, notifications as never, photoCheck as never);
+  return { service, prisma, notifications, metrics, photoCheck };
 }
 
 const input = { bookingId: "b-1", rating: 4, comment: "Bene", photoUrls: [], showcase: false };
@@ -98,7 +99,7 @@ describe("ReviewsService — ok a \"Lavori fatti\"", () => {
 
   function showcaseService(review: unknown) {
     const prisma = { review: { findUnique: vi.fn().mockResolvedValue(review), update: vi.fn().mockResolvedValue({}) } };
-    return { service: new ReviewsService(prisma as never, {} as never, {} as never), prisma };
+    return { service: new ReviewsService(prisma as never, {} as never, {} as never, {} as never), prisma };
   }
 
   it("il cliente toglie le foto da \"Lavori fatti\"", async () => {
@@ -129,7 +130,8 @@ describe("ReviewsService.getRecentPublic — filtri della home", () => {
     const { service, prisma } = buildService({});
     await service.getRecentPublic();
     const args = prisma.review.findMany.mock.calls[0]?.[0];
-    expect(args.take).toBe(6);
+    // Ne legge 20 per sceglierne 6 (docs/changelog/2026-11-19-foto-recensioni-in-home.md).
+    expect(args.take).toBe(20);
     expect(args.where).toMatchObject({
       hiddenAt: null,
       rating: { gte: 3 },
@@ -145,5 +147,48 @@ describe("ReviewsService.getRecentPublic — filtri della home", () => {
         },
       },
     });
+  });
+});
+
+/** Foto del cliente in home (docs/changelog/2026-11-19-foto-recensioni-in-home.md). */
+describe("ReviewsService.getRecentPublic — foto del cliente", () => {
+  const row = (id: string, rating: number, daysAgo: number, over: Record<string, unknown> = {}) => ({
+    id,
+    rating,
+    comment: "Bene",
+    createdAt: new Date(Date.now() - daysAgo * DAY),
+    photoUrls: [],
+    homePhotoUrls: [],
+    homePhotosCheckedAt: null,
+    booking: {
+      client: { name: "Maria", surname: "Rossi" },
+      professionalProfile: { id: "pro-1", businessName: "Idraulica", city: "Bologna", imageUrl: null, category: { label: "Idraulico", slug: "idraulico" } },
+    },
+    ...over,
+  });
+
+  it("a parità di stelle prima quelle con foto controllate, e solo quelle foto", async () => {
+    const { service, prisma } = buildService({});
+    const checked = { photoUrls: ["https://res.cloudinary.com/x/image/upload/a.jpg", "https://res.cloudinary.com/x/image/upload/b.jpg"], homePhotoUrls: ["https://res.cloudinary.com/x/image/upload/a.jpg"], homePhotosCheckedAt: new Date() };
+    prisma.review.findMany.mockResolvedValue([row("nuova", 5, 1), row("con-foto", 5, 3, checked), row("quattro", 4, 0)]);
+    const result = await service.getRecentPublic();
+    expect(result.map((r) => r.id)).toEqual(["con-foto", "nuova", "quattro"]);
+    expect(result[0]?.photoUrls).toEqual(["https://res.cloudinary.com/x/image/upload/a.jpg"]);
+    expect(result[1]?.photoUrls).toEqual([]);
+  });
+
+  it("le foto non ancora guardate partono al controllo e intanto non si vedono", async () => {
+    const { service, prisma, photoCheck } = buildService({});
+    const unchecked = row("da-guardare", 5, 1, { photoUrls: ["https://res.cloudinary.com/x/image/upload/a.jpg"] });
+    prisma.review.findMany.mockResolvedValue([unchecked, row("senza", 5, 2)]);
+    const result = await service.getRecentPublic();
+    expect(photoCheck.checkInBackground).toHaveBeenCalledWith([{ id: "da-guardare", hasPhotos: true }, { id: "senza", hasPhotos: false }]);
+    expect(result[0]?.photoUrls).toEqual([]);
+  });
+
+  it("al massimo 6", async () => {
+    const { service, prisma } = buildService({});
+    prisma.review.findMany.mockResolvedValue(Array.from({ length: 10 }, (_, i) => row(`r-${i}`, 5, i)));
+    expect(await service.getRecentPublic()).toHaveLength(6);
   });
 });

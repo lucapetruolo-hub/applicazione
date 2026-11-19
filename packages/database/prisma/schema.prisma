@@ -1764,6 +1764,12 @@ model Review {
   // professionista nel suo profilo pubblico. Null = mai mostrate (anche dopo
   // averlo tolto).
   showcaseConsentAt     DateTime?
+  // Foto del cliente mostrate in home sotto la recensione
+  // (docs/changelog/2026-11-19-foto-recensioni-in-home.md): solo quelle che
+  // Claude Haiku ha guardato e trovato senza contatti, volti, targhe o
+  // documenti. Null = non ancora controllate (o cambiate dopo il controllo).
+  homePhotoUrls         String[]  @default([])
+  homePhotosCheckedAt   DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

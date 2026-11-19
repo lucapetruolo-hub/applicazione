@@ -8,6 +8,7 @@ import { Avatar, BadgeInfo, Icon, Rating, Section, brand } from "@professionisti
 import { apiClient } from "@/lib/apiClient";
 import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
+import { PhotoLightbox } from "./PhotoLightbox";
 import text from "./RecentReviews.module.css";
 
 type RecentReview = {
@@ -15,6 +16,8 @@ type RecentReview = {
   rating: number;
   comment: string | null;
   createdAt: string;
+  /** Foto del cliente già controllate (solo immagini), docs/changelog/2026-11-19-foto-recensioni-in-home.md. */
+  photoUrls?: string[];
   clientName: string;
   professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
 };
@@ -26,6 +29,8 @@ const SWIPE_MIN_PX = 50;
 // Sotto questo numero di recensioni la media non dice ancora molto: non la
 // mostriamo (docs/CHANGELOG.md §232).
 const MIN_REVIEWS_FOR_AVERAGE = 10;
+// Miniature delle foto del cliente sotto la recensione: oltre, "+N" sull'ultima.
+const MAX_THUMBS = 3;
 
 const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
 
@@ -74,6 +79,7 @@ export function RecentReviews({
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [cycle, setCycle] = useState(0);
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -96,7 +102,8 @@ export function RecentReviews({
   }, []);
 
   const count = reviews?.length ?? 0;
-  const rotating = count > 1 && !paused && !reducedMotion;
+  // Con le foto aperte in grande la recensione non cambia sotto.
+  const rotating = count > 1 && !paused && !reducedMotion && !lightbox;
 
   useEffect(() => {
     if (!rotating) return undefined;
@@ -110,6 +117,7 @@ export function RecentReviews({
   if (!review) return null;
   const profileHref = professionalPath(review.professional);
   const accent = accentFor(review.professional.categorySlug);
+  const photos = review.photoUrls ?? [];
 
   function select(index: number) {
     setActive(index);
@@ -197,6 +205,33 @@ export function RecentReviews({
               </BadgeInfo>
             </div>
 
+            {/* Foto del cliente (docs/changelog/2026-11-19-foto-recensioni-in-home.md):
+                solo quelle controllate da Haiku; senza foto la scheda resta com'era. */}
+            {photos.length > 0 ? (
+              <div className="rr-photos">
+                {photos.slice(0, MAX_THUMBS).map((url, index) => {
+                  const extra = index === MAX_THUMBS - 1 ? photos.length - MAX_THUMBS : 0;
+                  return (
+                    <button
+                      key={url}
+                      type="button"
+                      className="rr-thumb"
+                      onClick={() => setLightbox({ photos, index })}
+                      aria-label={`Ingrandisci foto ${index + 1} di ${photos.length} del cliente`}
+                    >
+                      <Image src={url} alt="" fill sizes="72px" style={{ objectFit: "cover" }} />
+                      {extra > 0 ? (
+                        <span className="rr-thumb-more" aria-hidden="true">
+                          +{extra}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+                <span className={`is_Text ${text.photosLabel}`}>Foto del cliente</span>
+              </div>
+            ) : null}
+
             <div className="rr-feature-foot">
               <div className={`is_View ${text.pro}`}>
                 {!review.professional.imageUrl ? (
@@ -260,6 +295,8 @@ export function RecentReviews({
           </>
         ) : null}
       </div>
+
+      {lightbox ? <PhotoLightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} /> : null}
 
       <style jsx>{`
         .rr-b {
@@ -353,6 +390,45 @@ export function RecentReviews({
           .rr-quote {
             font-size: 22px;
           }
+        }
+        .rr-photos {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+        .rr-thumb {
+          position: relative;
+          flex-shrink: 0;
+          width: 64px;
+          height: 64px;
+          padding: 0;
+          border: none;
+          border-radius: 10px;
+          overflow: hidden;
+          background: ${brand.filetto};
+          cursor: zoom-in;
+        }
+        .rr-thumb:focus-visible {
+          outline: 2px solid ${brand.cianografiaPieno};
+          outline-offset: 2px;
+        }
+        @media (min-width: 700px) {
+          .rr-thumb {
+            width: 72px;
+            height: 72px;
+          }
+        }
+        .rr-thumb-more {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 59, 59, 0.55);
+          color: #fff;
+          font-weight: 700;
+          font-size: 16px;
         }
         .rr-feature-foot {
           margin-top: auto;
