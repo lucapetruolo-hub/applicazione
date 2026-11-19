@@ -14,11 +14,25 @@ export async function fetchCloudinaryPhoto(url: string, onError?: (message: stri
   const cloud = process.env.CLOUDINARY_CLOUD_NAME;
   if (!cloud) return null;
   const prefix = `https://res.cloudinary.com/${cloud}/`;
-  if (!url.startsWith(prefix)) return null;
+  // L'indirizzo da scaricare si ricostruisce da un inizio fisso (host del
+  // nostro cloud): dall'URL salvato si prende solo il percorso dopo
+  // "upload/", così non può mai puntare altrove (CodeQL, richieste verso
+  // indirizzi scelti da fuori).
+  const imagePrefix = `${prefix}image/upload/`;
+  const videoPrefix = `${prefix}video/upload/`;
+  const path = (url.split("?")[0] ?? "").split("#")[0] ?? "";
   let source: string;
-  if (url.startsWith(`${prefix}image/upload/`)) source = url.replace("/image/upload/", `/image/upload/${PHOTO_TRANSFORM}/`);
-  else if (url.startsWith(`${prefix}video/upload/`)) source = url.replace("/video/upload/", `/video/upload/${PHOTO_TRANSFORM},so_0/`).replace(/\.[a-z0-9]+(\?.*)?$/i, ".jpg");
-  else return null;
+  if (path.startsWith(imagePrefix)) {
+    source = `https://res.cloudinary.com/${encodeURIComponent(cloud)}/image/upload/${PHOTO_TRANSFORM}/${path.slice(imagePrefix.length)}`;
+  } else if (path.startsWith(videoPrefix)) {
+    // Fotogramma iniziale in JPEG: estensione cambiata con le stringhe, senza
+    // espressioni regolari (CodeQL, tempi lunghi su indirizzi fatti apposta).
+    const rest = path.slice(videoPrefix.length);
+    const dot = rest.lastIndexOf(".");
+    const base = dot > rest.lastIndexOf("/") ? rest.slice(0, dot) : rest;
+    source = `https://res.cloudinary.com/${encodeURIComponent(cloud)}/video/upload/${PHOTO_TRANSFORM},so_0/${base}.jpg`;
+  } else return null;
+  if (new URL(source).hostname !== "res.cloudinary.com") return null;
   try {
     const response = await fetch(source, { signal: AbortSignal.timeout(PHOTO_TIMEOUT_MS), redirect: "error" });
     if (!response.ok) return null;
