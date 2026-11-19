@@ -59,3 +59,24 @@ per la rete); prova nel browser `e2e/tests/errore-di-rete.spec.ts` (accesso
 senza rete con "Riprova", registrazione con la risposta persa che entra
 nell'account creato, richiesta con la risposta persa salvata una volta sola; dopo la #432, preventivo con la risposta persa: uno solo, riprova partita, nessun avviso in più al cliente e nessuna riga "modificato" in chat);
 prova del doppione col codice in `chosen-professionals.test.ts`; typecheck, lint, prove dell'andamento in Admin.
+
+## Seguito: "Invia comunque" dopo l'avviso del doppione
+
+**Richiesta** (Luca, con la foto dell'avviso "Hai già mandato questa richiesta
+a … pochi minuti fa"): "Non dovrebbe lo stesso darmi la possibilità di
+inviarla lo stesso dopo l'avviso?"
+
+**Decisione**: dopo l'avviso il pulsante diventa "Invia comunque" e l'avviso
+lo dice in una riga; premendolo il sito manda `sendAnyway: true` e il server
+non blocca. La riprova da sola dopo una rete caduta non lo manda mai, così
+resta impossibile creare due richieste per sbaglio. In più non è un doppione
+una richiesta con lo stesso testo ma modalità, indirizzo, civico, data o
+orario diversi: è un altro appuntamento.
+
+**Motivo**: il blocco serve contro i doppi tocchi e le reti che saltano, non
+contro chi vuole davvero rimandare la richiesta.
+
+**Verifica**: `chosen-professionals.test.ts` ("Invia comunque" parte; indirizzo
+o modalità diversi partono); `e2e/tests/errore-di-rete.spec.ts` (seconda
+richiesta uguale: avviso, "Invia comunque", due richieste salvate; la
+richiesta con la risposta persa resta una sola); typecheck e lint.

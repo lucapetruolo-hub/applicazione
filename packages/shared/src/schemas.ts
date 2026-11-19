@@ -443,6 +443,12 @@ export const guidedRequestSchema = z
     /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §296). */
     trafficSource: trafficSourceSchema.optional(),
     /**
+     * "Invia comunque" dopo l'avviso "Hai già mandato questa richiesta pochi
+     * minuti fa": il cliente la vuole mandare di nuovo (Luca, 19/11,
+     * docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+     */
+    sendAnyway: z.boolean().optional(),
+    /**
      * Categoria proposta dalla descrizione e scelta da sola nel modulo
      * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): serve
      * solo a contare in admin quante richieste la tengono e quante la cambiano.

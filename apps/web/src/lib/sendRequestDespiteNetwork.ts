@@ -15,19 +15,20 @@ export type SentRequest = { matchedProfessionals: number; requestsCount: number 
  * da "Le mie richieste". Un doppione senza rete caduta prima resta un errore.
  */
 export async function sendRequestDespiteNetwork(
-  send: () => Promise<{ matchedProfessionals: number; requests?: unknown[] }>,
+  /** `isRetry`: la riprova da sola dopo una rete caduta (mai con "Invia comunque"). */
+  send: (isRetry: boolean) => Promise<{ matchedProfessionals: number; requests?: unknown[] }>,
   token: string,
   description: string,
 ): Promise<SentRequest> {
   try {
-    const response = await send();
+    const response = await send(false);
     return { matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 };
   } catch (err) {
     if (!isNetworkError(err)) throw err;
   }
   await new Promise((resolve) => setTimeout(resolve, 2000));
   try {
-    const response = await send();
+    const response = await send(true);
     return { matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 };
   } catch (retryErr) {
     if (!(retryErr instanceof ApiError) || retryErr.code !== DUPLICATE_REQUEST_CODE) throw retryErr;

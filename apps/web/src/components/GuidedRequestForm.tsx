@@ -33,6 +33,7 @@ import {
   WAITING_REQUEST_HOST_CATEGORY,
   isWaitingTradeKey,
   waitingTradeName,
+  DUPLICATE_REQUEST_CODE,
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
@@ -836,6 +837,8 @@ export function GuidedRequestForm({
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
   // La chiamata non è arrivata al sito: accanto all'errore compare "Riprova".
   const [networkFailed, setNetworkFailed] = useState(false);
+  // Avviso "Hai già mandato questa richiesta": sotto compare "Invia comunque" (Luca, 19/11).
+  const [duplicateWarned, setDuplicateWarned] = useState(false);
   // Andamento del sito (docs/CHANGELOG.md §372): ogni passo raggiunto conta
   // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
   // pagina di un professionista. Dice dove ci si ferma.
@@ -1290,9 +1293,10 @@ export function GuidedRequestForm({
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(sendAnyway = false) {
     setError(null);
     setNetworkFailed(false);
+    setDuplicateWarned(false);
     const problem = validateStep(1) ?? validateStep(2);
     if (problem) {
       // Un campo del passo "Dove" sbagliato: si torna lì, con l'errore sotto il campo.
@@ -1307,10 +1311,10 @@ export function GuidedRequestForm({
       countStepOnce("ACCESSO");
       return;
     }
-    await doSubmit(token);
+    await doSubmit(token, sendAnyway);
   }
 
-  async function doSubmit(activeToken: string) {
+  async function doSubmit(activeToken: string, sendAnyway = false) {
     setIsSubmitting(true);
     try {
       // Prima tutte le foto e i video: quelli scelti prima dell'accesso si
@@ -1328,7 +1332,10 @@ export function GuidedRequestForm({
       // Rete caduta: si riprova da soli una volta, senza mai mandarla due volte
       // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
       const trimmedDescription = description.trim();
-      const sent = await sendRequestDespiteNetwork(() => apiClient.createGuidedRequest(activeToken, {
+      // "Invia comunque" vale solo per il primo invio: la riprova da sola dopo
+      // una rete caduta non crea mai una seconda richiesta.
+      const sent = await sendRequestDespiteNetwork((isRetry) => apiClient.createGuidedRequest(activeToken, {
+        ...(sendAnyway && !isRetry ? { sendAnyway: true } : {}),
         // In attesa di un mestiere: categoria di comodo, il server decide a chi arriva dal mestiere.
         categorySlug: waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : ((requestSlugs[0] ?? categorySlug) as ProfessionalCategorySlug),
         extraCategorySlugs: professionalProfileId || waitingTrade ? [] : requestSlugs.slice(1),
@@ -1388,6 +1395,8 @@ export function GuidedRequestForm({
       countPriceToolRequest();
     } catch (err) {
       setNetworkFailed(isNetworkError(err));
+      // Stessa richiesta mandata da poco: avviso, poi decide il cliente con "Invia comunque".
+      setDuplicateWarned(err instanceof ApiError && err.code === DUPLICATE_REQUEST_CODE);
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
@@ -2331,6 +2340,8 @@ export function GuidedRequestForm({
                 </Link>
               </>
             ) : null}
+            {/* Dopo l'avviso decide il cliente (Luca, 19/11): il pulsante diventa "Invia comunque". */}
+            {duplicateWarned ? " Se vuoi mandarla di nuovo, premi «Invia comunque»." : null}
             {networkFailed ? (
               <>
                 {" "}
@@ -2371,14 +2382,14 @@ export function GuidedRequestForm({
             <MagneticButton block style={{ flexGrow: 2, flexBasis: 200 }}>
             <Button
               variant={isUrgent ? "urgent" : "primary"}
-              onPress={() => handleSubmit()}
+              onPress={() => handleSubmit(duplicateWarned)}
               disabled={isSubmitting}
               flexGrow={2}
               flexBasis={200}
             >
               <XStack alignItems="center" gap="2">
                 <Text color="white" fontFamily="body" fontWeight="600">
-                  {shownSubmitLabel}
+                  {duplicateWarned ? "Invia comunque" : shownSubmitLabel}
                 </Text>
                 <ButtonArrow />
               </XStack>

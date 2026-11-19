@@ -130,3 +130,26 @@ test("preventivo con la risposta persa: uno solo, nessun avviso doppio al client
   expect(notices.filter((n) => n.type !== "NEW_QUOTE")).toEqual([]);
   await page.context().close();
 });
+
+test("stessa richiesta mandata di nuovo apposta: avviso, poi \"Invia comunque\" la manda", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "telefono-italia", "Basta un progetto.");
+  const client = await createClient(prisma);
+  await page.addInitScript((value) => window.localStorage.setItem("professionisti_token", value), testToken(client.id));
+  const text = `Scarico del lavandino lento, prova doppione ${Date.now()}.`;
+  const sendOnce = async () => {
+    await page.goto(`/preventivo?categoria=idraulico&citta=Latina&modalita=ONLINE&descrizione=${encodeURIComponent(text)}`);
+    await page.getByRole("group", { name: "Quando ti serve?" }).getByRole("radio", { name: "Con calma" }).check();
+    await page.getByText("Avanti", { exact: true }).click();
+    await page.getByText("Avanti", { exact: true }).click();
+    await page.getByRole("button", { name: /^Invia richiesta/ }).click();
+  };
+  await sendOnce();
+  await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: /richiesta è (arrivata|registrata)/ })).toBeVisible({ timeout: 15_000 });
+
+  // Seconda volta, uguale: prima l'avviso, poi decide il cliente.
+  await sendOnce();
+  await expect(page.getByText("Hai già mandato questa richiesta")).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Invia comunque" }).click();
+  await expect(page.getByRole("heading", { level: 1 }).filter({ hasText: /richiesta è (arrivata|registrata)/ })).toBeVisible({ timeout: 15_000 });
+  expect(await prisma.guidedRequest.count({ where: { clientId: client.id } })).toBe(2);
+});

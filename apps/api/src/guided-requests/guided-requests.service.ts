@@ -260,9 +260,13 @@ export class GuidedRequestsService {
   private async assertNotDuplicate(
     clientId: string,
     categoryId: string,
-    input: Pick<GuidedRequestInput, "description" | "city">,
+    input: Pick<GuidedRequestInput, "description" | "city" | "serviceMode" | "address" | "houseNumber" | "preferredDate" | "preferredTimeSlot" | "sendAnyway">,
     target: { id: string; businessName: string } | null,
   ) {
+    // Il cliente ha letto l'avviso e ha premuto "Invia comunque": decide lui
+    // (Luca, 19/11, docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+    // La riprova da sola dopo una rete caduta non lo manda mai.
+    if (input.sendAnyway) return;
     const since = new Date(Date.now() - DUPLICATE_REQUEST_MINUTES * 60 * 1000);
     const recent = await this.prisma.guidedRequest.findMany({
       where: {
@@ -273,10 +277,18 @@ export class GuidedRequestsService {
         professionalProfileId: target?.id ?? null,
         ...(target ? {} : { city: { equals: input.city ?? "", mode: "insensitive" as const } }),
       },
-      select: { description: true },
+      select: { description: true, serviceMode: true, address: true, houseNumber: true, preferredDate: true, preferredTimeSlot: true },
     });
     const text = sameRequestText(input.description);
-    if (recent.some((r) => sameRequestText(r.description) === text)) {
+    // Con data, orario o indirizzo diversi è un altro appuntamento, non un doppione.
+    const same = (a: string | null | undefined, b: string | null | undefined) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+    const sameWhenAndWhere = (r: (typeof recent)[number]) =>
+      same(r.serviceMode, input.serviceMode) &&
+      same(r.address, input.address) &&
+      same(r.houseNumber, input.houseNumber) &&
+      same(r.preferredDate ? r.preferredDate.toISOString().slice(0, 10) : null, input.preferredDate) &&
+      same(r.preferredTimeSlot, input.preferredTimeSlot);
+    if (recent.some((r) => sameRequestText(r.description) === text && sameWhenAndWhere(r))) {
       // Col codice il sito capisce che, dopo una rete caduta, il primo invio era arrivato.
       throw new ConflictException({
         code: DUPLICATE_REQUEST_CODE,
