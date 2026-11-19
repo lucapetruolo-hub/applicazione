@@ -1503,7 +1503,15 @@ export function RequestCard({
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" issueOpen={booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT"} /> : null}
+          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? (
+            <JobPaymentStatus
+              payment={booking.payment}
+              audience="professional"
+              issueOpen={booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT"}
+              // Totale e "resta a fine lavoro" solo su un lavoro ancora in piedi: su uno annullato contano i soldi presi, non il preventivo.
+              priceRange={priceRange && booking.status !== "CANCELED" ? { minEurCents: priceRange.totalMinEurCents, maxEurCents: priceRange.totalMaxEurCents } : undefined}
+            />
+          ) : null}
           {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
           {booking?.payment?.bankDispute ? (
             <BankDisputeNotePanel

@@ -29,3 +29,21 @@ senza nome si leggeva come il totale, invece era quello che restava.
 **Verifica**: typecheck e lint; foto da computer e da telefono con tre lavori
 dell'account di prova (acconto pagato, finito tutto online, finito con saldo
 diretto) in `/mnt/project-files/anteprime/pagamento-in-agenda/`.
+
+## Lo stesso conto nella scheda del lavoro (19/11/2026, sera)
+
+**Richiesta** (Luca, "sì" alla miglioria): gli stessi numeri anche nella scheda
+del lavoro in "Richieste e lavori", così il professionista li legge uguali nei
+due posti.
+
+**Decisione**: nel riquadro del pagamento online del professionista
+(`JobPaymentStatus`, `audience="professional"`) la prima riga è ora "Totale del
+preventivo" (o "Importo finale" quando c'è), poi come prima i soldi già presi
+con la trattenuta e "Ti arriverà in banca", e in fondo "Resta a fine lavoro"
+(il preventivo meno l'acconto) oppure, a lavoro terminato, "Resta da pagare
+online". Con l'acconto non ancora pagato: totale e "Acconto online da pagare".
+"Resta" sta in fondo e non tra il pagato e la trattenuta, perché la trattenuta
+riguarda solo i soldi già presi. Su un lavoro annullato il totale non compare.
+La scheda "Prossimo" dell'Agenda resta com'è (lì serve solo sapere dove andare).
+
+**Verifica**: typecheck e lint; foto `richieste-*.png` nella stessa cartella.
