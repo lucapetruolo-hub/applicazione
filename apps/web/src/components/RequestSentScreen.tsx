@@ -115,7 +115,7 @@ export function RequestSentScreen({
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={560} gap="6">
         <div className="request-sent-hero">
-          <GlowLights tone="chiaro" burst className="glow-lights--sfumato request-sent-lights" />
+          <GlowLights tone="chiaro" burst className="glow-lights--sfumato glow-lights--velo request-sent-lights" />
           <div className="request-sent-photo">
             {direct && professionalImageUrl ? (
               <Image src={professionalImageUrl} alt="" width={136} height={136} priority />

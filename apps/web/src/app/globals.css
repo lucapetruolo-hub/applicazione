@@ -8724,12 +8724,6 @@ body:has([aria-modal="true"]) .toast-stack {
 .pro-tier:has(.pro-tier-link:focus-visible) {
   box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
 }
-/* Luci dell'apertura di /per-professionisti sfumate in basso: prima
-   finivano nette sul filetto sotto il titolo. */
-.glow-lights--sfuma {
-  -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
-}
 
 /* Domande di /per-professionisti/pagamenti: "+" e "−" come quelle di
    /per-professionisti (docs/changelog/2026-11-12-pagina-per-professionisti.md). */
@@ -9662,6 +9656,34 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .glow-lights--sfumato {
   -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
   mask-image: radial-gradient(closest-side, #000 55%, transparent);
+}
+/* Luci chiare sopra il velo del sito (docs/changelog/2026-11-19-sfondo-attesa-ricerca.md):
+   attesa della ricerca in home, apertura di /per-professionisti, "Richiesta
+   inviata". Niente fondo né grana propri, che facevano vedere un rettangolo
+   di un altro colore sopra il velo; restano solo le luci, con i colori del
+   velo e della barra di attesa (azzurro, rosa, lilla) invece di verde e
+   terracotta della vecchia palette. */
+.glow-lights--velo {
+  background: none;
+}
+.glow-lights--velo::after {
+  content: none;
+}
+/* Più verso il centro: con la sfumatura ai lati, negli angoli non si vedrebbero. */
+.glow-lights--velo .glow-lights__light--one {
+  top: 0;
+  left: 8%;
+  background: radial-gradient(circle, rgba(63, 143, 176, 0.28), transparent 65%);
+}
+.glow-lights--velo .glow-lights__light--two {
+  bottom: 0;
+  right: 8%;
+  background: radial-gradient(circle, rgba(228, 138, 163, 0.26), transparent 65%);
+}
+.glow-lights--velo .glow-lights__light--three {
+  top: 10%;
+  right: 30%;
+  background: radial-gradient(circle, rgba(142, 124, 200, 0.24), transparent 65%);
 }
 
 /* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
