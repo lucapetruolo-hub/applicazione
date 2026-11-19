@@ -11,18 +11,11 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { textareaStyle } from "./clientRequestHelpers";
 import { WaitBarSignal } from "@/components/WaitBar";
+import { WeekSlotPicker } from "@/components/WeekSlotPicker";
 
-// `isCurrentProposal` distingue la data/orario attualmente proposti dal
-// professionista quando non corrisponde a nessuna fascia reale
-// dell'agenda (data/ora inserita a mano dal professionista, CLAUDE.md
-// §46) — mai una vera fascia libera, solo aggiunta per poterla comunque
-// scegliere/vedere nell'elenco.
-export type FreeSlot = { date: string; startTime: string; endTime: string; isCurrentProposal?: boolean };
+export type FreeSlot = { date: string; startTime: string; endTime: string };
 
-// Valore speciale per l'opzione "Altro" nel menu a tendina data/ora
-// (richiesta esplicita dell'utente) — mai una data reale, quindi non può
-// collidere con una vera chiave `date|startTime|endTime`.
-export const MANUAL_OPTION_VALUE = "altro";
+const slotKey = (slot: FreeSlot) => `${slot.date}|${slot.startTime}|${slot.endTime}`;
 
 /**
  * "Proponi un'altra data" del preventivo, scelta tra le fasce libere reali
@@ -30,7 +23,10 @@ export const MANUAL_OPTION_VALUE = "altro";
  * appuntamento già fissato ("Non posso più" nel promemoria,
  * docs/changelog/2026-10-28-promemoria-whatsapp.md): un solo modo di
  * proporre una data, un solo modo di rispondere per il professionista.
- * Gli orari si ricaricano a ogni apertura.
+ * Gli orari si ricaricano a ogni apertura. Stessa scelta a righe della
+ * richiesta e del preventivo (`WeekSlotPicker`) al posto del menu a tendina,
+ * con "Scrivi un altro giorno o orario" per una data fuori dall'agenda
+ * (docs/changelog/2026-11-19-cambio-data-cliente-come-richiesta.md).
  */
 export function QuoteDateChooser({
   token,
@@ -54,6 +50,9 @@ export function QuoteDateChooser({
 }) {
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
+  const [useManual, setUseManual] = useState(false);
+  /** L'orario di adesso, se è una fascia dell'agenda: resta segnato mentre se ne sceglie un altro. */
+  const [currentSlotKey, setCurrentSlotKey] = useState<string | null>(null);
   const [proposeNote, setProposeNote] = useState("");
   const [manualDate, setManualDate] = useState("");
   const [manualStartTime, setManualStartTime] = useState("");
@@ -77,16 +76,13 @@ export function QuoteDateChooser({
             }
           }
         }
-        const currentDate = from.start.slice(0, 10);
-        const currentStartTime = from.start.slice(11, 16);
-        const currentEndTime = from.end ? from.end.slice(11, 16) : currentStartTime;
-        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
-        if (!matching) {
-          slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
-        }
+        const matching = slots.find((s) => s.date === from.start.slice(0, 10) && s.startTime === from.start.slice(11, 16));
         setFreeSlots(slots);
-        const initial = matching ?? slots[0];
-        if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
+        setCurrentSlotKey(matching ? slotKey(matching) : null);
+        // Nessun orario già scelto: si propone una data diversa da quella di adesso.
+        setSelectedSlotKey("");
+        // Agenda senza orari liberi: resta la data scritta a mano.
+        setUseManual(slots.length === 0);
       })
       .catch((err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
@@ -94,14 +90,14 @@ export function QuoteDateChooser({
     return () => {
       active = false;
     };
-  }, [quote.professionalProfileId, serviceMode, from.start, from.end]);
+  }, [quote.professionalProfileId, serviceMode, from.start]);
 
   async function handleProposeDate() {
     let date: string;
     let startTime: string;
     let endTime: string;
     let isManual: boolean;
-    if (selectedSlotKey === MANUAL_OPTION_VALUE) {
+    if (useManual) {
       if (!manualDate) return setError("Indica una data.");
       if (!manualStartTime || !manualEndTime) return setError("Indica sia l'ora di inizio sia l'ora di fine.");
       if (manualEndTime <= manualStartTime) return setError("L'ora di fine deve essere dopo l'ora di inizio.");
@@ -116,8 +112,7 @@ export function QuoteDateChooser({
         return;
       }
       [date, startTime, endTime] = parts as [string, string, string];
-      // L'ultima proposta fuori dall'agenda, rimandata così com'è (magari con una nota).
-      isManual = Boolean(freeSlots?.find((s) => s.isCurrentProposal && `${s.date}|${s.startTime}|${s.endTime}` === selectedSlotKey));
+      isManual = false;
     }
     setError(null);
     setIsProposing(true);
@@ -143,26 +138,35 @@ export function QuoteDateChooser({
             <WaitBarSignal />
           </Text>
         )
-      ) : freeSlots.length === 0 ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
-        </Text>
       ) : (
         <>
-          <select aria-label="Orario proposto" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
-            {freeSlots.map((slot) => {
-              const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
-              const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
-              return (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              );
-            })}
-            <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
-          </select>
-          {selectedSlotKey === MANUAL_OPTION_VALUE ? (
+          <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+            {booking ? "Scegli la nuova data" : "Scegli un'altra data"}
+          </Text>
+          {!useManual ? (
             <YStack gap="2">
+              <WeekSlotPicker
+                slots={freeSlots}
+                selectedKey={selectedSlotKey}
+                keyOf={slotKey}
+                onSelect={(key) => {
+                  setSelectedSlotKey(key);
+                  setError(null);
+                }}
+                label="Orari liberi del professionista"
+                marked={currentSlotKey ? { key: currentSlotKey, text: booking ? "appuntamento di adesso" : "data del preventivo" } : undefined}
+              />
+              <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" role="button" onPress={() => setUseManual(true)}>
+                Scrivi un altro giorno o orario
+              </Text>
+            </YStack>
+          ) : (
+            <YStack gap="2">
+              {freeSlots.length === 0 ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Il professionista non ha orari liberi in agenda al momento: scrivi tu il giorno e l&apos;orario.
+                </Text>
+              ) : null}
               <XStack gap="2" flexWrap="wrap">
                 <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
                 <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
@@ -171,14 +175,19 @@ export function QuoteDateChooser({
               <Text fontSize={13} color={brand.grafite70}>
                 Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
               </Text>
+              {freeSlots.length > 0 ? (
+                <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" role="button" onPress={() => setUseManual(false)}>
+                  Scegli tra gli orari liberi del professionista
+                </Text>
+              ) : null}
             </YStack>
-          ) : null}
+          )}
           {/* Spostando un appuntamento fissato: con la data scelta il preavviso può essere già
               iniziato (docs/changelog/2026-11-13-annullare-spostamento.md). */}
           {booking
             ? (() => {
                 const [date, startTime, endTime] =
-                  selectedSlotKey === MANUAL_OPTION_VALUE ? [manualDate, manualStartTime, manualEndTime] : selectedSlotKey.split("|");
+                  useManual ? [manualDate, manualStartTime, manualEndTime] : selectedSlotKey.split("|");
                 if (!date || !startTime || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(startTime)) return null;
                 const line = rescheduleCancellationLine({
                   start: `${date}T${startTime}:00.000Z`,
