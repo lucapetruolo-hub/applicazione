@@ -1,0 +1,79 @@
+# Prova di ogni notte sul sito vero
+# (docs/changelog/2026-11-19-prova-notturna-sito-vero.md). Le prove della CI
+# girano su un database di prova: questa apre il sito pubblicato con due
+# account di prova e fa il percorso che porta i soldi (richiesta, preventivo,
+# accettazione fino alla pagina di Stripe, senza pagare), poi apre le pagine
+# più usate con i motori di Safari e di Firefox. La richiesta che crea la
+# toglie da sola. Se qualcosa non va il workflow fallisce e GitHub manda
+# l'email (docs/ops/avvisi.md).
+#
+# Configurazione: Settings → Secrets and variables → Actions → Secrets:
+# NOTTE_CLIENT_EMAIL, NOTTE_PRO_EMAIL (un cliente e un professionista di
+# prova, con i pagamenti online accesi) e NOTTE_PASSWORD (la loro password).
+# Facoltative, tra le Variables: SITE_URL e API_HEALTH_URL, le stesse di
+# Uptime. I workflow a orario girano solo sul ramo predefinito.
+name: Prova notturna
+
+on:
+  schedule:
+    # Le 3:40 o le 4:40 in Italia: lontano dalle attività a orario del mattino.
+    - cron: "40 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prova-notturna
+  cancel-in-progress: false
+
+jobs:
+  sito-vero:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NOTTE_CLIENT_EMAIL: ${{ secrets.NOTTE_CLIENT_EMAIL }}
+      NOTTE_PRO_EMAIL: ${{ secrets.NOTTE_PRO_EMAIL }}
+      NOTTE_PASSWORD: ${{ secrets.NOTTE_PASSWORD }}
+      NOTTE_WEB_URL: ${{ vars.SITE_URL || 'https://applicazione-web.vercel.app' }}
+      API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+    steps:
+      # Senza segreti non si salta in silenzio: fallisce, così ci si ricorda di metterli.
+      - name: Controllo dei segreti
+        run: |
+          if [ -z "$NOTTE_CLIENT_EMAIL" ] || [ -z "$NOTTE_PRO_EMAIL" ] || [ -z "$NOTTE_PASSWORD" ]; then echo "::error::Mancano i segreti NOTTE_CLIENT_EMAIL, NOTTE_PRO_EMAIL o NOTTE_PASSWORD (docs/ops/avvisi.md)."; exit 1; fi
+          if [ -n "$API_HEALTH_URL" ]; then echo "NOTTE_API_URL=${API_HEALTH_URL%/health}" >> "$GITHUB_ENV"; fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Browser per le prove
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium webkit firefox
+
+      - name: Prove sul sito vero
+        env:
+          CI: "true"
+        run: pnpm --filter @professionisti/e2e exec playwright test -c playwright.notte.config.ts
+
+      - name: Risultati
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: prova-notturna
+          path: |
+            e2e/playwright-report-notte/
+            e2e/test-results/
+          if-no-files-found: ignore
