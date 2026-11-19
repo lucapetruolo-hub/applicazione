@@ -40,3 +40,31 @@ del tempo anche la città, così è chiaro"):
 (sereno nei 3 giorni, solo fenomeni dopo, giorni passati saltati); foto da
 computer e telefono con il meteo vero di Open-Meteo in
 `/mnt/project-files/anteprime/agenda-meteo-tre-giorni/`.
+
+**Terzo giro: meteo sparito in produzione** (Luca, sera del 18/11: "non vedo
+ancora le modifiche online", nessuna icona). Causa: Open-Meteo gratuito
+rispondeva 429 "Daily API request limit exceeded". Il tetto vale per indirizzo
+IP e su Render l'indirizzo d'uscita è condiviso con altri siti. In più il piano
+gratuito è solo per uso non commerciale.
+- Previsioni fresche per 3 ore invece di 1. Con un errore la zona non si
+  richiama per 15 minuti; con un 429 nessuna chiamata per un'ora (prima ogni
+  apertura dell'agenda ritentava e consumava il tetto). Previsioni scadute non
+  si mostrano mai, nemmeno con il servizio in errore: meglio nessuna icona
+  (decisione di Luca del 19/11, prima si usavano le ultime ricevute).
+- `OPEN_METEO_API_KEY` (in `render.yaml`): con la chiave dell'abbonamento
+  commerciale le chiamate vanno a `customer-api.open-meteo.com`, senza il tetto
+  condiviso. Scelta dell'abbonamento chiesta a Luca nel thread.
+- Prova: `apps/api/src/agenda/agenda-tools.test.ts` ("meteo quando Open-Meteo dà errore").
+
+**Meteo spento** (Luca, 19/11: "disattiviamo per ora il meteo, sarebbe un
+abbonamento di 30 euro in più che possiamo evitare almeno all'inizio"):
+`WEATHER_ENABLED` (in `render.yaml`) accende il meteo solo se vale "true".
+Senza, `WeatherService` non chiama Open-Meteo: niente icone in Agenda né riga
+del meteo in "Oggi" (che già sparisce senza dati, §349). Privacy: Open-Meteo
+citato "quando il meteo è attivo". Per riaccenderlo: abbonamento Open-Meteo,
+`OPEN_METEO_API_KEY` e `WEATHER_ENABLED=true` su Render.
+
+Nella stessa PR: `apps/api/src/accounting/quote-pdf.service.test.ts` usava un
+appuntamento fisso al 20/11 con l'ora vera, e dal 19/11 cadeva dentro il
+preavviso di 24 ore (prova rossa anche sul ramo principale). Ora la prova
+fissa il giorno al 10/11.

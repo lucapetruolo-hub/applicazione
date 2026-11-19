@@ -125,6 +125,8 @@ export type ClientInvoiceRequestView = {
   city: string;
   province: string | null;
   requestedAt: string;
+  /** Il professionista l'ha segnata come fatta da Oggi; torna `null` se il cliente cambia i dati. Facoltativa solo per un'API non ancora aggiornata. */
+  doneAt?: string | null;
 };
 
 /** Righe da copiare nel programma delle fatture, nell'ordine in cui le chiede. */

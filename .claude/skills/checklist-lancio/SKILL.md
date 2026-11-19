@@ -731,6 +731,13 @@ Città, pagine vuote fuori da Google.
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
+- **Meteo in Agenda e in Oggi** (19/11/2026,
+  docs/changelog/2026-11-18-meteo-tre-giorni.md): spento per non pagare
+  l'abbonamento Open-Meteo (circa 30 € al mese). Il codice è pronto: per
+  accenderlo fare l'abbonamento commerciale su open-meteo.com, mettere su
+  Render `OPEN_METEO_API_KEY` (la chiave) e `WEATHER_ENABLED=true`, poi un
+  nuovo deploy dell'API. Il gratuito no: solo uso non commerciale e tetto
+  giornaliero condiviso con gli altri siti di Render (esaurito il 18/11).
 - **"[Servizio] nelle città vicine"** (21/10/2026, docs/CHANGELOG.md §282):
   nelle pagine categoria+città, link alla stessa categoria nei comuni vicini
   (es. "Idraulico a Sezze", "Idraulico ad Aprilia"), solo dove c'è almeno un

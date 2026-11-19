@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DAY_ROUTE_MAX_SKIPPED, DEFAULT_WEEK_TEMPLATE, parseDayRouteSkip, starterWeekTemplate, weekTemplateCovers } from "@professionisti/shared";
 import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
-import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
+import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition, WeatherService } from "./weather.service";
 import { orderStops, comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
 
@@ -197,5 +197,35 @@ describe("orderStops (docs/changelog/2026-11-11-fasce-ampie.md)", () => {
     const at = (key: string, order: number, latitude: number) => ({ key, order, latitude, longitude: 12.9 });
     const ordered = orderStops([at("lontano", 8, 41.9), at("primo", 7, 41.4), at("vicino", 8, 41.45), at("medio", 8, 41.6)]);
     expect(ordered.map((s) => s.key)).toEqual(["primo", "vicino", "medio", "lontano"]);
+  });
+});
+
+describe("meteo quando Open-Meteo dà errore", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
+  it("spento (senza WEATHER_ENABLED=true) non chiama Open-Meteo e non dà icone", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("WEATHER_ENABLED", "");
+    expect(await new WeatherService().alerts(41.9, 12.5)).toEqual([]);
+    expect(await new WeatherService().forecast(41.9, 12.5)).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("col tetto esaurito non mostra previsioni scadute e non richiama il servizio per un'ora", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-18T08:00:00Z"));
+    const daily = { daily: { time: ["2026-11-18"], weather_code: [63], precipitation_probability_max: [90], wind_gusts_10m_max: [10] } };
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(daily))).mockResolvedValue(new Response("{}", { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("WEATHER_ENABLED", "true");
+    const service = new WeatherService();
+    expect(await service.alerts(41.9, 12.5)).toEqual([{ date: "2026-11-18", kind: "rain" }]);
+    vi.setSystemTime(new Date("2026-11-18T12:00:00Z")); // previsioni scadute: nuovo tentativo, 429, nessuna icona
+    expect(await service.alerts(41.9, 12.5)).toEqual([]);
+    expect(await service.alerts(45.46, 9.19)).toEqual([]); // altra zona durante la pausa: nessuna chiamata
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

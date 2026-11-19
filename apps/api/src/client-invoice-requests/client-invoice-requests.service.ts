@@ -24,6 +24,7 @@ type InvoiceRequestRow = {
   city: string;
   province: string | null;
   updatedAt: Date;
+  professionalSeenAt?: Date | null;
 };
 
 export function invoiceRequestView(row: InvoiceRequestRow): ClientInvoiceRequestView {
@@ -40,6 +41,9 @@ export function invoiceRequestView(row: InvoiceRequestRow): ClientInvoiceRequest
     city: row.city,
     province: row.province,
     requestedAt: row.updatedAt.toISOString(),
+    // "Fatta" del professionista in Oggi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+    // la colonna `professionalSeenAt` torna vuota quando il cliente cambia i dati.
+    doneAt: row.professionalSeenAt?.toISOString() ?? null,
   };
 }
 
@@ -146,6 +150,23 @@ export class ClientInvoiceRequestsService {
     if (!quote) throw new NotFoundException("Preventivo non trovato.");
     if (quote.guidedRequest.clientId !== clientId) throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
     await this.prisma.clientInvoiceRequest.deleteMany({ where: { quoteId, clientId } });
+  }
+
+  /**
+   * "Fatta" (o "Annulla") del professionista sulla fattura chiesta, dalla
+   * pagina Oggi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md): la
+   * voce sparisce da "Ti stanno aspettando". Solo il professionista del lavoro.
+   */
+  async markDoneByProfessional(userId: string, bookingId: string, done: boolean): Promise<{ doneAt: string | null }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { professionalProfile: { select: { userId: true } }, quote: { select: { id: true, invoiceRequest: { select: { id: true } } } } },
+    });
+    if (!booking) throw new NotFoundException("Lavoro non trovato.");
+    if (booking.professionalProfile.userId !== userId) throw new ForbiddenException("Questo lavoro non è tuo.");
+    if (!booking.quote?.invoiceRequest) throw new BadRequestException("Il cliente non ha chiesto la fattura per questo lavoro.");
+    const row = await this.prisma.clientInvoiceRequest.update({ where: { quoteId: booking.quote.id }, data: { professionalSeenAt: done ? new Date() : null } });
+    return { doneAt: row.professionalSeenAt?.toISOString() ?? null };
   }
 }
 

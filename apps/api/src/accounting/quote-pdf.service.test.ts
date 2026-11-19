@@ -38,12 +38,12 @@ function textOf(model: unknown): string {
 
 describe("PDF del preventivo: annullare", () => {
   // Pagamenti online accesi (onlinePaymentsEnabled legge solo la presenza della chiave).
-  // Ora fissa prima del preavviso: con l'ora vera le prove scadevano il 19/11/2026
-  // alle 08:00, quando l'appuntamento finto del 20/11 entrava nel preavviso.
+  // Giorno fisso, una settimana prima dell'appuntamento del 20/11: con l'ora vera
+  // le prove cambiavano risultato da sole il 19/11 (dentro le 24 ore).
   beforeEach(() => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta");
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-15T10:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-11-13T12:00:00.000Z"));
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -60,6 +60,7 @@ describe("PDF del preventivo: annullare", () => {
   // Dentro il preavviso la data "fino a…" sarebbe già passata
   // (docs/changelog/2026-11-13-annullare-data-passata.md).
   it("dentro il preavviso non dà una data già passata", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-19T12:00:00.000Z"));
     try {
       const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
@@ -69,7 +70,7 @@ describe("PDF del preventivo: annullare", () => {
       expect(text).toContain("Pagando online, l'acconto di 16,00 € non è rimborsabile, anche se annulli.");
       expect(text).not.toContain("annullamento gratuito fino a");
     } finally {
-      vi.setSystemTime(new Date("2026-11-15T10:00:00.000Z"));
+      vi.useRealTimers();
     }
   });
 
