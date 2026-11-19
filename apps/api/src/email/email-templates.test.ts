@@ -31,6 +31,11 @@ describe("email dei preventivi (collaudo 08/11)", () => {
     expect(text).toContain("Pagamento");
     expect(text).toContain("Acconto di 40,00 € già pagato online con la carta");
     expect(renderEmail(notificationEmail("QUOTE_ACCEPTED", {}, ctx)!).text).not.toContain("Pagamento");
+    // Nome dell'account in "Cliente", quello della richiesta a parte se diverso.
+    const named = renderEmail(notificationEmail("QUOTE_ACCEPTED", { clientName: "Marco Verdi", recipientName: "Giulia Bianchi" }, ctx)!).text;
+    expect(named).toContain("Marco Verdi");
+    expect(named).toContain("Nome sulla richiesta");
+    expect(named).toContain("Giulia Bianchi");
   });
 });
 

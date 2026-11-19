@@ -32,7 +32,8 @@ for (const [label, device] of [["telefono", PHONE], ["computer", COMPUTER]] as c
     expect((await acceptQuote(client.id, quotes[0].id)).status).toBe(201);
 
     const toast = page.locator(".toast-card").first();
-    await expect(toast).toContainText("ha accettato il tuo preventivo", { timeout: 20_000 });
+    // Nome dell'account, come nei "Dettagli cliente".
+    await expect(toast).toContainText("Marco Verdi ha accettato il tuo preventivo", { timeout: 20_000 });
     await expect(toast).toContainText("Ti paga direttamente");
     await page.screenshot({ path: testInfo.outputPath(`popup-${label}.png`) });
     await toast.getByRole("button", { name: "Chiudi la notifica" }).click();
@@ -46,5 +47,16 @@ for (const [label, device] of [["telefono", PHONE], ["computer", COMPUTER]] as c
     await expect(card.getByText("Giulia Bianchi", { exact: true })).toBeVisible();
     await card.getByText("Dettagli cliente").first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`dettagli-${label}.png`) });
+
+    // Agenda: stesso ordine nel pannello dell'appuntamento.
+    await page.goto(`/dashboard/agenda?giorno=${quotes[0].estimatedStartDate.toISOString().slice(0, 10)}`);
+    // Nel calendario resta il nome di chi riceve il professionista.
+    await page.getByRole("button", { name: /Giulia Bianchi/ }).first().click();
+    const panel = page.getByRole("dialog", { name: "Appuntamento con Marco Verdi" });
+    await expect(panel.getByRole("heading", { name: "Marco Verdi" })).toBeVisible();
+    await expect(panel.getByText("Nome sulla richiesta:")).toContainText("Giulia Bianchi");
+    // Foto a pannello fermo, dopo l'animazione di apertura.
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: testInfo.outputPath(`agenda-${label}.png`) });
   });
 }

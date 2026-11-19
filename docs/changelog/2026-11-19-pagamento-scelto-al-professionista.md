@@ -28,8 +28,19 @@ nome account, e poi sotto l'altro nome non cliccabile con nome sulla richiesta".
   (`2026-11-18-dettagli-cliente-chiari.md`): Luca preferisce il contrario.
   Stesso nome con maiuscole o spazi diversi = nessuna riga in più.
 
+**Secondo giro** (sì di Luca alle migliorie):
+- Popup, notifiche ed email: in testa il nome dell'account ("Marco Verdi ha
+  accettato il tuo preventivo"); nell'email il nome scritto nella richiesta
+  va in una riga a parte "Nome sulla richiesta", solo se diverso. Prima il
+  popup diceva il nome della richiesta.
+- Agenda, pannello dell'appuntamento: titolo col nome dell'account, sotto
+  "Nome sulla richiesta: …" se diverso. Nel calendario le caselle restano col
+  nome di chi riceve il professionista (non richiesto).
+- La riga del pagamento nel riquadro "Preventivo accettato" resta al thread
+  del collaudo (conto a righe).
+
 **Verifica**: prova `e2e/tests/pagamento-scelto-al-pro.spec.ts` (telefono e
 computer: popup con "Ti paga direttamente", nome dell'account cliccabile e
-"Nome sulla richiesta"), test di `acceptedPaymentForPro`, dell'email e della
+"Nome sulla richiesta", anche nel pannello dell'Agenda), test di `acceptedPaymentForPro`, dell'email e della
 notifica in `bookings.service.test.ts`. Foto in
 `anteprime/pagamento-scelto-al-pro/` della cartella del progetto.
