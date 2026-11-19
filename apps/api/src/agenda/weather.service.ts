@@ -2,7 +2,12 @@ import { Injectable, Logger } from "@nestjs/common";
 import { WEATHER_ALWAYS_DAYS, type DayForecast, type WeatherAlertKind, type WeatherCondition, type WeatherDayAlert } from "@professionisti/shared";
 
 const TIMEOUT_MS = 5000;
-const CACHE_TTL_MS = 60 * 60 * 1000;
+/** Previsioni fresche per 3 ore: il tempo del giorno cambia poco e ogni chiamata conta nel tetto di Open-Meteo. */
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000;
+/** Dopo un errore per una zona, niente nuovi tentativi per 15 minuti. */
+const RETRY_AFTER_ERROR_MS = 15 * 60 * 1000;
+/** Tetto esaurito (429): nessuna chiamata per un'ora. */
+const PAUSE_AFTER_LIMIT_MS = 60 * 60 * 1000;
 const CACHE_MAX = 500;
 /** Sotto questa probabilità la pioggia non vale un'icona. */
 const RAIN_MIN_PROBABILITY = 50;
@@ -106,6 +111,8 @@ export function dayForecasts(response: OpenMeteoDaily): DayForecast[] {
 export class WeatherService {
   private readonly logger = new Logger(WeatherService.name);
   private readonly cache = new Map<string, { at: number; response: OpenMeteoDaily }>();
+  private readonly failedAt = new Map<string, number>();
+  private pausedUntil = 0;
 
   async alerts(latitude: number, longitude: number): Promise<WeatherDayAlert[]> {
     return weatherAlerts(await this.daily(latitude, longitude));
@@ -116,30 +123,44 @@ export class WeatherService {
   }
 
   private async daily(latitude: number, longitude: number): Promise<OpenMeteoDaily> {
+    // Meteo spento finché non serve l'abbonamento commerciale (decisione di Luca del 19/11,
+    // docs/changelog/2026-11-18-meteo-tre-giorni.md): nessuna chiamata, nessuna icona in Agenda e in Oggi.
+    if (process.env.WEATHER_ENABLED?.trim() !== "true") return {};
     // Circa un chilometro di precisione: basta per il meteo e riusa la cache tra vicini.
     const key = `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.response;
+    const now = Date.now();
+    if (cached && now - cached.at < CACHE_TTL_MS) return cached.response;
+    // Dopo un errore non si ritenta subito (docs/changelog/2026-11-18-meteo-tre-giorni.md: tetto giornaliero
+    // esaurito su Render). Previsioni scadute non si mostrano (decisione di Luca): meglio nessuna icona.
+    if (now < this.pausedUntil || now - (this.failedAt.get(key) ?? 0) < RETRY_AFTER_ERROR_MS) return {};
 
-    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    const apiKey = process.env.OPEN_METEO_API_KEY?.trim();
+    // Con la chiave dell'abbonamento (uso commerciale) l'indirizzo è un altro e non c'è il tetto condiviso.
+    const url = new URL(apiKey ? "https://customer-api.open-meteo.com/v1/forecast" : "https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", latitude.toFixed(2));
     url.searchParams.set("longitude", longitude.toFixed(2));
     url.searchParams.set("daily", "weather_code,precipitation_probability_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min");
     url.searchParams.set("timezone", "Europe/Rome");
     url.searchParams.set("forecast_days", "14");
+    if (apiKey) url.searchParams.set("apikey", apiKey);
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!response.ok) {
-        this.logger.warn(`Open-Meteo ha risposto ${response.status}.`);
-        return cached?.response ?? {};
+        if (response.status === 429) this.pausedUntil = now + PAUSE_AFTER_LIMIT_MS;
+        this.failedAt.set(key, now);
+        this.logger.warn(`Open-Meteo ha risposto ${response.status}${response.status === 429 ? ": tetto esaurito, pausa di un'ora" : ""}.`);
+        return {};
       }
       const daily = (await response.json()) as OpenMeteoDaily;
-      if (this.cache.size >= CACHE_MAX) this.cache.delete(this.cache.keys().next().value as string);
-      this.cache.set(key, { at: Date.now(), response: daily });
+      if (this.cache.size >= CACHE_MAX && !this.cache.has(key)) this.cache.delete(this.cache.keys().next().value as string);
+      this.cache.set(key, { at: now, response: daily });
+      this.failedAt.delete(key);
       return daily;
     } catch (err) {
+      this.failedAt.set(key, now);
       this.logger.warn(`Open-Meteo non raggiungibile: ${err instanceof Error ? err.message : String(err)}`);
-      return cached?.response ?? {};
+      return {};
     }
   }
 }
