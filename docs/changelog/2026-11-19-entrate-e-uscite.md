@@ -18,3 +18,7 @@
 ## Correzione: pulsante "Scarica l'Excel" illeggibile (19/11/2026)
 
 **Richiesta** (Luca): "non si legge il pulsante 'Scarica l'Excel'". **Causa**: la regola `.xg-card > div > a` (link verdi nel riquadro) era più forte di `.xg-button` e colorava di verde la scritta sul pulsante verde. **Decisione**: la regola esclude `.xg-button`; in più, da telefono, arrivati dal link dell'email il riquadro con il pulsante viene prima della spiegazione (`xg-page-download`). **Verifica**: Playwright con risposta di conferma finta, scritta bianca su #1E6B6E da computer e da telefono; foto in `anteprime/entrate-uscite/*-6-scarica-excel.png`.
+
+## Excel gratuito: totali sulla colonna intera (19/11/2026)
+
+**Richiesta** (Luca): "non sono troppe righe? magari chi lo userà se le aggiunge da solo", poi "ok" alla proposta. **Decisione**: i totali del Riepilogo (mesi, spese per tipo, stima dell'imposta) usano le colonne intere di Entrate e Uscite, così una riga scritta sotto quelle preparate entra nel conto; righe preparate (colori e controlli) da 500 a 200. **Verifica**: copia di prova ricalcolata in LibreOffice con una riga aggiunta alla 350: marzo e totale dell'anno salgono di 1.000 €, nessun errore.

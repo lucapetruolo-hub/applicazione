@@ -31,7 +31,7 @@ VELO = "DFF0F0"
 CREMA = "FAF2E8"
 GRIGIO = "5E5A54"
 EURO = '#,##0.00 "€";-#,##0.00 "€"'
-ROWS = 500  # righe pronte in Entrate e Uscite
+ROWS = 200  # righe pronte (colori e controlli) in Entrate e Uscite; i totali contano la colonna intera
 
 MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 CATEGORIE = ["Materiali", "Veicolo e carburante", "Attrezzi", "Telefono e internet", "Assicurazione", "Corsi e certificazioni", "Contributi INPS", "Altro"]
@@ -147,10 +147,12 @@ def build(sample: bool) -> Workbook:
     rep["B3"].protection = UNLOCKED
     rep["B3"].font = Font(bold=True, size=12)
     header(rep, 5, ["Mese", "Entrate", "Uscite", "Ti resta"], [34, 18, 18, 18])
-    rng_inc = f"Entrate!$A$5:$A${ROWS + 4}"
-    rng_out = f"Uscite!$A$5:$A${ROWS + 4}"
-    amt_inc = f"Entrate!$D$5:$D${ROWS + 4}"
-    amt_out = f"Uscite!$D$5:$D${ROWS + 4}"
+    # Colonne intere: anche le righe aggiunte sotto le 200 pronte entrano nei totali
+    # (le righe del titolo sono testo e i criteri sulla data le saltano).
+    rng_inc = "Entrate!$A:$A"
+    rng_out = "Uscite!$A:$A"
+    amt_inc = "Entrate!$D:$D"
+    amt_out = "Uscite!$D:$D"
     for i, mese in enumerate(MESI):
         r = 6 + i
         m = i + 1
@@ -185,7 +187,7 @@ def build(sample: bool) -> Workbook:
     rep.column_dimensions["E"].width = 4
     rep.column_dimensions["F"].width = 28
     rep.column_dimensions["G"].width = 18
-    cat_rng = f"Uscite!$B$5:$B${ROWS + 4}"
+    cat_rng = "Uscite!$B:$B"
     for i, name in enumerate(CATEGORIE):
         r = 6 + i
         rep.cell(row=r, column=6, value=name).border = BORDER
