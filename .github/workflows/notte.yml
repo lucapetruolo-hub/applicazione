@@ -12,6 +12,12 @@
 # prova, con i pagamenti online accesi) e NOTTE_PASSWORD (la loro password).
 # Facoltative, tra le Variables: SITE_URL e API_HEALTH_URL, le stesse di
 # Uptime. I workflow a orario girano solo sul ramo predefinito.
+#
+# Parte anche da sola dopo ogni aggiornamento del sito (scelta di Luca del
+# 19/11/2026): Vercel avvisa GitHub quando la nuova versione è pubblicata
+# (evento deployment_status, ambiente Production) e la prova gira subito su
+# quella. Un aggiornamento della sola API su Render non manda nessun avviso:
+# lo guarda la prova della notte.
 name: Prova notturna
 
 on:
@@ -19,6 +25,7 @@ on:
     # Le 3:40 o le 4:40 in Italia: lontano dalle attività a orario del mattino.
     - cron: "40 2 * * *"
   workflow_dispatch:
+  deployment_status:
 
 permissions:
   contents: read
@@ -29,6 +36,8 @@ concurrency:
 
 jobs:
   sito-vero:
+    # Dopo un aggiornamento: solo quando è riuscito e solo per il sito pubblicato, non per le anteprime.
+    if: ${{ github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && startsWith(github.event.deployment.environment, 'Production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

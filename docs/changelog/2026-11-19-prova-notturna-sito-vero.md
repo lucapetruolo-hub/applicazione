@@ -21,6 +21,13 @@ accettazione fino a Stripe) e al controllo su Safari e Firefox.
   e Richieste si aprono senza errori del browser, senza uscire dallo schermo
   e senza rimandare all'accesso.
 
+- **Anche dopo ogni aggiornamento del sito** (sì di Luca del 19/11, contro il
+  mio consiglio di aspettare): lo stesso workflow parte quando Vercel segnala
+  a GitHub che la versione nuova è pubblicata (`deployment_status` riuscito,
+  ambiente Production; le anteprime no). Due giri non si accavallano
+  (`concurrency`). Un aggiornamento della sola API su Render non manda avvisi
+  a GitHub: lo copre il giro della notte.
+
 **Motivo**: le 68 prove della CI girano su un database di prova, nessuna
 guardava il sito pubblicato. Un guasto di configurazione (chiave di Stripe,
 variabile su Render o Vercel, database rifatto) si vedeva solo provando a
