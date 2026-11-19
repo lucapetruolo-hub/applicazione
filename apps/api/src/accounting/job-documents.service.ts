@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
   accountingMonthLabel,
@@ -10,7 +10,8 @@ import {
   type JobDocumentsView,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { romeMonthOf } from "./accounting-dates";
+import { romeMonthOf, romeMonthRange } from "./accounting-dates";
+import { InvoicesService } from "./invoices.service";
 
 /**
  * I documenti contabili di un lavoro, dalla voce "Documenti" del menu della
@@ -22,7 +23,27 @@ import { romeMonthOf } from "./accounting-dates";
  */
 @Injectable()
 export class JobDocumentsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Optional() private readonly invoicesService?: InvoicesService,
+  ) {}
+
+  /**
+   * Sotto una trattenuta senza fattura: la fattura del mese arriva il 1° del
+   * mese dopo, se le fatture sono attive; prima dell'apertura del sito no
+   * (stesse parole dell'estratto, StatementsService). Luca, 19/11/2026: il
+   * professionista cercava la fattura nel lavoro.
+   */
+  private async feeNote(at: Date, cache: Map<string, boolean>): Promise<string> {
+    const month = romeMonthOf(at);
+    let active = cache.get(month);
+    if (active === undefined) {
+      const { end } = romeMonthRange(month);
+      active = !!(await this.invoicesService?.activeIssuer(new Date(end.getTime() - 1)));
+      cache.set(month, active);
+    }
+    return active ? `Va nella fattura delle trattenute di ${accountingMonthLabel(month)}, pronta il 1° del mese dopo.` : "Nessuna fattura: prima dell'apertura del sito.";
+  }
 
   async forUser(userId: string, bookingId: string): Promise<JobDocumentsView> {
     const booking = await this.prisma.booking.findUnique({
@@ -74,9 +95,10 @@ export class JobDocumentsService {
         : { label: courtesyDocumentLabel(doc), kind: "RECEIPT" as const, amountChanged: pro && amountChanged };
 
     const movements: JobDocumentMovement[] = [];
-    const push = (date: Date | null, label: string, amountEurCents: number, invoice: JobDocumentMovement["invoice"] = null) => {
-      if (date && amountEurCents !== 0) movements.push({ date: date.toISOString(), label, amountEurCents, invoice });
+    const push = (date: Date | null, label: string, amountEurCents: number, invoice: JobDocumentMovement["invoice"] = null, note: string | null = null) => {
+      if (date && amountEurCents !== 0) movements.push({ date: date.toISOString(), label, amountEurCents, invoice, ...(note ? { note } : {}) });
     };
+    const feeNotes = new Map<string, boolean>();
     if (jp) {
       // Chi paga è il cliente: per lui i pagamenti escono, per il professionista entrano.
       const sign = pro ? 1 : -1;
@@ -91,7 +113,8 @@ export class JobDocumentsService {
       if (pro) {
         for (const entry of jp.feeEntries) {
           const invoice = entry.invoice ? { id: entry.invoice.id, number: invoiceNumberLabel(entry.invoice.series, entry.invoice.year, entry.invoice.number) } : null;
-          push(entry.occurredAt, entry.kind === "HOLD" ? "Nostra trattenuta (IVA compresa)" : entry.description, -entry.grossEurCents, invoice);
+          const note = invoice ? null : await this.feeNote(entry.occurredAt, feeNotes);
+          push(entry.occurredAt, entry.kind === "HOLD" ? "Nostra trattenuta (IVA compresa)" : entry.description, -entry.grossEurCents, invoice, note);
         }
         push(jp.payoutPaidAt, "Bonifico arrivato in banca", jp.payoutSentEurCents);
       }

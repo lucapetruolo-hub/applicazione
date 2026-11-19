@@ -22,3 +22,7 @@
 ## Excel gratuito: totali sulla colonna intera (19/11/2026)
 
 **Richiesta** (Luca): "non sono troppe righe? magari chi lo userà se le aggiunge da solo", poi "ok" alla proposta. **Decisione**: i totali del Riepilogo (mesi, spese per tipo, stima dell'imposta) usano le colonne intere di Entrate e Uscite, così una riga scritta sotto quelle preparate entra nel conto; righe preparate (colori e controlli) da 500 a 200. **Verifica**: copia di prova ricalcolata in LibreOffice con una riga aggiunta alla 350: marzo e totale dell'anno salgono di 1.000 €, nessun errore.
+
+## Documenti del lavoro: dove va la fattura della trattenuta (19/11/2026)
+
+**Richiesta** (Luca, "sì" alla miglioria): nei Documenti del lavoro, sotto la trattenuta ancora senza fattura, dire dove andrà. **Decisione**: `JobDocumentsService` aggiunge una nota al movimento: "Va nella fattura delle trattenute di <mese>, pronta il 1° del mese dopo." quando per quel mese c'è un emittente attivo (`InvoicesService.activeIssuer`, dati della società e data "Fatture da"), altrimenti "Nessuna fattura: prima dell'apertura del sito.". Appena la fattura `COM` esiste, al posto della nota compare il suo link come prima. **Verifica**: prove di `job-documents.test.ts` e controllo dei tipi.
