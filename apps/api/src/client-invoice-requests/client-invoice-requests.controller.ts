@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
-import { clientInvoiceRequestSchema, type ClientInvoiceRequestInput } from "@professionisti/shared";
+import { clientInvoiceDoneSchema, clientInvoiceRequestSchema, type ClientInvoiceDoneInput, type ClientInvoiceRequestInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ClientInvoiceRequestsService } from "./client-invoice-requests.service";
@@ -20,6 +20,12 @@ export class ClientInvoiceRequestsController {
   @Put(":quoteId")
   save(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(clientInvoiceRequestSchema)) body: ClientInvoiceRequestInput) {
     return this.clientInvoiceRequestsService.saveAfterAcceptance(req.user.userId, quoteId, body);
+  }
+
+  /** Il professionista segna la fattura come fatta, o lo annulla (pagina Oggi). */
+  @Put("booking/:bookingId/done")
+  markDone(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string, @Body(new ZodValidationPipe(clientInvoiceDoneSchema)) body: ClientInvoiceDoneInput) {
+    return this.clientInvoiceRequestsService.markDoneByProfessional(req.user.userId, bookingId, body.done);
   }
 
   @Delete(":quoteId")

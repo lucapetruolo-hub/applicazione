@@ -2398,6 +2398,74 @@ html.site-menu-open .profile-cta-bar {
   background: #fdf0dc;
   color: #7a4f0e;
 }
+/* "Ti stanno aspettando" (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
+   cosa aspetta il cliente, in una pillola sopra il nome, come "Il cliente
+   chiede di spostarlo". Il problema segnalato in caldo come le richieste del cliente. */
+.today-row-kind {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1eee9;
+  color: #5e5a54;
+  font-size: 13px;
+  font-weight: 700;
+}
+.today-row-kind.is-issue {
+  background: #fdf0dc;
+  color: #7a4f0e;
+}
+/* Una voce dell'elenco: da telefono le prime 3, dal computer le prime 5. */
+.today-item.is-hidden {
+  display: none;
+}
+@media (max-width: 759px) {
+  .today-item.is-phone-hidden {
+    display: none;
+  }
+}
+/* "Non serve risposta" e "Annulla": azione secondaria senza riquadro, alta 44 px. */
+.today-quiet {
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #5e5a54;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.today-quiet:hover {
+  color: #1b1a18;
+  background: #f1eee9;
+}
+.today-quiet:focus-visible {
+  outline: 2px solid #1b1a18;
+  outline-offset: 2px;
+}
+button.today-more {
+  width: 100%;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+/* Niente da fare: una riga verde, buone notizie (palette del sito). */
+.today-alldone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #e8f2f2;
+  color: #186163;
+  font-size: 16px;
+}
+.today-alldone svg {
+  flex-shrink: 0;
+}
 /* Stessa pillola nei riquadri della Settimana in Agenda: più piccola, e un
    pallino sul telefono dove il riquadro è stretto. */
 .ag-ev .ag-ev-move {
@@ -2596,7 +2664,7 @@ html.site-menu-open .profile-cta-bar {
     align-items: center;
     column-gap: 12px;
   }
-  .today-insights .admin-kpi > :nth-child(3) {
+  .today-insights .admin-kpi > :nth-child(n + 3) {
     grid-column: 1 / -1;
   }
 }

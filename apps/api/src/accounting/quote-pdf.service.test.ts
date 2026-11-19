@@ -38,12 +38,12 @@ function textOf(model: unknown): string {
 
 describe("PDF del preventivo: annullare", () => {
   // Pagamenti online accesi (onlinePaymentsEnabled legge solo la presenza della chiave).
-  // Giorno fisso prima dell'appuntamento del 20/11: senza, dal 19/11 la prova
-  // cadeva dentro il preavviso di 24 ore e falliva (docs/changelog/2026-11-18-meteo-tre-giorni.md).
+  // Giorno fisso, una settimana prima dell'appuntamento del 20/11: con l'ora vera
+  // le prove cambiavano risultato da sole il 19/11 (dentro le 24 ore).
   beforeEach(() => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta");
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-10T10:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-11-13T12:00:00.000Z"));
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -60,6 +60,7 @@ describe("PDF del preventivo: annullare", () => {
   // Dentro il preavviso la data "fino a…" sarebbe già passata
   // (docs/changelog/2026-11-13-annullare-data-passata.md).
   it("dentro il preavviso non dà una data già passata", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-19T12:00:00.000Z"));
     try {
       const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
