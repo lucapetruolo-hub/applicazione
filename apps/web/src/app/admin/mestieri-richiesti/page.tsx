@@ -21,6 +21,7 @@ import {
   type ProblemExample,
   type ProblemMatchAdminOverview,
   type ServiceNamesAdminOverview,
+  type ProblemMultiTradeOutcomes,
   type ProblemSuggestionOutcomes,
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -221,6 +222,8 @@ function DescriptionsTab() {
       {month ? <MissingTradesCard trades={month.missingTrades} /> : null}
 
       {month ? <SuggestionOutcomesCard outcomes={month.suggestions} /> : null}
+
+      {month ? <MultiTradeCard outcomes={month.multiTrade} /> : null}
 
       {month && month.reports.length > 0 ? (
         // Proposte dell'IA segnalate dai clienti: solo da leggere, si corregge a mano (docs/changelog/2026-11-13-segnala-risposta-ia.md).
@@ -775,6 +778,36 @@ function SuggestionOutcomesCard({ outcomes }: { outcomes: ProblemSuggestionOutco
               {outcomes.changes.map((change) => `${targetLabel(change.from, null)} → ${targetLabel(change.to, null)} ${change.count}`).join(" · ")}
             </Text>
           ) : null}
+        </>
+      )}
+    </AdminCard>
+  );
+}
+
+/**
+ * Richieste mandate a più mestieri insieme ("A elettricisti e idraulici" nei
+ * risultati, docs/changelog/2026-11-19-preventivo-piu-mestieri.md): se gli altri
+ * mestieri non rispondono mai, il pulsante spreca richieste ai professionisti.
+ */
+function MultiTradeCard({ outcomes }: { outcomes: ProblemMultiTradeOutcomes }) {
+  const plural = (count: number, one: string, many: string) => (count === 1 ? `1 ${one}` : `${count} ${many}`);
+  return (
+    <AdminCard>
+      <Text fontWeight="700">Richieste mandate a più mestieri insieme: {outcomes.sends}</Text>
+      {outcomes.sends === 0 ? (
+        <Text color={brand.grafite70} marginTop="1">
+          Ancora nessuna negli ultimi 30 giorni.
+        </Text>
+      ) : (
+        <>
+          <Text color={brand.grafite70} marginTop="1">
+            {`Preventivi dal primo mestiere ${outcomes.quotesFirst} · dagli altri ${outcomes.quotesOthers}`}
+          </Text>
+          <Text color={brand.grafite} marginTop="1">
+            {outcomes.onlyOthers > 0
+              ? `In ${plural(outcomes.onlyOthers, "richiesta", "richieste")} hanno risposto solo gli altri mestieri. Senza di loro, niente preventivi.`
+              : "Finora gli altri mestieri non hanno mai risposto da soli."}
+          </Text>
         </>
       )}
     </AdminCard>

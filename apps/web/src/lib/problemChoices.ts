@@ -30,6 +30,33 @@ export const CATEGORY_WHO: Record<ProfessionalCategorySlug, string> = {
   babysitter: "una babysitter",
 };
 
+/**
+ * "agli idraulici", "alle imprese di pulizie": a chi va una richiesta mandata a
+ * tutti quelli di un mestiere (docs/changelog/2026-11-19-preventivo-piu-mestieri.md).
+ */
+export const TO_TRADE_PLURAL: Record<ProfessionalCategorySlug, string> = {
+  idraulico: "agli idraulici",
+  elettricista: "agli elettricisti",
+  imbianchino: "agli imbianchini",
+  pulizie: "alle imprese di pulizie",
+  giardiniere: "ai giardinieri",
+  traslochi: "alle ditte di traslochi",
+  fabbro: "ai fabbri",
+  climatizzazione: "ai tecnici di caldaie e climatizzatori",
+  muratore: "ai muratori",
+  falegname: "ai falegnami",
+  tuttofare: "ai tuttofare",
+  elettrodomestici: "ai tecnici di elettrodomestici",
+  "tende-da-sole": "agli installatori di tende da sole",
+  dogsitter: "ai dogsitter",
+  babysitter: "alle babysitter",
+};
+
+/** Il plurale senza preposizione: "idraulici", "imprese di pulizie". */
+export function tradePlural(slug: ProfessionalCategorySlug): string {
+  return TO_TRADE_PLURAL[slug].replace(/^(agli|alle|ai) /, "");
+}
+
 /** Il mestiere senza articolo: "muratore", "impresa di pulizie", "chi fa traslochi". */
 export function tradeName(slug: ProfessionalCategorySlug): string {
   return CATEGORY_WHO[slug].replace(/^(un'|una |un )/, "");

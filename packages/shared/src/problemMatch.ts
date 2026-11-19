@@ -594,6 +594,18 @@ export type ProblemSuggestionOutcomes = {
   changes: { from: string; to: string; count: number }[];
 };
 
+/** Richieste mandate a più mestieri insieme e da chi arrivano i preventivi (docs/changelog/2026-11-19-preventivo-piu-mestieri.md). */
+export type ProblemMultiTradeOutcomes = {
+  /** Invii con almeno due mestieri. */
+  sends: number;
+  /** Preventivi dal primo mestiere. */
+  quotesFirst: number;
+  /** Preventivi dagli altri mestieri. */
+  quotesOthers: number;
+  /** Invii in cui hanno risposto solo gli altri mestieri. */
+  onlyOthers: number;
+};
+
 /** Esito della domanda all'IA per una ricerca dubbia (docs/changelog/2026-11-12-attesa-ia-5-secondi.md). */
 export type AiOutcome = "ok" | "tardi" | "errore" | "tetto";
 /** Risposte dell'IA nelle ricerche dubbie: arrivate, tardive, errori, oltre il limite del giorno. */
@@ -616,6 +628,8 @@ export type ProblemMatchAdminOverview = {
     /** Mestieri che il sito non ha, per nome e zona (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
     missingTrades: MissingTrade[];
     suggestions: ProblemSuggestionOutcomes;
+    /** Ultimi 30 giorni: invii a più mestieri. */
+    multiTrade: ProblemMultiTradeOutcomes;
     /** Ultimi 7 giorni. */
     aiSpeed: AiSpeed;
     /** Ricerche con foto di oggi sul tetto di tutto il sito (docs/changelog/2026-11-13-difese-ricerca-con-foto.md). */

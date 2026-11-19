@@ -21,6 +21,7 @@ import {
   type AddStandardServiceInput,
   type AiSpeed,
   type ProblemSuggestionOutcomes,
+  type ProblemMultiTradeOutcomes,
   type ServiceNamesAdminOverview,
   type TeachProblemWordInput,
 } from "@professionisti/shared";
@@ -62,6 +63,32 @@ export function suggestionOutcomes(rows: { suggested: string; chosen: string; wi
     changed: rows.length - kept,
     changes: [...changes.values()].sort((a, b) => b.count - a.count).slice(0, 10),
   };
+}
+
+/**
+ * Richieste mandate a più mestieri insieme (un invio, una richiesta per
+ * mestiere, docs/changelog/2026-11-19-preventivo-piu-mestieri.md): quanti
+ * preventivi arrivano dal primo mestiere e quanti dagli altri, e in quanti
+ * invii hanno risposto solo gli altri. Dice se "A tutti e due" serve davvero.
+ * Le righe arrivano nell'ordine di creazione: la prima di ogni invio è il primo mestiere.
+ */
+export function multiTradeOutcomes(rows: { submissionGroupId: string; quotes: number }[]): ProblemMultiTradeOutcomes {
+  const groups = new Map<string, number[]>();
+  for (const row of rows) groups.set(row.submissionGroupId, [...(groups.get(row.submissionGroupId) ?? []), row.quotes]);
+  let sends = 0;
+  let quotesFirst = 0;
+  let quotesOthers = 0;
+  let onlyOthers = 0;
+  for (const quotes of groups.values()) {
+    if (quotes.length < 2) continue;
+    const [first = 0, ...others] = quotes;
+    const fromOthers = others.reduce((sum, count) => sum + count, 0);
+    sends += 1;
+    quotesFirst += first;
+    quotesOthers += fromOthers;
+    if (first === 0 && fromOthers > 0) onlyOthers += 1;
+  }
+  return { sends, quotesFirst, quotesOthers, onlyOthers };
 }
 
 /** Ricerche non capite mostrate in "Mestieri richiesti". */
@@ -126,7 +153,7 @@ export class ProblemMatchAdminService {
             ? { categories: { isEmpty: true }, outOfService: null }
             : {};
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-    const [descriptions, lastMonth, words, suggested, aiCalls, reports] = await Promise.all([
+    const [descriptions, lastMonth, words, suggested, aiCalls, reports, multiTrade] = await Promise.all([
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
@@ -149,6 +176,12 @@ export class ProblemMatchAdminService {
         orderBy: { reportedAt: "desc" },
         take: 50,
         select: { id: true, text: true, categories: true, service: true, reportReason: true, reportNote: true, reportedAt: true },
+      }),
+      // Invii a più mestieri, senza professionisti scelti (dal lancio, senza account di prova, §395).
+      this.prisma.guidedRequest.findMany({
+        where: { createdAt: { gte: sinceLaunch(since, countingFrom()) }, submissionGroupId: { not: null }, chosenProfileIds: { isEmpty: true }, client: COUNTED_USER },
+        orderBy: { createdAt: "asc" },
+        select: { submissionGroupId: true, _count: { select: { quotes: { where: { status: { not: "WITHDRAWN" } } } } } },
       }),
     ]);
 
@@ -175,7 +208,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), photosToday: await this.problemMatchService.photoUsage(), choiceSwitches: choiceSwitchesOf(lastMonth), reports: reports.map((row) => ({ id: row.id, text: row.text, categories: row.categories, service: row.service, reason: row.reportReason ?? "altro", note: row.reportNote, reportedAt: row.reportedAt!.toISOString() })) },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, multiTrade: multiTradeOutcomes(multiTrade.map((row) => ({ submissionGroupId: row.submissionGroupId!, quotes: row._count.quotes }))), aiSpeed: aiSpeedOf(aiCalls), photosToday: await this.problemMatchService.photoUsage(), choiceSwitches: choiceSwitchesOf(lastMonth), reports: reports.map((row) => ({ id: row.id, text: row.text, categories: row.categories, service: row.service, reason: row.reportReason ?? "altro", note: row.reportNote, reportedAt: row.reportedAt!.toISOString() })) },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

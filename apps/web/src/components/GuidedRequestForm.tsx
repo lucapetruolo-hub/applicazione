@@ -450,10 +450,12 @@ export function GuidedRequestForm({
   // guida l'esempio della descrizione.
   // Con i scelti di due mestieri ("Potrebbe farlo anche…" nei risultati) arrivano
   // anche le altre categorie: una richiesta per mestiere, ognuna ai suoi
-  // scelti (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+  // scelti (docs/changelog/2026-11-17-scelti-due-mestieri.md). Anche da "A
+  // elettricisti e idraulici" nei risultati, a tutti quelli dei due mestieri
+  // (docs/changelog/2026-11-19-preventivo-piu-mestieri.md); mai con un professionista solo.
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(() => {
     if (!initialCategory || !isProfessionalCategorySlug(initialCategory)) return [];
-    const others = chosenMode
+    const others = !professionalProfileId
       ? (searchParams.get("altreCategorie") ?? "").split(",").filter((slug): slug is ProfessionalCategorySlug => isProfessionalCategorySlug(slug) && slug !== initialCategory)
       : [];
     return [initialCategory, ...new Set(others)].slice(0, MAX_REQUEST_CATEGORIES);
