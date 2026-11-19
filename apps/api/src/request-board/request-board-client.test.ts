@@ -246,3 +246,44 @@ describe("bacheca: richieste vicine in Oggi e avviso sul sito", () => {
     expect(notifications.notify).not.toHaveBeenCalled();
   });
 });
+
+describe("bacheca: richieste inoltrate in Lavori cercati", () => {
+  // docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md
+  type Branch = Record<string, unknown> & { OR?: Record<string, unknown>[] };
+  async function candidatesWhere() {
+    process.env.REQUEST_BOARD_ENABLED = "true";
+    const previousKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const prisma = {
+      guidedRequest: { findMany: vi.fn().mockResolvedValue([]) },
+      boardAlert: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    try {
+      await new RequestBoardService(prisma as never, {} as never, {} as never, {} as never).publishNew(NOW);
+    } finally {
+      if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = previousKey;
+    }
+    const [[{ where }]] = prisma.guidedRequest.findMany.mock.calls as unknown as [[{ where: Record<string, unknown> & { AND: { OR: Branch[] }[] } }]];
+    return where;
+  }
+
+  it("una generale resta come prima, senza professionista scelto", async () => {
+    const where = await candidatesWhere();
+    const general = where.AND[0]!.OR.find((branch) => branch.professionalProfileId === null);
+    expect(general).toBeDefined();
+    expect(where.professionalProfileId).toBeUndefined();
+    expect(where.fromProfessionalLink).toBe(false);
+    expect(where.isUrgent).toBe(false);
+  });
+
+  it("una diretta entra solo con \"Poi in Lavori cercati\", dopo l'inoltro: 48 ore dopo o subito se l'inoltro non ha trovato nessuno", async () => {
+    const where = await candidatesWhere();
+    const forwarded = where.AND[0]!.OR.find((branch) => branch.boardAfterForward === true);
+    expect(forwarded).toMatchObject({ professionalProfileId: { not: null }, forwardIfNoReply: true, forwardedAt: { not: null } });
+    expect(forwarded!.OR).toEqual([
+      { forwardedAt: { lte: new Date(NOW.getTime() - 48 * 3_600_000) } },
+      { leads: { none: { wasExpanded: true, fromBoardAt: null } } },
+    ]);
+  });
+});

@@ -890,9 +890,10 @@ export function GuidedRequestCard({
       menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
     }
   } else if (!booking) {
-    // "Lavori cercati": solo per le richieste generali non urgenti ancora aperte.
+    // "Lavori cercati": richieste generali non urgenti ancora aperte, e quelle a un
+    // professionista scelto con "Poi in Lavori cercati" (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md).
     const generalRequest = !request.professionalProfileId && (request.chosenProfileIds ?? []).length === 0 && !request.isUrgent;
-    if (generalRequest && request.status !== "CLOSED") {
+    if ((generalRequest || request.boardAfterForward) && request.status !== "CLOSED") {
       menuActions.push(
         request.boardOptOut
           ? { icon: "eye", text: "Mostra in Lavori cercati", hint: "Senza nome, foto e indirizzo", onPress: () => void handleBoard(true) }

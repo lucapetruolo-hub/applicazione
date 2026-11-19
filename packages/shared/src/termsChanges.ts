@@ -92,7 +92,8 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
   },
   {
     // Spostare la data e lavoro terminato in anticipo (Luca, docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md)
-    // e correzioni del punto 5 (docs/changelog/2026-11-19-revisione-termini-e-video.md).
+    // e correzioni del punto 5 (docs/changelog/2026-11-19-revisione-termini-e-video.md);
+    // richieste inoltrate in "Lavori cercati" (docs/changelog/2026-11-19-inoltrate-in-lavori-cercati.md).
     version: "2026-11-19",
     publishedAt: "2026-11-19",
     effectiveAt: "2026-11-19",
@@ -101,6 +102,7 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
       "Se è il professionista a chiedere per primo di spostare l'appuntamento, finché la proposta aspetta risposta il cliente può annullare senza perdere l'acconto.",
       "Prima del giorno fissato il lavoro si chiude solo dopo che il cliente ha confermato che è già finito.",
       "Correzioni al punto 5: l'acconto online si calcola sul prezzo minimo anche dove era rimasto scritto il massimo; se il cliente annulla dentro il preavviso e il preventivo lo prevede, l'acconto pagato online non è rimborsabile, come il cliente vede già prima di accettare.",
+      "Una richiesta a un professionista scelto, se il cliente lascia acceso \"Poi in Lavori cercati\", può comparire nella pagina \"Lavori cercati\" quando nessuno ha mandato un preventivo neanche dopo l'inoltro.",
     ],
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,

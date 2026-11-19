@@ -149,6 +149,8 @@ function BoardCounts({ counts }: { counts: BoardAdminCounts }) {
     { label: "In bacheca adesso", value: counts.listed },
     { label: "Risposte con «Rispondi»", value: counts.replies },
     { label: "Preventivi da quelle risposte", value: counts.quotes },
+    { label: "Risposte su richieste inoltrate", value: counts.repliesAfterForward },
+    { label: "Preventivi su richieste inoltrate", value: counts.quotesAfterForward },
     { label: "Tenute da parte", value: counts.claimsPending },
     { label: "Aspettano «Avvisami»", value: counts.alertsPending },
     { label: "Tolte dal cliente", value: counts.optedOut },
