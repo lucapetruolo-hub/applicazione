@@ -63,3 +63,8 @@ Senza, `WeatherService` non chiama Open-Meteo: niente icone in Agenda né riga
 del meteo in "Oggi" (che già sparisce senza dati, §349). Privacy: Open-Meteo
 citato "quando il meteo è attivo". Per riaccenderlo: abbonamento Open-Meteo,
 `OPEN_METEO_API_KEY` e `WEATHER_ENABLED=true` su Render.
+
+Nella stessa PR: `apps/api/src/accounting/quote-pdf.service.test.ts` usava un
+appuntamento fisso al 20/11 con l'ora vera, e dal 19/11 cadeva dentro il
+preavviso di 24 ore (prova rossa anche sul ramo principale). Ora la prova
+fissa il giorno al 10/11.
