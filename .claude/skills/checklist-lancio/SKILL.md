@@ -727,6 +727,13 @@ Città, pagine vuote fuori da Google.
       - 5 professionisti sulla casella delle prestazioni a virgole (#393);
       - 2-3 professionisti sull'agenda (punto 39);
       - 2-3 persone esterne sul foglio "l'IA conosce i servizi del sito".
+    - **Prova "5 secondi"** (collaudo totale del 19/11,
+      `/mnt/project-files/collaudo/2026-11-19-collaudo-totale/rapporto.md`):
+      mostrare la home per 5 secondi a 5 persone e chiedere "cosa fa questo
+      sito?". Dice se il titolo funziona.
+    - **Prova di carico breve** dopo il passaggio ai piani Render a pagamento
+      (gennaio, con la SRL): la rifà Claude con gli script di
+      `/mnt/project-files/analisi/carico-e-traffico/`.
     - **Servizi esterni dal vivo**: flusso Didit con documento e selfie
       (punto 15), segnalazione DSA con le tre email (punto 41), pagamento con
       una carta vera sul conto Live di Stripe, confronto delle pagine da
