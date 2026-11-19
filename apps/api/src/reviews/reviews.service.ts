@@ -156,7 +156,7 @@ export class ReviewsService {
 
     // Le foto non ancora guardate da Haiku si controllano dietro le quinte:
     // compaiono dalla visita dopo, mai prima del controllo.
-    if (!place) this.reviewPhotoCheck.checkInBackground(reviews.filter((r) => r.homePhotosCheckedAt === null && r.photoUrls.length > 0));
+    if (!place) this.reviewPhotoCheck.checkInBackground(reviews.filter((r) => r.homePhotosCheckedAt === null).map((r) => ({ id: r.id, hasPhotos: r.photoUrls.length > 0 })));
     const chosen = place
       ? reviews
       : [...reviews]
@@ -257,7 +257,7 @@ export class ReviewsService {
       },
     });
     if (held) return { id: review.id, held: true };
-    if (homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: review.id, photoUrls: input.photoUrls }]);
+    if (homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: review.id, hasPhotos: input.photoUrls.length > 0 }]);
 
     await this.afterPublished(booking.professionalProfileId, input.rating, {
       userId: booking.professionalProfile.userId,
@@ -344,7 +344,7 @@ export class ReviewsService {
       : await this.prisma.review.updateMany({ where: { id: reviewId, updatedAfterIssueAt: null }, data: { ...content, updatedAfterIssueAt: new Date() } });
     if (updated.count === 0) throw new ConflictException("Hai già aggiornato questa recensione.");
     await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
-    if (review.heldAt === null && homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: reviewId, photoUrls: input.photoUrls }]);
+    if (review.heldAt === null && homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: reviewId, hasPhotos: input.photoUrls.length > 0 }]);
     await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: review.booking.id,
       guidedRequestId: review.booking.quote?.guidedRequestId ?? null,

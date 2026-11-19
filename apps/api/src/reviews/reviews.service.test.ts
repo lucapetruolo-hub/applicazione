@@ -182,7 +182,7 @@ describe("ReviewsService.getRecentPublic — foto del cliente", () => {
     const unchecked = row("da-guardare", 5, 1, { photoUrls: ["https://res.cloudinary.com/x/image/upload/a.jpg"] });
     prisma.review.findMany.mockResolvedValue([unchecked, row("senza", 5, 2)]);
     const result = await service.getRecentPublic();
-    expect(photoCheck.checkInBackground).toHaveBeenCalledWith([unchecked]);
+    expect(photoCheck.checkInBackground).toHaveBeenCalledWith([{ id: "da-guardare", hasPhotos: true }, { id: "senza", hasPhotos: false }]);
     expect(result[0]?.photoUrls).toEqual([]);
   });
 

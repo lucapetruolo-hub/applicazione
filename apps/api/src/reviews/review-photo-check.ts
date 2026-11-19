@@ -57,13 +57,13 @@ export class ReviewPhotoCheckService {
    * Avvia il controllo senza far aspettare chi ha chiamato (la pagina, la
    * recensione appena scritta). Le recensioni senza foto non costano niente.
    */
-  checkInBackground(reviews: { id: string; photoUrls: string[] }[]): void {
+  checkInBackground(reviews: { id: string; hasPhotos: boolean }[]): void {
     for (const review of reviews) {
-      if (review.photoUrls.length === 0 || this.inFlight.has(review.id)) continue;
+      if (!review.hasPhotos || this.inFlight.has(review.id)) continue;
       const failedAt = this.lastFailure.get(review.id);
       if (failedAt !== undefined && Date.now() - failedAt < RETRY_AFTER_MS) continue;
       this.inFlight.add(review.id);
-      void this.check(review.id, review.photoUrls)
+      void this.check(review.id)
         .catch((error: unknown) => {
           this.lastFailure.set(review.id, Date.now());
           this.logger.warn(`Controllo delle foto della recensione non riuscito: ${error instanceof Error ? error.message : String(error)}`);
@@ -76,8 +76,13 @@ export class ReviewPhotoCheckService {
    * Guarda le foto (i video restano fuori dalla home) e salva quelle buone.
    * Se anche una sola non si è potuta controllare, non salva niente e si
    * riprova più tardi: meglio una recensione senza foto che una foto non vista.
+   * Gli indirizzi delle foto si rileggono dal database, mai da ciò che è
+   * appena arrivato con la richiesta.
    */
-  async check(reviewId: string, photoUrls: string[]): Promise<string[] | null> {
+  async check(reviewId: string): Promise<string[] | null> {
+    const review = await this.prisma.review.findUnique({ where: { id: reviewId }, select: { photoUrls: true } });
+    if (!review) return null;
+    const photoUrls = review.photoUrls;
     const approved: string[] = [];
     for (const url of photoUrls) {
       if (isVideo(url)) continue;
