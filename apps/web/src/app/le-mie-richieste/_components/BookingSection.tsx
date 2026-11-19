@@ -382,6 +382,7 @@ export function BookingSection({
                 payment={booking.payment}
                 audience="client"
                 issueOpen={issueOpen}
+                priceRange={{ minEurCents: totals.totalMinEurCents, maxEurCents: totals.totalMaxEurCents }}
                 onPay={async (part) => {
                   startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
                   try {

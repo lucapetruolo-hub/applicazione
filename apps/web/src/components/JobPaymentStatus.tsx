@@ -8,6 +8,7 @@ import {
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,
   formatEurCents,
+  formatServicePriceRange,
 } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
@@ -45,6 +46,8 @@ const CLIENT_STEPS = ["Pagato", "In attesa della tua conferma", "Al professionis
 const PROFESSIONAL_STEPS = ["Pagato", "Bloccato", "Sbloccato", "In banca"];
 
 function clientView(payment: JobPaymentSummary): View {
+  // Acconto e saldo online: la carta dell'acconto basta, il saldo arriva da solo a lavoro finito (§267).
+  const savedCard = payment.autoChargeCard ? ` Il saldo lo addebitiamo sulla stessa carta a lavoro finito.` : "";
   const stage = payment.stage;
   // Rimborso in attesa di fondi sul conto del professionista (§270): è la cosa che il cliente aspetta.
   if (payment.refundWaitingEurCents > 0) {
@@ -61,7 +64,7 @@ function clientView(payment: JobPaymentSummary): View {
       title: "Acconto pagato",
       body: payment.balanceDirect
         ? "Arriva al professionista quando confermi il lavoro. Il saldo lo paghi a lui."
-        : "Arriva al professionista quando confermi il lavoro.",
+        : `Arriva al professionista quando confermi il lavoro.${savedCard}`,
       step: 1,
     };
   }
@@ -227,7 +230,7 @@ function AmountRow({ label, value, strong, muted, card }: { label: string; value
         color={muted ? brand.grafite70 : brand.grafite}
         flexShrink={card ? 1 : undefined}
         textAlign="right"
-        style={{ fontVariantNumeric: "tabular-nums" }}
+        style={{ fontVariantNumeric: "tabular-nums", whiteSpace: card ? undefined : "nowrap" }}
       >
         {card ? value.replace(/ •••• /g, "\u00a0••••\u00a0") : value}
       </Text>
@@ -247,8 +250,11 @@ export function JobPaymentStatus({
   audience,
   issueOpen = false,
   onPay,
+  priceRange,
 }: {
   payment: JobPaymentSummary;
+  /** Solo cliente: prezzo del preventivo accettato, per dire quanto resterà da pagare online prima dell'importo finale. */
+  priceRange?: { minEurCents: number; maxEurCents: number };
   audience: "client" | "professional";
   /** Segnalazione di un problema aperta sul lavoro (collaudo F-09). */
   issueOpen?: boolean;
@@ -308,6 +314,12 @@ export function JobPaymentStatus({
   const rows: Array<{ label: string; value: string; strong?: boolean; muted?: boolean; card?: boolean }> = [];
   if (audience === "client") {
     if (payment.depositEurCents !== null) rows.push({ label: payment.paidEurCents > 0 ? "Acconto pagato" : "Acconto", value: eur(payment.depositEurCents) });
+    // Saldo online ancora da pagare, prima che il professionista dica l'importo finale: "da… a…" del preventivo meno l'acconto.
+    if (stage === "DEPOSIT_PAID" && !payment.balanceDirect && payment.finalAmountEurCents === null && priceRange) {
+      const min = Math.max(0, priceRange.minEurCents - payment.paidEurCents);
+      const max = Math.max(0, priceRange.maxEurCents - payment.paidEurCents);
+      if (max > 0) rows.push({ label: "Saldo a lavoro finito", value: formatServicePriceRange(min, max) });
+    }
     if (payment.finalAmountEurCents !== null) rows.push({ label: "Importo finale", value: eur(payment.finalAmountEurCents) });
     if (payment.paidEurCents > 0 && payment.paidEurCents !== payment.depositEurCents) rows.push({ label: "Pagato online", value: eur(payment.paidEurCents) });
     if (payment.balanceDirect && payment.directBalanceEurCents !== null) rows.push({ label: "Saldo diretto al professionista", value: eur(payment.directBalanceEurCents) });
