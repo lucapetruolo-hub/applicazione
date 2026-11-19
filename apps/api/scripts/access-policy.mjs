@@ -317,6 +317,8 @@ const owned = {
   // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§378).
   "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
   "DELETE /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
+  // "Fatta" sulla fattura chiesta, dalla pagina Oggi: solo il professionista del lavoro.
+  "PUT /client-invoice-requests/booking/:bookingId/done": { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingA }), body: () => ({ done: true }) },
 
   // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§378).
   "GET /documents/invoices/:id": invoice,
@@ -341,6 +343,10 @@ const owned = {
   "POST /guided-requests/:id/restore": request(),
   // Stato personale (archiviata, silenziata): del cliente e dei professionisti che l'hanno ricevuta.
   "PATCH /guided-requests/:id/board": request({ body: () => ({ allowed: false }) }),
+  // "Non serve risposta" sulla chat in Oggi: solo il professionista della chat.
+  "POST /guided-requests/:id/no-reply-needed": request({ owners: ["proA"], strangers: ["clientA", "clientB", "proB"] }),
+  // Chat in cui il cliente aspetta il professionista (pagina Oggi): solo le sue.
+  "GET /guided-requests/chat-threads/awaiting-reply": { kind: "self", role: "professional" },
   "PATCH /guided-requests/:id/my-state": request({ owners: BOTH, body: () => ({ archived: true }) }),
   "GET /guided-requests/:id/status": request(),
   "GET /guided-requests/:id/timeline": request({ owners: BOTH, query: (f) => ({ professionalProfileId: f.profileA }) }),

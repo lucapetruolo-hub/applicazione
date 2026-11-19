@@ -38,11 +38,12 @@ function textOf(model: unknown): string {
 
 describe("PDF del preventivo: annullare", () => {
   // Pagamenti online accesi (onlinePaymentsEnabled legge solo la presenza della chiave).
-  // Ora fissa, lontana dall'appuntamento del 20/11: prima la prova dipendeva dal giorno in cui girava.
+  // Giorno fisso, una settimana prima dell'appuntamento del 20/11: con l'ora vera
+  // le prove cambiavano risultato da sole il 19/11 (dentro le 24 ore).
   beforeEach(() => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_finta");
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-10T10:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-11-13T12:00:00.000Z"));
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -59,13 +60,18 @@ describe("PDF del preventivo: annullare", () => {
   // Dentro il preavviso la data "fino a…" sarebbe già passata
   // (docs/changelog/2026-11-13-annullare-data-passata.md).
   it("dentro il preavviso non dà una data già passata", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-19T12:00:00.000Z"));
-    const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
-    const service = new QuotePdfService(prisma as never, {} as never);
-    const text = textOf((await service.forUser("c1", "q1")).model);
-    expect(text).toContain("Mancano meno di 24 ore all'appuntamento.");
-    expect(text).toContain("Pagando online, l'acconto di 16,00 € non è rimborsabile, anche se annulli.");
-    expect(text).not.toContain("annullamento gratuito fino a");
+    try {
+      const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
+      const service = new QuotePdfService(prisma as never, {} as never);
+      const text = textOf((await service.forUser("c1", "q1")).model);
+      expect(text).toContain("Mancano meno di 24 ore all'appuntamento.");
+      expect(text).toContain("Pagando online, l'acconto di 16,00 € non è rimborsabile, anche se annulli.");
+      expect(text).not.toContain("annullamento gratuito fino a");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("senza acconto trattenuto resta solo il preavviso", async () => {

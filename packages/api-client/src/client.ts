@@ -25,6 +25,7 @@ import type {
   BookAgendaSlotInput,
   CancelBookingByProfessionalInput,
   ChangePasswordInput,
+  ChatAwaitingReply,
   ChatThreadSummary,
   ClientConfirmCompleteInput,
   CompleteBookingInput,
@@ -1945,6 +1946,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Inbox "Chat" (richiesta esplicita dell'utente): tutti i thread a cui l'utente partecipa, con solo l'ultimo messaggio come anteprima. */
     myChatThreads: (token: string) => request<ChatThreadSummary[]>("/guided-requests/chat-threads", { headers: { Authorization: `Bearer ${token}` } }),
 
+    /** Chat in cui il cliente aspetta la risposta del professionista, per "Ti stanno aspettando" in Oggi. */
+    myChatsAwaitingReply: (token: string) =>
+      request<ChatAwaitingReply[]>("/guided-requests/chat-threads/awaiting-reply", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** "Non serve risposta": la chat esce da Oggi finché il cliente non scrive di nuovo. */
+    dismissChatAwaitingReply: (token: string, guidedRequestId: string) =>
+      request<void>(`/guided-requests/${guidedRequestId}/no-reply-needed`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
@@ -2079,6 +2088,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Il professionista segna come fatta la fattura chiesta dal cliente (o lo annulla). */
+    markClientInvoiceDone: (token: string, bookingId: string, done: boolean) =>
+      request<{ doneAt: string | null }>(`/client-invoice-requests/booking/${bookingId}/done`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ done }),
       }),
 
     removeClientInvoiceRequest: (token: string, quoteId: string) =>

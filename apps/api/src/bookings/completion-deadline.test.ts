@@ -32,7 +32,12 @@ describe("completionDeadlineStep", () => {
 function buildService(clientSilent: unknown[], proSilent: unknown[], earlyAsked: unknown[] = []) {
   const prisma = {
     booking: {
-      findMany: vi.fn().mockResolvedValueOnce(clientSilent).mockResolvedValueOnce(proSilent).mockResolvedValueOnce(earlyAsked),
+      // Le liste per query, riconosciute dal filtro: il promemoria della mattina (nobodyClosed) non trova nulla.
+      findMany: vi.fn().mockImplementation(({ where }: { where: Record<string, unknown> }) =>
+        Promise.resolve(
+          "closeReminderSentAt" in where ? [] : "earlyCompletionAskedAt" in where ? earlyAsked : where.status === "COMPLETED" ? clientSilent : proSilent,
+        ),
+      ),
       update: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
@@ -92,6 +97,37 @@ describe("CompletionDeadlineService.run", () => {
   });
 });
 
+describe("CompletionDeadlineService.nobodyClosed", () => {
+  // 18/11/2026 alle 9 in Italia (8 UTC).
+  const morning = new Date("2026-11-18T08:00:00Z");
+
+  function service(rows: unknown[]) {
+    const prisma = { booking: { findMany: vi.fn().mockResolvedValue(rows), updateMany: vi.fn().mockResolvedValue({ count: 1 }) } };
+    const notifications = { notify: vi.fn() };
+    return { svc: new CompletionDeadlineService(prisma as never, notifications as never, {} as never), prisma, notifications };
+  }
+
+  it("la mattina dopo: un promemoria al professionista per il lavoro non chiuso", async () => {
+    const { svc, prisma, notifications } = service([{ id: "b-1", quote: { guidedRequestId: "gr-1" }, professionalProfile: { userId: "u-pro" } }]);
+    await svc.nobodyClosed(morning);
+    const where = prisma.booking.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ status: "CONFIRMED", closeReminderSentAt: null, clientConfirmedCompletedAt: null, issue: { is: null } });
+    // Solo i lavori finiti prima di oggi (ora di parete) e non più di 3 giorni fa.
+    expect(where.OR[0].scheduledEndAt).toEqual({ gte: new Date("2026-11-15T00:00:00Z"), lt: new Date("2026-11-18T00:00:00Z") });
+    expect(notifications.notify).toHaveBeenCalledWith("u-pro", "JOB_TO_CLOSE", { bookingId: "b-1", guidedRequestId: "gr-1" });
+  });
+
+  it("prima delle 8 non manda nulla, e mai due volte lo stesso lavoro", async () => {
+    const early = service([{ id: "b-1", quote: null, professionalProfile: { userId: "u-pro" } }]);
+    await early.svc.nobodyClosed(new Date("2026-11-18T05:00:00Z"));
+    expect(early.prisma.booking.findMany).not.toHaveBeenCalled();
+    const twice = service([{ id: "b-1", quote: null, professionalProfile: { userId: "u-pro" } }]);
+    twice.prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+    await twice.svc.nobodyClosed(morning);
+    expect(twice.notifications.notify).not.toHaveBeenCalled();
+  });
+});
+
 // "Il lavoro è già finito?" senza risposta (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
 describe("Promemoria sulla conferma chiesta prima del giorno", () => {
   const asked = { id: "b-9", clientId: "c-9", scheduledAt: new Date("2026-11-25T10:00:00Z"), quote: { guidedRequestId: "gr-9" } };
@@ -101,7 +137,7 @@ describe("Promemoria sulla conferma chiesta prima del giorno", () => {
     // 20/11 alle 11 italiane.
     const now = new Date("2026-11-20T10:00:00Z");
     await service.run(now);
-    const where = prisma.booking.findMany.mock.calls[2]![0].where;
+    const where = prisma.booking.findMany.mock.calls.find((call) => "earlyCompletionAskedAt" in (call[0] as { where: object }).where)![0].where;
     expect(where.earlyCompletionAskedAt.lte.toISOString()).toBe("2026-11-19T10:00:00.000Z");
     expect(where.earlyCompletionReminderAt).toBeNull();
     expect(where.scheduledAt.gte.toISOString()).toBe("2026-11-21T00:00:00.000Z");

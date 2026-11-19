@@ -419,6 +419,9 @@ function DashboardAgendaContent() {
       setBookingCurrentDate(startOfDayUtc(new Date(target.scheduledAt)));
       if (match) setSelectedBooking(match);
       else if (externalMatch) setSelectedExternalJob(externalMatch);
+      // `&termina=1` da "Lavori da chiudere" in Oggi: si apre subito "Lavoro terminato"
+      // (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+      if (match && match.status === "CONFIRMED" && searchParams.get("termina") === "1") setCompletingBooking(match);
       autoWeekChecked.current = true;
       return true;
     }
