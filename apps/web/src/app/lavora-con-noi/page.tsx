@@ -15,6 +15,7 @@ import { JsonLd } from "@/components/JsonLd";
 import boardStyles from "@/components/requestBoard/BoardPage.module.css";
 import { BoardWeeklySwitch } from "@/components/requestBoard/BoardWeeklySwitch";
 import { BoardZonePicker } from "@/components/requestBoard/BoardZonePicker";
+import { BoardMapLazy } from "@/components/requestBoard/BoardMapLazy";
 
 /**
  * "Lavori cercati": tutti i mestieri della bacheca in una pagina, anche gli 8
@@ -97,11 +98,13 @@ export default async function BoardIndexPage(props: { searchParams: Promise<{ pr
       </p>
       <BoardZonePicker current={province ? provinceSlug(province) : null} />
       <BoardWeeklySwitch />
+      {/* Mappa con filtri e "Cerca in quest'area" (analisi/bacheca-mappa-piano.md); una provincia nuova la riparte da lì. */}
+      <BoardMapLazy key={province ?? "italia"} province={province} />
       <section aria-labelledby="mestieri-sito">
         <h2 id="mestieri-sito" className={boardStyles.boxTitle}>
-          Mestieri
+          Tutti i mestieri
         </h2>
-        <TradeList trades={categories} counts={counts} label="Mestieri" province={province} />
+        <TradeList trades={categories} counts={counts} label="Tutti i mestieri" province={province} />
       </section>
       <section aria-labelledby="mestieri-mancanti">
         <h2 id="mestieri-mancanti" className={boardStyles.boxTitle}>

@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { Throttle } from "@nestjs/throttler";
-import { boardAlertSchema, boardReplySchema, isBoardTrade, isProfessionalCategorySlug, PROVINCE_NAMES, type BoardAlertInput, type BoardReplyInput } from "@professionisti/shared";
+import { BOARD_MAP_TIMINGS, boardAlertSchema, boardReplySchema, isBoardTrade, isProfessionalCategorySlug, PROVINCE_NAMES, type BoardAlertInput, type BoardReplyInput } from "@professionisti/shared";
 import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -19,6 +19,7 @@ import { RequestBoardService } from "./request-board.service";
 export class RequestBoardController {
   private readonly pages = new ShortCache<Awaited<ReturnType<RequestBoardService["list"]>>>(SUMMARY_CACHE_MS);
   private readonly summaries = new ShortCache<Awaited<ReturnType<RequestBoardService["summary"]>>>(SUMMARY_CACHE_MS);
+  private readonly maps = new ShortCache<Awaited<ReturnType<RequestBoardService["map"]>>>(SUMMARY_CACHE_MS);
   private readonly demands = new ShortCache<Awaited<ReturnType<RequestBoardService["demand"]>>>(SUMMARY_CACHE_MS);
 
   constructor(private readonly board: RequestBoardService) {}
@@ -31,6 +32,37 @@ export class RequestBoardController {
     const page = Number(rawPage ?? 1);
     if (!Number.isInteger(page) || page < 1 || page > 50) throw new BadRequestException("Pagina non valida.");
     return this.pages.get(`${trade}|${code ?? ""}|${page}`, () => this.board.list({ trade, province: code, page }));
+  }
+
+  /**
+   * Mappa (analisi/bacheca-mappa-piano.md): punti per comune e schede
+   * dell'area. I bordi si arrotondano a 0,1 gradi, così le visite della
+   * stessa zona usano la stessa memoria breve.
+   */
+  @Get("map")
+  map(
+    @Query("mestiere") trade?: string,
+    @Query("quando") timing?: string,
+    @Query("nord") north?: string,
+    @Query("sud") south?: string,
+    @Query("est") east?: string,
+    @Query("ovest") west?: string,
+  ) {
+    if (trade && !isBoardTrade(trade)) throw new BadRequestException("Mestiere non valido.");
+    const when = timing ? (BOARD_MAP_TIMINGS as readonly string[]).find((value) => value === timing) : undefined;
+    if (timing && !when) throw new BadRequestException("Tempi non validi.");
+    const raw = [north, south, east, west];
+    let bounds: { north: number; south: number; east: number; west: number } | null = null;
+    if (raw.some((value) => value !== undefined)) {
+      const [n, s, e, w] = raw.map((value) => Number(value));
+      if (![n, s, e, w].every((value) => Number.isFinite(value)) || n! < s! || e! < w! || Math.abs(n!) > 90 || Math.abs(s!) > 90 || Math.abs(e!) > 180 || Math.abs(w!) > 180) {
+        throw new BadRequestException("Area non valida.");
+      }
+      // Arrotondati verso l'esterno: l'area chiesta resta sempre dentro.
+      bounds = { north: Math.ceil(n! * 10) / 10, south: Math.floor(s! * 10) / 10, east: Math.ceil(e! * 10) / 10, west: Math.floor(w! * 10) / 10 };
+    }
+    const key = `${trade ?? ""}|${when ?? ""}|${bounds ? `${bounds.north},${bounds.south},${bounds.east},${bounds.west}` : "italia"}`;
+    return this.maps.get(key, () => this.board.map({ trade: trade && isBoardTrade(trade) ? trade : null, timing: (when as "TODAY" | "WEEK" | "CALM" | undefined) ?? null, bounds }));
   }
 
   @Get("summary")

@@ -3,8 +3,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Prisma, PrismaClient } from "@professionisti/database";
+import type { RequestTiming } from "@professionisti/shared";
 import {
   BOARD_CLIENT_COUNT_MIN,
+  BOARD_MAP_MAX_CARDS,
+  boardPlacePoint,
+  insideBoardBounds,
+  type BoardMapBounds,
+  type BoardMapPoint,
+  type BoardMapResult,
   BOARD_MAX_QUOTES,
   BOARD_PAGE_SIZE,
   italianComuni,
@@ -55,6 +62,8 @@ const AI_DAILY_LIMIT = 200;
 const BATCH = 40;
 /** Schede lette al massimo per una pagina, prima dell'ordine per posti liberi. */
 const PAGE_SCAN_LIMIT = 300;
+/** Righe guardate per la mappa: tutta Italia, le più recenti prima. */
+const MAP_SCAN_LIMIT = 2000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** "Rispondi" in attesa del profilo: dopo 30 giorni la riga si cancella. */
 const CLAIM_DAYS = 30;
@@ -219,6 +228,59 @@ export class RequestBoardService {
     );
     const start = (page - 1) * BOARD_PAGE_SIZE;
     return { cards: cards.slice(start, start + BOARD_PAGE_SIZE), total: cards.length, page, pageSize: BOARD_PAGE_SIZE };
+  }
+
+  /**
+   * Mappa dei "Lavori cercati" (analisi/bacheca-mappa-piano.md, "vai" di Luca
+   * del 19/11/2026): un punto per luogo anonimo della scheda (centro del
+   * comune, o capoluogo per i comuni piccoli), mai la città vera del cliente;
+   * i lavori online restano fuori. Con i bordi conta solo l'area visibile.
+   */
+  async map(filter: { trade?: BoardTrade | null; timing?: RequestTiming | null; bounds?: BoardMapBounds | null }, now: Date = new Date()): Promise<BoardMapResult> {
+    const rows = await this.prisma.guidedRequest.findMany({
+      where: {
+        ...this.listedWhere(now),
+        serviceMode: { not: "ONLINE" },
+        ...(filter.trade ? { boardTrade: filter.trade } : {}),
+        ...(filter.timing ? { timing: filter.timing } : {}),
+      },
+      orderBy: { boardAt: "desc" },
+      take: MAP_SCAN_LIMIT,
+      select: {
+        id: true,
+        boardTrade: true,
+        boardTitle: true,
+        boardSummary: true,
+        boardPlace: true,
+        boardProvince: true,
+        boardAt: true,
+        serviceMode: true,
+        timing: true,
+        photoUrls: true,
+        _count: { select: { quotes: { where: { status: { in: [...ACTIVE_QUOTE_STATUSES] } } } } },
+      },
+    });
+    const freshFrom = now.getTime() - 2 * DAY_MS;
+    const points = new Map<string, BoardMapPoint>();
+    const cards: BoardCard[] = [];
+    for (const row of rows) {
+      const card = boardCardOf({ ...row, photoCount: row.photoUrls.length, quoteCount: row._count.quotes });
+      if (!card) continue;
+      const point = boardPlacePoint(card.place, card.province);
+      if (!point || !insideBoardBounds(point, filter.bounds ?? null)) continue;
+      cards.push(card);
+      const key = `${card.province}|${card.place}`;
+      const fresh = new Date(card.listedAt).getTime() >= freshFrom;
+      const existing = points.get(key);
+      if (existing) {
+        existing.count += 1;
+        existing.fresh ||= fresh;
+      } else {
+        points.set(key, { place: card.place, province: card.province, ...point, count: 1, fresh });
+      }
+    }
+    const sorted = sortBoardCards(cards);
+    return { points: [...points.values()], cards: sorted.slice(0, BOARD_MAP_MAX_CARDS), total: sorted.length };
   }
 
   /**

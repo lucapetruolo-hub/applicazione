@@ -4,6 +4,8 @@ import type {
   ExpenseInput,
   FreeSpreadsheetSignupInput,
   BoardPage,
+  BoardMapBounds,
+  BoardMapResult,
   BoardSummary,
   BoardReplyResult,
   BoardAlertInput,
@@ -1559,6 +1561,20 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         `/request-board?mestiere=${encodeURIComponent(trade)}${province ? `&provincia=${encodeURIComponent(province)}` : ""}${page > 1 ? `&pagina=${page}` : ""}`,
         { cache: "no-store" },
       ),
+    /** Mappa dei "Lavori cercati" (analisi/bacheca-mappa-piano.md): punti per comune e schede dell'area. */
+    getRequestBoardMap: (filter: { trade?: string | null; timing?: string | null; bounds?: BoardMapBounds | null }) => {
+      const params = new URLSearchParams();
+      if (filter.trade) params.set("mestiere", filter.trade);
+      if (filter.timing) params.set("quando", filter.timing);
+      if (filter.bounds) {
+        params.set("nord", filter.bounds.north.toFixed(3));
+        params.set("sud", filter.bounds.south.toFixed(3));
+        params.set("est", filter.bounds.east.toFixed(3));
+        params.set("ovest", filter.bounds.west.toFixed(3));
+      }
+      const query = params.toString();
+      return request<BoardMapResult>(`/request-board/map${query ? `?${query}` : ""}`, { cache: "no-store" });
+    },
     /** Mestiere e provincia con almeno una scheda, per i link e per Google. */
     getRequestBoardSummary: () => request<BoardSummary>("/request-board/summary", { cache: "no-store" }),
     /** Richieste del mese per mestiere e provincia (null sotto le 10), per le pagine /cerca. */

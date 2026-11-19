@@ -1,6 +1,7 @@
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "./categories";
 import { OUT_OF_SERVICE_LABELS, type ProblemOutOfService } from "./problemMatch";
-import { findComuneByName } from "./data/comuni";
+import { findComuneByName, italianComuni } from "./data/comuni";
+import type { RequestTiming } from "./requestTiming";
 
 /**
  * Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md,
@@ -266,3 +267,57 @@ export type BoardReplyResult = {
   /** Con "too-far": fino a 3 richieste dello stesso mestiere entro 100 km dalla zona del profilo, le più vicine prima. */
   nearby?: BoardCard[];
 };
+
+/**
+ * Mappa dei "Lavori cercati" (docs/changelog/2026-11-19-pagina-lavori-cercati.md,
+ * piano in analisi/bacheca-mappa-piano.md, "vai" di Luca del 19/11/2026).
+ * Mai il punto esatto: ogni richiesta sta al centro del suo comune, e quelle
+ * dei comuni sotto i 5.000 abitanti (luogo "Provincia di …") sul capoluogo.
+ */
+export type BoardMapPoint = {
+  /** Luogo della scheda: "Padova" o "Provincia di Padova". */
+  place: string;
+  province: string;
+  lat: number;
+  lon: number;
+  count: number;
+  /** C'è una richiesta arrivata oggi o ieri. */
+  fresh: boolean;
+};
+
+export type BoardMapResult = { points: BoardMapPoint[]; cards: BoardCard[]; total: number };
+
+export type BoardMapBounds = { north: number; south: number; east: number; west: number };
+
+/** Schede mandate insieme ai punti della mappa. */
+export const BOARD_MAP_MAX_CARDS = 50;
+
+/** Filtro "Quando" della mappa. */
+export const BOARD_MAP_TIMINGS = ["TODAY", "WEEK", "CALM"] as const satisfies readonly RequestTiming[];
+
+let capoluogoByProvince: Map<string, { lat: number; lon: number }> | null = null;
+
+/**
+ * Punto sulla mappa del luogo anonimo di una scheda: il centro del comune se
+ * la scheda mostra il comune, il capoluogo se mostra solo la provincia. Si
+ * parte sempre dal luogo già anonimo, mai dalla città vera del cliente.
+ */
+export function boardPlacePoint(place: string, province: string): { lat: number; lon: number } | null {
+  if (!PROVINCE_NAMES[province]) return null;
+  if (!place.startsWith("Provincia di ")) {
+    const name = place.trim().toLowerCase();
+    const comune = italianComuni().find((c) => c.province === province && c.name.toLowerCase() === name);
+    if (comune) return { lat: comune.lat, lon: comune.lon };
+  }
+  if (!capoluogoByProvince) {
+    capoluogoByProvince = new Map();
+    for (const c of italianComuni()) if (c.capoluogo && !capoluogoByProvince.has(c.province)) capoluogoByProvince.set(c.province, { lat: c.lat, lon: c.lon });
+  }
+  return capoluogoByProvince.get(province) ?? null;
+}
+
+/** Il punto è dentro i bordi dell'area visibile. */
+export function insideBoardBounds(point: { lat: number; lon: number }, bounds: BoardMapBounds | null): boolean {
+  if (!bounds) return true;
+  return point.lat <= bounds.north && point.lat >= bounds.south && point.lon <= bounds.east && point.lon >= bounds.west;
+}
