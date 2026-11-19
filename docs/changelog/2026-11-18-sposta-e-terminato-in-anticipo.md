@@ -93,3 +93,25 @@ tabella (`booking_reschedules`) nuove.
 `online-limit-completion.test.ts`); prova nel browser
 `e2e/tests/sposta-e-terminato-in-anticipo.spec.ts` da telefono e computer, con
 le foto in `anteprime/sposta-e-terminato-in-anticipo/`.
+
+## Le regole nuove nei Termini (19/11/2026)
+
+**Richiesta** (Luca, 19/11/2026): "metti anche nei termini le regole nuove".
+
+**Decisione**: nel punto 5 dei Termini ("Pagamento dei lavori") un capoverso
+nuovo, "CAMBIARE LA DATA E CHIUDERE IL LAVORO", che dice:
+- tutti e due possono proporre un'altra data, anche per una sola visita di un
+  lavoro ricorrente;
+- resta la data fissata finché l'altro non accetta, e una proposta senza
+  risposta scade all'appuntamento;
+- se lo spostamento lo chiede per primo il professionista, il cliente annulla
+  senza perdere l'acconto finché la proposta aspetta risposta;
+- le proposte restano registrate, e il professionista vede in Statistiche
+  quelle chieste all'ultimo momento;
+- prima del giorno fissato il lavoro si chiude solo dopo la conferma del
+  cliente, e senza quella conferma non partono saldo, sblocco delle somme e
+  recensione.
+
+Versione `2026-11-19` in `TERMS_CHANGES` (`packages/shared/src/termsChanges.ts`).
+Vale da subito, senza avviso, come le altre prima del lancio (`notify: false`).
+I preventivi già accettati non cambiano (punto 12).
