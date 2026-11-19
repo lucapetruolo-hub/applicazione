@@ -7,6 +7,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { NotificationsService } from "../notifications/notifications.service";
 import { publicClientName } from "../common/client-name.util";
 import { loadReviewHoldReasons } from "./review-hold";
+import { ReviewPhotoCheckService } from "./review-photo-check";
 
 // Le recensioni del cliente sono pubbliche subito: il professionista non
 // recensisce più il cliente e il "doppio cieco" non esiste più
@@ -14,6 +15,15 @@ import { loadReviewHoldReasons } from "./review-hold";
 
 // Stelle minime di una recensione mostrata in home (getRecentPublic).
 const HOME_MIN_RATING = 3;
+// Recensioni da cui scegliere le 6 della home: a parità di stelle prima
+// quelle con le foto del cliente (docs/changelog/2026-11-19-foto-recensioni-in-home.md).
+const HOME_POOL = 20;
+const HOME_LIMIT = 6;
+
+/** Può andare in home: le foto si controllano solo per queste. */
+function homeEligible(rating: number, comment: string | null | undefined): boolean {
+  return rating >= HOME_MIN_RATING && !!comment?.trim();
+}
 
 @Injectable()
 export class ReviewsService {
@@ -21,6 +31,7 @@ export class ReviewsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly notificationsService: NotificationsService,
+    private readonly reviewPhotoCheck: ReviewPhotoCheckService,
   ) {}
 
   /**
@@ -103,7 +114,7 @@ export class ReviewsService {
    * (decisioni dell'utente, docs/CHANGELOG.md §232): le altre restano sul
    * profilo, non in home.
    */
-  async getRecentPublic(limit = 6, place?: { category: string; city: string }) {
+  async getRecentPublic(limit = HOME_LIMIT, place?: { category: string; city: string }) {
     const reviews = await this.prisma.review.findMany({
       where: {
         hiddenAt: null,
@@ -139,14 +150,26 @@ export class ReviewsService {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: limit,
+      // In home se ne leggono di più per preferire quelle con le foto.
+      take: place ? limit : HOME_POOL,
     });
 
-    return reviews.map((review) => ({
+    // Le foto non ancora guardate da Haiku si controllano dietro le quinte:
+    // compaiono dalla visita dopo, mai prima del controllo.
+    if (!place) this.reviewPhotoCheck.checkInBackground(reviews.filter((r) => r.homePhotosCheckedAt === null && r.photoUrls.length > 0));
+    const chosen = place
+      ? reviews
+      : [...reviews]
+          .sort((a, b) => b.rating - a.rating || Number(b.homePhotoUrls.length > 0) - Number(a.homePhotoUrls.length > 0) || b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit);
+
+    return chosen.map((review) => ({
       id: review.id,
       rating: review.rating,
       comment: review.comment,
       createdAt: review.createdAt.toISOString(),
+      // Solo le foto controllate da Haiku, mai i video (review-photo-check.ts).
+      photoUrls: review.homePhotoUrls,
       // Nome di chi ha scritto la recensione (richiesta esplicita
       // dell'utente: "il nome da chi è stata fatta la recensione a mò di
       // firma in basso a destra") — stesso pattern `[name, surname].
@@ -234,6 +257,7 @@ export class ReviewsService {
       },
     });
     if (held) return { id: review.id, held: true };
+    if (homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: review.id, photoUrls: input.photoUrls }]);
 
     await this.afterPublished(booking.professionalProfileId, input.rating, {
       userId: booking.professionalProfile.userId,
@@ -313,12 +337,14 @@ export class ReviewsService {
     // Una sola volta anche con due tocchi insieme. Dopo "Chiedi all'autore di
     // correggere" (docs/changelog/2026-11-13-admin-ia-propone.md) la correzione
     // chiesta toglie la richiesta, e non consuma l'aggiornamento dopo un problema.
-    const content = { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls };
+    // Foto cambiate: in home tornano solo dopo un nuovo controllo.
+    const content = { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls, homePhotoUrls: [], homePhotosCheckedAt: null };
     const updated = review.correctionRequestedAt
       ? await this.prisma.review.updateMany({ where: { id: reviewId, correctionRequestedAt: { not: null } }, data: { ...content, correctionRequestedAt: null } })
       : await this.prisma.review.updateMany({ where: { id: reviewId, updatedAfterIssueAt: null }, data: { ...content, updatedAfterIssueAt: new Date() } });
     if (updated.count === 0) throw new ConflictException("Hai già aggiornato questa recensione.");
     await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
+    if (review.heldAt === null && homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: reviewId, photoUrls: input.photoUrls }]);
     await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: review.booking.id,
       guidedRequestId: review.booking.quote?.guidedRequestId ?? null,

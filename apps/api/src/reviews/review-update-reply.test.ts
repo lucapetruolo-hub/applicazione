@@ -30,7 +30,7 @@ function build(review: Record<string, unknown> | null, updateCount = 1) {
   };
   const metrics = { recomputeReviews: vi.fn() };
   const notifications = { notify: vi.fn() };
-  const service = new ReviewsService(prisma as never, metrics as never, notifications as never);
+  const service = new ReviewsService(prisma as never, metrics as never, notifications as never, { checkInBackground: vi.fn() } as never);
   return { service, prisma, metrics, notifications };
 }
 

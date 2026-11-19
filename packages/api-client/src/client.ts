@@ -1750,6 +1750,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
           rating: number;
           comment: string | null;
           createdAt: string;
+          /** Foto del cliente controllate da Haiku, solo immagini (docs/changelog/2026-11-19-foto-recensioni-in-home.md). Facoltativo: un'API non ancora aggiornata non lo manda. */
+          photoUrls?: string[];
           clientName: string;
           professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
         }[]

@@ -15,6 +15,7 @@ import {
   type ProfessionalBankDispute,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { fetchCloudinaryPhoto } from "../common/cloudinary-photo";
 import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../accounting/document-pdf";
@@ -26,10 +27,6 @@ const CLOSED = ["won", "lost", "warning_closed", "prevented"];
 const MAX_MESSAGES = 80;
 /** Foto nel PDF: quelle del lavoro terminato e del professionista, con un tetto. */
 const MAX_PHOTOS = 20;
-const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-const PHOTO_TIMEOUT_MS = 8000;
-/** Foto ridotte e in JPEG da Cloudinary: pdfkit legge solo JPEG e PNG, e il PDF resta leggero. */
-const PHOTO_TRANSFORM = "c_limit,w_1000,h_1000,q_70,f_jpg";
 
 /** Passaggi della contestazione nel registro azioni, per la cronologia dell'archivio. */
 const DISPUTE_AUDIT_FIELDS = ["stripeDisputeStatus", "stripeDisputeEvidence", "disputeProNote", "disputeRecoveredEurCents"] as const;
@@ -463,24 +460,8 @@ export class BankDisputesService {
   }
 
   /** Una foto di Cloudinary in JPEG ridotto (i video come fotogramma), null se non arriva. */
-  async fetchPhoto(url: string): Promise<Buffer | null> {
-    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
-    if (!cloud) return null;
-    const prefix = `https://res.cloudinary.com/${cloud}/`;
-    if (!url.startsWith(prefix)) return null;
-    let source: string;
-    if (url.startsWith(`${prefix}image/upload/`)) source = url.replace("/image/upload/", `/image/upload/${PHOTO_TRANSFORM}/`);
-    else if (url.startsWith(`${prefix}video/upload/`)) source = url.replace("/video/upload/", `/video/upload/${PHOTO_TRANSFORM},so_0/`).replace(/\.[a-z0-9]+(\?.*)?$/i, ".jpg");
-    else return null;
-    try {
-      const response = await fetch(source, { signal: AbortSignal.timeout(PHOTO_TIMEOUT_MS), redirect: "error" });
-      if (!response.ok) return null;
-      const data = Buffer.from(await response.arrayBuffer());
-      return data.length > 0 && data.length <= PHOTO_MAX_BYTES ? data : null;
-    } catch (err) {
-      this.logger.warn(`Foto della contestazione non scaricata (${url}): ${(err as Error).message}`);
-      return null;
-    }
+  fetchPhoto(url: string): Promise<Buffer | null> {
+    return fetchCloudinaryPhoto(url, (message) => this.logger.warn(`Foto della contestazione non scaricata (${url}): ${message}`));
   }
 
   /**
