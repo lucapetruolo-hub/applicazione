@@ -72,3 +72,9 @@ test("il cliente vede la carta, il professionista no", () => {
   assert.equal(pro?.depositCard, undefined);
   assert.equal(pro?.autoChargeCard, undefined);
 });
+
+test("acconto pagato con la carta salvata: il saldo andrà sulla stessa carta", () => {
+  const row = job({ onlineStage: "DEPOSIT_PAID", depositEurCents: 4960, paidEurCents: 4960, savedPaymentMethodId: "pm_1", depositCardBrand: "visa", depositCardLast4: "4242" });
+  assert.equal(toJobPaymentSummary(row, null)?.autoChargeCard, "Visa •••• 4242");
+  assert.equal(toJobPaymentSummary({ ...row, balanceDirect: true }, null)?.autoChargeCard, null);
+});

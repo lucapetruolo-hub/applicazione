@@ -661,7 +661,7 @@ export function toJobPaymentSummary(
     summary.depositCard = formatPaymentCard(jp.depositCardBrand, jp.depositCardLast4, jp.depositCardWallet) || null;
     summary.balanceCard = formatPaymentCard(jp.balanceCardBrand, jp.balanceCardLast4, jp.balanceCardWallet) || null;
     // Il saldo automatico usa la carta salvata con l'acconto (§267).
-    summary.autoChargeCard = jp.savedPaymentMethodId && stage === "AWAITING_BALANCE" ? summary.depositCard : null;
+    summary.autoChargeCard = jp.savedPaymentMethodId && !balanceDirect && (stage === "DEPOSIT_PAID" || stage === "AWAITING_BALANCE") ? summary.depositCard : null;
   }
   if (forProfessional && method === "ONLINE") {
     const target = onlineTarget ?? collected;

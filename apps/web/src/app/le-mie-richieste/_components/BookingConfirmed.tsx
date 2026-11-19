@@ -85,7 +85,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
             </Text>
           </XStack>
         ) : null}
-        {booking.payment ? <JobPaymentStatus payment={booking.payment} audience="client" /> : null}
+        {booking.payment ? <JobPaymentStatus payment={booking.payment} audience="client" priceRange={{ minEurCents: totals.totalMinEurCents, maxEurCents: totals.totalMaxEurCents }} /> : null}
         {/* Cosa succede annullando, detto anche qui (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
         <CancellationTermsLines terms={cancelTerms} noticeSize={13} testId="booking-confirmed-cancel" />
       </Surface>
