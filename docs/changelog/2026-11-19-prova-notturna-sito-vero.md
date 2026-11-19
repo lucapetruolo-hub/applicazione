@@ -80,3 +80,26 @@ Ora ogni pagina si apre in una scheda sua e gli errori si contano finché la
 pagina è aperta, non mentre la si chiude. Nel registro del giro restano
 scritte le richieste non riuscite, le risposte con errore e gli errori
 arrivati dopo l'uscita, per capire subito un prossimo rosso.
+
+## Dopo il lancio e avviso di Firefox (19/11, sera)
+
+Richiesta di Luca: sì alle due migliorie rimaste (righe in checklist per gli
+account della prova, controllo dell'avviso di Firefox).
+
+- **Account della prova dopo il lancio**: dal `LAUNCH_DATE` gli account di
+  prova escono dai punti pubblici (`publicVisibilityWhere`), ma ricevono
+  ancora le richieste dirette. La prova non controlla più il profilo pubblico
+  del professionista: se il professionista non può ricevere richieste lo dice
+  l'errore della richiesta stessa, con il nome del segreto da correggere.
+- **Checklist di lancio, punto 45**: i due account `NOTTE_*` non si eliminano
+  con gli altri account di prova (o si rifanno aggiornando i segreti). Con le
+  chiavi Stripe vere il professionista di prova non ha un conto Stripe valido:
+  quel giorno la prova va fermata ad "Accetta il preventivo".
+- **Avviso di Firefox "blocked a JavaScript eval"**: viene da zod 4
+  (`allowsEval` in `zod/v4/core/util.js`), che all'avvio prova `Function("")`
+  dentro un `try/catch` per capire se può usare la strada veloce. La nostra
+  CSP lo ferma, zod usa la strada normale. Nessun codice del sito usa `eval`:
+  l'avviso è innocuo e la prova non lo conta. Si può far sparire con
+  `z.config({ jitless: true })`: non fatto, da decidere con Luca.
+
+Verifica: prova del percorso in locale contro il sito vero, 1 su 1.
