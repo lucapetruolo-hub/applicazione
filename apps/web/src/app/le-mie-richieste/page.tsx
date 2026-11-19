@@ -6,6 +6,7 @@ import { jobByRequest, type ClientInvoiceRequestInput, type SeenCancellationTerm
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { isNetworkError } from "@professionisti/api-client";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -450,7 +451,20 @@ function LeMieRichiesteContent() {
   // preventivo resta da accettare.
   async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest, seen);
+    let accepted: Awaited<ReturnType<typeof apiClient.acceptQuote>>;
+    try {
+      accepted = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest, seen);
+    } catch (err) {
+      // Rete caduta: l'accettazione può essere arrivata. Si ricarica subito e
+      // dopo 3 secondi, così il lavoro compare se c'è
+      // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+      if (isNetworkError(err)) {
+        reload();
+        window.setTimeout(reload, 3000);
+      }
+      throw err;
+    }
+    const { checkoutUrl, bookingId } = accepted;
     if (checkoutUrl) {
       startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
       window.location.href = checkoutUrl;

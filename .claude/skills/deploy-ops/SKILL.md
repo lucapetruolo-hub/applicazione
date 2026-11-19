@@ -12,6 +12,16 @@ description: >-
 Note spostate da `CLAUDE.md` §2 (stesso testo). Le regole vincolanti sulle
 migrazioni restano anche in `CLAUDE.md`.
 
+- **Quando unire una PR con migrazione** (decisione di Luca del 19/11/2026,
+  docs/changelog/2026-11-19-errore-di-rete-in-italiano.md): ogni unione su
+  `main` fa ripartire l'API su Render, e per qualche secondo una chiamata può
+  non arrivare (il 19/11 Luca ha visto "Failed to fetch" registrandosi pochi
+  minuti dopo l'unione della #426). Dopo il lancio le PR con una migrazione
+  (`packages/database/prisma/migrations/`) si uniscono fuori dagli orari di
+  punta: di sera dopo le 22 o la mattina prima delle 8, ora italiana. Il sito
+  regge comunque il riavvio (riprova da sola e frase italiana), ma meno
+  persone lo incontrano.
+
 - **Deploy `apps/api` su Render**: il Blueprint `render.yaml` dichiara
   `buildCommand` e `startCommand` (`pnpm --filter @professionisti/api build`
   / `start`). Lo script `build` di `apps/api/package.json` costruisce

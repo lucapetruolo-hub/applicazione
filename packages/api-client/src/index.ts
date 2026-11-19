@@ -1,4 +1,4 @@
-export { ApiError, createApiClient } from "./client";
+export { ApiError, createApiClient, isNetworkError, ACCEPT_NETWORK_ERROR_MESSAGE, NETWORK_ERROR_CODE, NETWORK_ERROR_MESSAGE, PAYMENT_NETWORK_ERROR_MESSAGE, retryOnNetworkError } from "./client";
 export type { ProfessionalSearchQuery } from "./client";
 export type {
   AdminTwoFactorSetup,

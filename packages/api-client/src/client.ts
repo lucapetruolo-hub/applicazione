@@ -1233,6 +1233,72 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Frase per quando la chiamata all'API non arriva proprio (rete caduta, API che
+ * si riavvia dopo un aggiornamento): prima la persona leggeva il messaggio
+ * inglese del browser, "Failed to fetch"
+ * (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+ */
+export const NETWORK_ERROR_MESSAGE =
+  "Non riusciamo a collegarci al sito. Controlla la connessione e riprova: se il sito si sta aggiornando, bastano pochi secondi.";
+
+/**
+ * Rete caduta prima di aprire la pagina di pagamento di Stripe: nessun soldo è
+ * stato chiesto, e la persona deve saperlo per non temere un doppio addebito.
+ */
+export const PAYMENT_NETWORK_ERROR_MESSAGE =
+  "Non riusciamo a collegarci al sito. Nessun pagamento è partito: controlla la connessione e riprova tra pochi secondi.";
+
+/**
+ * Rete caduta mentre si accetta un preventivo: la risposta non è arrivata, ma
+ * l'accettazione può essere andata. La pagina ricontrolla da sola.
+ */
+export const ACCEPT_NETWORK_ERROR_MESSAGE =
+  "La connessione si è interrotta: controlliamo se il preventivo è stato accettato. Se tra un attimo lo vedi tra gli appuntamenti è tutto a posto, altrimenti riprova. Nessun pagamento è partito.";
+
+/** Codice di `ApiError` per la chiamata che non è arrivata all'API (stato 0). */
+export const NETWORK_ERROR_CODE = "NETWORK";
+
+/** La chiamata non è arrivata all'API: si può riprovare, il server non ha risposto. */
+export function isNetworkError(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 0 && err.code === NETWORK_ERROR_CODE;
+}
+
+function networkError(cause: unknown): ApiError {
+  const error = new ApiError(NETWORK_ERROR_MESSAGE, 0, NETWORK_ERROR_CODE);
+  (error as Error & { cause?: unknown }).cause = cause;
+  return error;
+}
+
+/**
+ * Il `fetch` del browser fallisce con un `TypeError` ("Failed to fetch",
+ * "Load failed" su Safari, "NetworkError when attempting to fetch resource" su
+ * Firefox) quando la rete o l'API non rispondono: diventa un `ApiError` con la
+ * frase italiana. Un annullamento voluto (`AbortError`) resta com'è.
+ */
+async function fetchOrNetworkError(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    throw err instanceof TypeError ? networkError(err) : err;
+  }
+}
+
+/**
+ * Ripete una volta, dopo `delayMs`, un'azione fallita perché la chiamata non è
+ * arrivata all'API. Solo per azioni che si possono ripetere senza danni
+ * (accesso; la registrazione gestisce da sé il caso dell'account già creato).
+ */
+export async function retryOnNetworkError<T>(action: () => Promise<T>, delayMs = 2000): Promise<T> {
+  try {
+    return await action();
+  } catch (err) {
+    if (!isNetworkError(err)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return action();
+  }
+}
+
 /** Parametri di una ricerca di professionisti, uguali per la lista, la pagina e i puntini. */
 export type ProfessionalSearchQuery = {
   category?: string;
@@ -1331,7 +1397,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       text = await response.text();
     } catch (err) {
       reportFailure(init, path, null);
-      throw err;
+      throw err instanceof TypeError ? networkError(err) : err;
     }
     if (!text) return null;
     try {
@@ -1351,7 +1417,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     let response: Response;
     for (let attempt = 0; ; attempt++) {
       try {
-        response = await fetch(`${baseUrl}${path}`, {
+        response = await fetchOrNetworkError(`${baseUrl}${path}`, {
           ...init,
           headers: {
             "Content-Type": "application/json",
@@ -1379,9 +1445,19 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     return body as T;
   }
 
+  /** Come `request`, ma un errore di rete dice la frase data (pagamenti, accettazione). */
+  async function requestWithNetworkMessage<T>(message: string, path: string, init?: RequestInit): Promise<T> {
+    try {
+      return await request<T>(path, init);
+    } catch (err) {
+      if (isNetworkError(err)) throw new ApiError(message, 0, NETWORK_ERROR_CODE);
+      throw err;
+    }
+  }
+
   /** Un file fatto dal server (i PDF dei documenti, docs/CHANGELOG.md §379), da salvare col browser. */
   async function downloadFile(path: string, token: string): Promise<Blob> {
-    const response = await fetch(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const response = await fetchOrNetworkError(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
       throw new ApiError(extractErrorMessage(body, "Non riusciamo a preparare il PDF: riprova tra poco."), response.status, extractErrorCode(body));
@@ -1395,7 +1471,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     let response: Response;
     try {
-      response = await fetch(`${baseUrl}${path}`, {
+      response = await fetchOrNetworkError(`${baseUrl}${path}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -1455,7 +1531,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       };
       xhr.onerror = () => {
         reportFailure({ method: "POST" }, path, null);
-        reject(new ApiError("Connessione interrotta durante il caricamento.", 0));
+        reject(new ApiError(NETWORK_ERROR_MESSAGE, 0, NETWORK_ERROR_CODE));
       };
       xhr.onabort = () => reject(new ApiError("Caricamento annullato.", 0, "ABORTED"));
       if (signal) {
@@ -1936,7 +2012,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      * da qualunque browser, a differenza di un URL Cloudinary diretto.
      */
     downloadTimelineAttachment: async (token: string, url: string): Promise<{ blob: Blob; filename: string }> => {
-      const response = await fetch(`${baseUrl}/guided-requests/timeline-photos/download?url=${encodeURIComponent(url)}`, {
+      const response = await fetchOrNetworkError(`${baseUrl}/guided-requests/timeline-photos/download?url=${encodeURIComponent(url)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
@@ -2076,7 +2152,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      * pagamento scelto dal cliente (§168).
      */
     acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) =>
-      request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
+      requestWithNetworkMessage<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(ACCEPT_NETWORK_ERROR_MESSAGE, `/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         // Cosa leggeva il cliente su annullare e acconto (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
@@ -2200,7 +2276,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
     jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>
-      request<{ url: string | null }>(`/bookings/${bookingId}/job-payment/checkout/${part}`, {
+      requestWithNetworkMessage<{ url: string | null }>(PAYMENT_NETWORK_ERROR_MESSAGE, `/bookings/${bookingId}/job-payment/checkout/${part}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -2492,7 +2568,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
     createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
-      request<SubscriptionCheckoutResult>("/billing/subscription/checkout", {
+      requestWithNetworkMessage<SubscriptionCheckoutResult>(PAYMENT_NETWORK_ERROR_MESSAGE, "/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan, interval }),
@@ -2528,7 +2604,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     createBoostCheckout: (token: string, type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO") =>
-      request<{ url: string | null }>("/billing/boost/checkout", {
+      requestWithNetworkMessage<{ url: string | null }>(PAYMENT_NETWORK_ERROR_MESSAGE, "/billing/boost/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ type }),
@@ -2615,7 +2691,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminDownloadCsv: async (token: string, kind: "users" | "waitlist", query: Omit<AdminUsersQuery, "page"> = {}) => {
       const params = adminUsersParams(query);
       const path = kind === "users" ? "/admin/users/export.csv" : "/admin/waitlist/export.csv";
-      const response = await fetch(`${baseUrl}${path}${params.toString() ? `?${params}` : ""}`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetchOrNetworkError(`${baseUrl}${path}${params.toString() ? `?${params}` : ""}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error(`Esportazione non riuscita (${response.status}).`);
       return response.text();
     },
@@ -2773,7 +2849,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       if (input.turnstileToken) formData.append("turnstileToken", input.turnstileToken);
       let response: Response;
       try {
-        response = await fetch(`${baseUrl}${path}`, { method: "POST", body: formData });
+        response = await fetchOrNetworkError(`${baseUrl}${path}`, { method: "POST", body: formData });
       } catch (err) {
         reportFailure({ method: "POST" }, path, null);
         throw err;
@@ -2807,7 +2883,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       formData.append("image", photo, "foto.jpg");
       let response: Response;
       try {
-        response = await fetch(`${baseUrl}${path}`, { method: "POST", body: formData });
+        response = await fetchOrNetworkError(`${baseUrl}${path}`, { method: "POST", body: formData });
       } catch (err) {
         reportFailure({ method: "POST" }, path, null);
         throw err;
@@ -2826,7 +2902,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       key: string,
     ): Promise<{ status: "waiting" | "opened" | "expired" | "done" } | { status: "sent"; photo: Blob }> => {
       const path = `/photo-handoff/${encodeURIComponent(code)}/take`;
-      const response = await fetch(`${baseUrl}${path}`, {
+      const response = await fetchOrNetworkError(`${baseUrl}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),

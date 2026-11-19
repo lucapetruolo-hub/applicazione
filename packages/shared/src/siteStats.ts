@@ -64,14 +64,17 @@ export const REQUEST_STEP_SHORT: Record<RequestStepKey, string> = {
 };
 
 /** Moduli di cui si contano gli invii non riusciti. */
-export const SUBMIT_FORM_KEYS = ["REGISTRAZIONE", "RICHIESTA", "PREVENTIVO", "ACCETTAZIONE", "MESSAGGIO"] as const;
+// ACCESSO e PAGAMENTO dal 19/11 (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+export const SUBMIT_FORM_KEYS = ["REGISTRAZIONE", "ACCESSO", "RICHIESTA", "PREVENTIVO", "ACCETTAZIONE", "PAGAMENTO", "MESSAGGIO"] as const;
 export type SubmitFormKey = (typeof SUBMIT_FORM_KEYS)[number];
 
 export const SUBMIT_FORM_LABEL: Record<SubmitFormKey, string> = {
   REGISTRAZIONE: "Registrazione",
+  ACCESSO: "Accesso",
   RICHIESTA: "Richiesta di preventivo",
   PREVENTIVO: "Invio del preventivo",
   ACCETTAZIONE: "Accettazione del preventivo",
+  PAGAMENTO: "Apertura del pagamento",
   MESSAGGIO: "Messaggi in chat",
 };
 

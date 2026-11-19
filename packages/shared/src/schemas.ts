@@ -334,6 +334,13 @@ export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
+/**
+ * Codice del rifiuto "hai già mandato questa richiesta pochi minuti fa": il
+ * sito lo riconosce dopo una rete caduta, quando il primo invio era arrivato
+ * (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+ */
+export const DUPLICATE_REQUEST_CODE = "DUPLICATE_REQUEST";
+
 export const guidedRequestSchema = z
   .object({
     categorySlug: professionalCategorySlugSchema,
