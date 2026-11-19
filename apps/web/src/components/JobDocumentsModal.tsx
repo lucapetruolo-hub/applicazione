@@ -245,6 +245,10 @@ function Movements({ token, view }: { token: string; view: JobDocumentsView }) {
                 fileName={`fattura-${m.invoice.number}`}
                 load={() => apiClient.documentsInvoicePdf(token, m.invoice!.id)}
               />
+            ) : m.note ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                {m.note}
+              </Text>
             ) : null}
           </YStack>
           <Text fontSize={16} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>

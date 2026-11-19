@@ -744,6 +744,11 @@ export type JobDocumentMovement = {
   amountEurCents: number;
   /** Fattura delle nostre trattenute che lo contiene (solo per il professionista). */
   invoice: { id: string; number: string } | null;
+  /**
+   * Trattenuta non ancora in una fattura: dove andrà, o perché non ne avrà
+   * una (docs/changelog/2026-11-19-entrate-e-uscite.md). Come nell'estratto.
+   */
+  note?: string | null;
 };
 
 /**
