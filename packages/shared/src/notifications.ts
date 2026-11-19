@@ -47,7 +47,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     // WAITING_REQUEST_STILL_NEEDED: "Ti serve ancora?" dopo 30 giorni in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
     // BOARD_CLAIM_ARRIVED: al professionista, è arrivata la richiesta che aveva scelto da "Lavori cercati" (docs/changelog/2026-11-17-bacheca-rispondi.md).
     // BOARD_WEEKLY_DIGEST: solo email, il lunedì le richieste nuove di "Lavori cercati" del suo mestiere entro 100 km (docs/changelog/2026-11-18-bacheca-cliente.md).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED", "BOARD_WEEKLY_DIGEST"],
+    // BOARD_NEARBY: solo sul sito, al professionista, è entrata in "Lavori cercati" una richiesta a cui può rispondere (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED", "BOARD_WEEKLY_DIGEST", "BOARD_NEARBY"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -360,6 +361,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     // Solo sul sito, nessuna email (decisione di Luca, docs/changelog/2026-11-17-bacheca-rispondi.md).
     channels: ["inApp"],
     professional: { label: "Richieste scelte da Lavori cercati", description: "È arrivata nel tuo elenco una richiesta che avevi tenuto da parte." },
+  },
+  {
+    key: "richieste.vicine",
+    topic: "richieste",
+    types: ["BOARD_NEARBY"],
+    // Solo sul sito: per l'email c'è quella del lunedì ("sì" di Luca del 19/11, docs/changelog/2026-11-19-lavori-cercati-in-oggi.md).
+    channels: ["inApp"],
+    professional: { label: "Lavori cercati vicino a te", description: "È entrata in Lavori cercati una richiesta del tuo mestiere entro 100 km." },
   },
   {
     key: "richieste.settimana",

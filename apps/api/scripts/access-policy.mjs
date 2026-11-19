@@ -198,6 +198,8 @@ const selfAny = [
 const selfProfessional = [
   // "Rispondi" dalla bacheca "Lavori cercati": la richiesta entra nell'elenco di chi chiama.
   "POST /request-board/reply",
+  // Riquadro "Lavori cercati" nella pagina Oggi (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md).
+  "GET /request-board/near-me",
   // Rubrica "I miei clienti": solo i clienti di chi chiama (docs/changelog/2026-11-08-rubrica-clienti.md).
   "GET /professional-clients/me",
   "PUT /professional-clients/me/note",

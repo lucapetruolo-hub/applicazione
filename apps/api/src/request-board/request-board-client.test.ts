@@ -161,3 +161,88 @@ describe("bacheca: lavori cercati della settimana", () => {
     expect(notifications.sendOwnEmail).not.toHaveBeenCalled();
   });
 });
+
+describe("bacheca: richieste vicine in Oggi e avviso sul sito", () => {
+  const profile = (id: string, slug: string, lat: number, lon: number) => ({
+    id,
+    userId: `u-${id}`,
+    category: { slug },
+    extraCategories: [],
+    services: [],
+    certifications: null,
+    bio: null,
+    latitude: lat,
+    longitude: lon,
+    remoteAvailable: false,
+    user: { name: "Mario" },
+  });
+
+  function setup(options: { received?: string[]; me?: ReturnType<typeof profile> | null } = {}) {
+    const rows = [boardRow("tivoli", "Tivoli"), boardRow("fiumicino", "Fiumicino"), boardRow("milano", "Milano")].map((row) => ({
+      ...row,
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: (row.id === "tivoli" ? (options.received ?? []) : []).map((professionalProfileId) => ({ professionalProfileId })),
+    }));
+    // Come il database: con `id: { in }` solo quelle richieste.
+    const findMany = vi.fn(async ({ where }: { where: { AND: [unknown, { id?: { in: string[] } }] } }) => {
+      const ids = where.AND[1].id?.in;
+      return ids ? rows.filter((row) => ids.includes(row.id)) : rows;
+    });
+    const prisma = {
+      guidedRequest: { findMany },
+      professionalProfile: {
+        findUnique: vi.fn().mockResolvedValue(options.me === undefined ? profile("roma", "idraulico", 41.9028, 12.4964) : options.me),
+        findMany: vi.fn().mockResolvedValue([profile("roma", "idraulico", 41.9028, 12.4964), profile("elettricista", "elettricista", 41.9028, 12.4964), profile("bari", "idraulico", 41.1171, 16.8719)]),
+      },
+    };
+    const guidedRequests = { receivesRequests: vi.fn().mockResolvedValue(true) };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    return { service: new RequestBoardService(prisma as never, guidedRequests as never, {} as never, notifications as never), notifications, guidedRequests };
+  }
+
+  it("Oggi: solo richieste del suo mestiere entro 100 km, le più vicine prima, con i km", async () => {
+    const { service } = setup();
+    const result = await service.nearMe("u-roma", NOW);
+    expect(result.total).toBe(2);
+    expect(result.cards.map((card) => card.id).sort()).toEqual(["fiumicino", "tivoli"]);
+    const km = result.cards.map((card) => card.km);
+    expect(km).toEqual([...km].sort((a, b) => a - b));
+    expect(km.every((value) => value > 0 && value <= 100)).toBe(true);
+  });
+
+  it("Oggi: mai una richiesta già ricevuta", async () => {
+    const { service } = setup({ received: ["roma"] });
+    const result = await service.nearMe("u-roma", NOW);
+    expect(result.cards.map((card) => card.id)).toEqual(["fiumicino"]);
+  });
+
+  it("Oggi: senza profilo da professionista nessuna richiesta", async () => {
+    const { service } = setup({ me: null });
+    expect(await service.nearMe("u-cliente", NOW)).toEqual({ cards: [], total: 0 });
+  });
+
+  it("avviso: un solo avviso per giro a chi può rispondere, con il numero delle richieste", async () => {
+    const { service, notifications } = setup();
+    expect(await service.notifyNearby(["tivoli", "fiumicino", "milano"], NOW)).toEqual({ notified: 1 });
+    const [userId, type, payload] = notifications.notify.mock.calls[0] as [string, string, { count: number; boardRequestId: string }];
+    expect(userId).toBe("u-roma");
+    expect(type).toBe("BOARD_NEARBY");
+    expect(payload.count).toBe(2);
+  });
+
+  it("avviso: niente se la richiesta gli è già arrivata o se non riceve richieste", async () => {
+    const received = setup({ received: ["roma"] });
+    expect(await received.service.notifyNearby(["tivoli"], NOW)).toEqual({ notified: 0 });
+    const { service, notifications, guidedRequests } = setup();
+    guidedRequests.receivesRequests.mockResolvedValue(false);
+    expect(await service.notifyNearby(["tivoli"], NOW)).toEqual({ notified: 0 });
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  it("avviso: nessuna richiesta nuova, nessuna domanda al database", async () => {
+    const { service, notifications } = setup();
+    expect(await service.notifyNearby([], NOW)).toEqual({ notified: 0 });
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+});
