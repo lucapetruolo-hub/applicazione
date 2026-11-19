@@ -122,12 +122,15 @@ describe("GuidedRequestsService.create con i professionisti scelti", () => {
 
 /** La stessa richiesta mandata di nuovo entro pochi minuti (collaudo I-10). */
 describe("GuidedRequestsService.create — doppio invio", () => {
+  /** La richiesta già salvata, uguale a `input` (stesso posto e stesso momento). */
+  const stored = { description: input.description, serviceMode: "ONLINE", address: null, houseNumber: null, preferredDate: null, preferredTimeSlot: null };
+
   it("rifiuta lo stesso testo per la stessa categoria entro 30 minuti, senza crearne un'altra", async () => {
     const { service, prisma } = buildService([
       { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
       { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
     ]);
-    prisma.guidedRequest.findMany.mockResolvedValue([{ description: "perde il rubinetto  della cucina." }]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ ...stored, description: "perde il rubinetto  della cucina." }]);
     await expect(service.create("client-1", input)).rejects.toThrow("Hai già mandato questa richiesta pochi minuti fa");
     // Col codice il sito riconosce, dopo una rete caduta, che il primo invio era arrivato
     // (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
@@ -141,7 +144,26 @@ describe("GuidedRequestsService.create — doppio invio", () => {
       { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
       { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
     ]);
-    prisma.guidedRequest.findMany.mockResolvedValue([{ description: "Si è rotto lo scarico del bagno" }]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ ...stored, description: "Si è rotto lo scarico del bagno" }]);
+    await expect(service.create("client-1", input)).resolves.toMatchObject({ matchedProfessionals: 2 });
+  });
+
+  it("\"Invia comunque\": il cliente la manda di nuovo apposta e parte", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
+    ]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ ...stored }]);
+    await expect(service.create("client-1", { ...input, sendAnyway: true })).resolves.toMatchObject({ matchedProfessionals: 2 });
+    expect(prisma.guidedRequest.create).toHaveBeenCalled();
+  });
+
+  it("stesso testo ma indirizzo o modalità diversi: un altro lavoro, parte", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
+    ]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ ...stored, serviceMode: "HOME", address: "Via Roma" }]);
     await expect(service.create("client-1", input)).resolves.toMatchObject({ matchedProfessionals: 2 });
   });
 });
