@@ -52,3 +52,23 @@ test("depositPreviewLine: 100% con forbice = minimo; casi limite", async () => {
   assert.equal(depositPreviewLine({ totalMinEurCents: 10000, totalMaxEurCents: 10000 }, 0), null);
   assert.equal(depositPreviewLine({ totalMinEurCents: 10000, totalMaxEurCents: 10000 }, 12.5), null);
 });
+
+// Carta usata, solo per il cliente (docs/changelog/2026-11-19-entrate-e-uscite.md).
+test("il cliente vede la carta, il professionista no", () => {
+  const row = job({
+    onlineStage: "AWAITING_BALANCE",
+    depositEurCents: 2000,
+    paidEurCents: 2000,
+    savedPaymentMethodId: "pm_1",
+    depositCardBrand: "visa",
+    depositCardLast4: "4242",
+    depositCardWallet: "apple_pay",
+  });
+  const client = toJobPaymentSummary(row, 10000);
+  assert.equal(client?.depositCard, "Apple Pay (Visa •••• 4242)");
+  assert.equal(client?.balanceCard, null);
+  assert.equal(client?.autoChargeCard, "Apple Pay (Visa •••• 4242)");
+  const pro = toJobPaymentSummary(row, 10000, true);
+  assert.equal(pro?.depositCard, undefined);
+  assert.equal(pro?.autoChargeCard, undefined);
+});

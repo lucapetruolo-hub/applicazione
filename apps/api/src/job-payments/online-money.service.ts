@@ -216,6 +216,14 @@ export const EUR_ONLY = { adaptive_pricing: { enabled: false } } as const;
  * confondono e non tengono la carta per il saldo
  * (docs/changelog/2026-11-08-prova-persone-simulate.md).
  */
+/** Marca, ultime 4 cifre e portafoglio della carta, nelle colonne dell'acconto o del saldo. */
+export function cardColumns(part: "deposit" | "balance", card: ChargeInfo["card"]): Record<string, string | null> {
+  if (!card) return {};
+  return part === "deposit"
+    ? { depositCardBrand: card.brand, depositCardLast4: card.last4, depositCardWallet: card.wallet }
+    : { balanceCardBrand: card.brand, balanceCardLast4: card.last4, balanceCardWallet: card.wallet };
+}
+
 export const CARD_ONLY: { payment_method_types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] } = { payment_method_types: ["card"] };
 
 @Injectable()
@@ -739,6 +747,7 @@ export class OnlineMoneyService {
               ...(charge.direct ? { stripeDirectCharge: true } : {}),
             }
           : {}),
+        ...cardColumns(part, charge.card),
         ...(part === "deposit" && charge.savedCard
           ? { clientStripeCustomerId: charge.savedCard.customerId, savedPaymentMethodId: charge.savedCard.paymentMethodId }
           : {}),
@@ -834,6 +843,7 @@ export class OnlineMoneyService {
         netAmountEurCents: { increment: payout },
         ...(charge.destination ? { payoutPendingEurCents: { increment: payout } } : {}),
         balanceUnpaidAt: null,
+        ...cardColumns("balance", charge.card),
       },
     });
     await this.recordRevenue(jp.id, jp.booking.professionalProfile.id, platformFee);
