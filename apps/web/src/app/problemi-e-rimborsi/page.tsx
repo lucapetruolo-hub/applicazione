@@ -19,7 +19,7 @@ export default function ProblemiERimborsiPage() {
   return (
     <LegalPage
       title="Problemi e rimborsi"
-      updatedAt="30 ottobre 2026"
+      updatedAt="19 novembre 2026"
       intro={
         <LegalSummary
           points={[
@@ -43,6 +43,12 @@ export default function ProblemiERimborsiPage() {
               consumatore hai anche il diritto di recesso (<Link href="/termini#recesso">Termini, punto 11</Link>).
             </>
           ),
+        },
+        {
+          // Regole del 18/11 (docs/changelog/2026-11-19-whatsapp-nelle-scritte.md, voce T5): stesse dei Termini.
+          id: "cambiare-data",
+          heading: "Prima del lavoro: cambiare data o finire prima",
+          body: `Dopo l'accettazione tu e il professionista potete proporre un'altra data dalla scheda del lavoro: finché l'altro non accetta resta la data fissata, e senza risposta prima dell'appuntamento la proposta scade. Se è il professionista a chiederti per primo di spostare, finché la sua proposta aspetta la tua risposta puoi annullare senza perdere l'acconto, anche dentro il preavviso. Se il professionista segna il lavoro come terminato prima del giorno fissato, ti chiediamo "Il lavoro è già finito?": si chiude solo dopo la tua conferma.`,
         },
         {
           id: "non-si-presenta",

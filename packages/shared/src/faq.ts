@@ -75,7 +75,7 @@ export const FAQ: readonly FaqItem[] = [
     topic: "Come funziona",
     question: "Chi decide il prezzo?",
     answer:
-      "Sempre il professionista, nel suo preventivo. Noi non fissiamo i prezzi. Nel preventivo trovi le voci una per una (manodopera, materiali, uscita) e i modi di pagamento che accetta.",
+      "Sempre il professionista, nel suo preventivo. Noi non fissiamo i prezzi. Nel preventivo trovi le voci una per una (manodopera, materiali, diritto di chiamata) e i modi di pagamento che accetta.",
   },
   {
     id: "cambiare-professionista",
@@ -375,7 +375,7 @@ export const FAQ: readonly FaqItem[] = [
     topic: "Richieste e preventivi",
     question: "Come faccio un preventivo?",
     answer:
-      "Dalla richiesta scrivi le voci una per una (manodopera, materiali, uscita) con il prezzo, quando puoi venire e come accetti di essere pagato. Il prezzo lo decidi sempre tu. Il cliente può confrontarlo con gli altri preventivi ricevuti.",
+      "Dalla richiesta scrivi le voci una per una (manodopera, materiali, diritto di chiamata) con il prezzo, quando puoi venire e come accetti di essere pagato. Il prezzo lo decidi sempre tu. Il cliente può confrontarlo con gli altri preventivi ricevuti.",
   },
   {
     id: "cosa-conta-come-lavoro",

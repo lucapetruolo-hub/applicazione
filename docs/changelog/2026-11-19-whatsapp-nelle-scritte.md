@@ -39,3 +39,22 @@ conferma" diventa "fino alla tua conferma, o 7 giorni dopo il lavoro"
 
 **Motivo**: senza conferma e senza segnalazioni i soldi si sbloccano da soli
 dopo 7 giorni (`ONLINE_RELEASE_DAYS`): la frase di prima prometteva di più.
+
+## "Problemi e rimborsi" con le regole del 18/11 (voce T5)
+
+**Richiesta** (Luca, 19/11/2026: "sì"): la pagina era ferma al 30 ottobre.
+
+**Decisione**: nuova parte "Prima del lavoro: cambiare data o finire prima"
+(`apps/web/src/app/problemi-e-rimborsi/page.tsx`, ancora `#cambiare-data`):
+data proposta da uno dei due, annullamento senza perdere l'acconto se a
+spostare per primo è il professionista, "Il lavoro è già finito?" quando
+termina in anticipo. Sono le stesse regole già scritte nei Termini
+(docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md), in parole
+semplici. Data della pagina: 19 novembre 2026.
+
+## FAQ: "diritto di chiamata" al posto di "uscita" (voce T6)
+
+**Richiesta** (Luca, 19/11/2026: "sì"): nelle FAQ "Chi decide il prezzo?" e
+"Come faccio un preventivo?" le voci erano "manodopera, materiali, uscita";
+nell'esempio in home e nel preventivo la stessa voce si chiama "Diritto di
+chiamata" (PR #353). Ora una parola sola ovunque (`packages/shared/src/faq.ts`).
