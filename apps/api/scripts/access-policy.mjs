@@ -90,6 +90,8 @@ const publicRoutes = [
   "GET /popular-jobs",
   "GET /request-board",
   "GET /request-board/summary",
+  // Mappa dei lavori cercati, pubblica come le schede (analisi/bacheca-mappa-piano.md).
+  "GET /request-board/map",
   // Numero di richieste del mese per mestiere e provincia (solo da 10 in su), per le pagine /cerca.
   "GET /request-board/demand",
   // "Avvisami alla prima richiesta" dalla bacheca vuota, senza account (Turnstile).
