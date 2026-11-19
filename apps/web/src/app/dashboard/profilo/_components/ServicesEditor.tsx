@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useId, useRef, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
 import { Search, X } from "lucide-react";
 import {
   MAX_PROFESSIONAL_SERVICES,
@@ -102,6 +102,12 @@ export function ServicesEditor({
 
   function patch(index: number, change: Partial<EditableService>) {
     setServices((prev) => prev.map((service, i) => (i === index ? { ...service, ...change } : service)));
+  }
+  /** Invio in un campo prezzo chiude la riga come "Fatto", senza inviare il modulo. */
+  function closeOnEnter(e: KeyboardEvent<HTMLInputElement>, index: number) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (services[index]?.name.trim()) patch(index, { open: false });
   }
   function remove(index: number) {
     setServices((prev) => prev.filter((_, i) => i !== index));
@@ -289,6 +295,8 @@ export function ServicesEditor({
                                 aria-label={`Prezzo minimo di ${label} in euro`}
                                 value={service.priceMin}
                                 onChange={(e) => patch(index, { priceMin: e.target.value })}
+                                onKeyDown={(e) => closeOnEnter(e, index)}
+                                enterKeyHint="done"
                                 placeholder="Da €"
                                 inputMode="decimal"
                                 className="service-price"
@@ -301,6 +309,8 @@ export function ServicesEditor({
                                 aria-label={`Prezzo massimo di ${label} in euro`}
                                 value={service.priceMax}
                                 onChange={(e) => patch(index, { priceMax: e.target.value })}
+                                onKeyDown={(e) => closeOnEnter(e, index)}
+                                enterKeyHint="done"
                                 placeholder="A €"
                                 inputMode="decimal"
                                 className="service-price"

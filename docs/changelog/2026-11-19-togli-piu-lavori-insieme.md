@@ -34,3 +34,13 @@ La pagina scorre solo quanto basta per mostrare il campo.
 
 **Verifica**: lint e type check; `e2e/tests/preventivo-veloce.spec.ts` tocca
 il primo "Più cercato" e controlla che il cursore sia sul suo prezzo minimo.
+
+## Invio nel prezzo chiude la riga
+
+**Richiesta** (Luca): con Invio nel campo prezzo chiudere la riga come
+"Fatto", così da tastiera si va avanti senza toccare lo schermo.
+
+**Decisione**: Invio in "Da €" o "A €" chiude la riga (se la prestazione ha un
+nome) e non invia il modulo del profilo; sulla tastiera del telefono il tasto
+dice "Fine". **Verifica**: lint e type check; la stessa prova e2e scrive un
+prezzo, preme Invio e controlla che la riga sia chiusa.

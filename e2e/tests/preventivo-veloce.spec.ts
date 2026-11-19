@@ -137,5 +137,10 @@ test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita
   const pillName = ((await pill.getAttribute("aria-label")) ?? "").replace(/^Aggiungi /, "");
   await pill.click();
   await expect(page.getByRole("textbox", { name: `Prezzo minimo di ${pillName} in euro` })).toBeFocused();
+  // Invio nel prezzo chiude la riga come "Fatto".
+  await page.keyboard.type("50");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("textbox", { name: `Prezzo minimo di ${pillName} in euro` })).toHaveCount(0);
+  await expect(page.locator("#profilo-prestazioni .service-line").getByText(pillName, { exact: true })).toBeVisible();
   await page.context().close();
 });
