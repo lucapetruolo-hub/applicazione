@@ -703,6 +703,31 @@ Città, pagine vuote fuori da Google.
     script non ne crea più e, anche se ne restasse uno, la ricerca nasconde già
     gli account di prova.
 
+46. **Prove a mano, tutte in un posto** (revisione del 18/11,
+    docs/changelog/2026-11-19-revisione-termini-e-video.md): le prove che
+    nessun controllo automatico sostituisce, sparse finora nei thread. Si
+    spuntano qui; quelle con un punto proprio rimandano lì.
+    - **Giro di prova delle novità** dopo le unioni del 18-19/11: foglio in
+      `/mnt/project-files/collaudo/2026-11-19-giro-novita/foglio-da-spuntare.md`
+      (20 righe: data proposta dal professionista, lavoro finito in anticipo,
+      "Ti stanno aspettando", bacheca, acconto sul minimo).
+    - **iPhone vero**: scelta della data nella richiesta e nel preventivo
+      (#410), campi dell'ora e agenda, fotocamera e "Massimo 1 minuto" del
+      video (il video in 4G è già provato il 18/11).
+    - **Lettori di schermo**: VoiceOver (iPhone) e TalkBack (Android) sui
+      percorsi richiesta, preventivo, accettazione e Oggi.
+    - **Persone vere che non conoscono il sito, senza aiuto**:
+      - 5 clienti sulla scelta del mestiere ("Chi ti serve" e "Cambia");
+      - 5 clienti sull'annullamento e l'acconto
+        (`/mnt/project-files/analisi/annullamento-acconto/test-5-persone.md`);
+      - 5 professionisti sulla casella delle prestazioni a virgole (#393);
+      - 2-3 professionisti sull'agenda (punto 39);
+      - 2-3 persone esterne sul foglio "l'IA conosce i servizi del sito".
+    - **Servizi esterni dal vivo**: flusso Didit con documento e selfie
+      (punto 15), segnalazione DSA con le tre email (punto 41), pagamento con
+      una carta vera sul conto Live di Stripe, confronto delle pagine da
+      telefono e computer (punto 38).
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
