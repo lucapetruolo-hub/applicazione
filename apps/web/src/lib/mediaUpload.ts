@@ -1,7 +1,7 @@
 "use client";
 
 import { MEDIA_UPLOAD_MAX_BYTES, MEDIA_VIDEO_MAX_SECONDS } from "@professionisti/shared";
-import { ApiError } from "@professionisti/api-client";
+import { ApiError, NETWORK_ERROR_CODE, NETWORK_ERROR_MESSAGE } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
 
@@ -95,7 +95,8 @@ function postWithProgress(url: string, form: FormData, onProgress?: (fraction: n
       if (xhr.status >= 200 && xhr.status < 300) resolve(body);
       else reject(new ApiError(`Caricamento non riuscito (${xhr.status}).`, xhr.status));
     };
-    xhr.onerror = () => reject(new ApiError("Connessione interrotta durante il caricamento.", 0));
+    // Stessa frase del resto del sito (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+    xhr.onerror = () => reject(new ApiError(NETWORK_ERROR_MESSAGE, 0, NETWORK_ERROR_CODE));
     xhr.onabort = () => reject(new ApiError("Caricamento annullato.", 0, "ABORTED"));
     if (signal) {
       if (signal.aborted) return reject(new ApiError("Caricamento annullato.", 0, "ABORTED"));
@@ -161,6 +162,6 @@ export async function uploadMediaFile(
 
 /** Messaggio da mostrare per un caricamento non riuscito. */
 export function uploadErrorMessage(err: unknown): string {
-  if (err instanceof ApiError && err.status === 0 && err.code !== "ABORTED") return "Connessione interrotta: controlla la rete e riprova.";
+  if (err instanceof ApiError && err.status === 0 && err.code !== "ABORTED") return NETWORK_ERROR_MESSAGE;
   return err instanceof Error ? err.message : "Caricamento non riuscito.";
 }

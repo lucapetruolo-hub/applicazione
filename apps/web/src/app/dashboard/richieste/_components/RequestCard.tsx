@@ -3,6 +3,7 @@
 import { useMinuteClock } from "@/lib/useMinuteClock";
 import { HighlightMatch } from "@/lib/requestSearch";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { retryOnNetworkError } from "@professionisti/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -580,7 +581,10 @@ export function RequestCard({
 
     setIsSubmittingQuote(true);
     try {
-      await apiClient.createQuote(token, {
+      // Rete caduta: si riprova da soli una volta. Ripetere è sicuro: un secondo invio
+      // uguale aggiorna lo stesso preventivo, senza crearne un altro né riavvisare il
+      // cliente (docs/changelog/2026-11-19-errore-di-rete-in-italiano.md).
+      await retryOnNetworkError(() => apiClient.createQuote(token, {
         requestId: gr.id,
         items: parsed,
         estimatedStartDate,
@@ -593,7 +597,7 @@ export function RequestCard({
         cancellationNoticeHours: noticeHours,
         lateCancelKeepsDeposit: offered.some(paymentChoiceIsOnline) && keepDeposit,
         ...(canRepeat ? { repeatEvery } : {}),
-      });
+      }));
       setRememberPaymentOffer(false);
       setShowQuoteForm(false);
       onChanged();

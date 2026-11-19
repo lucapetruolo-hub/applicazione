@@ -40,6 +40,12 @@ Render non erano leggibili dal thread: l'orario è un indizio, non una prova.
   codice `DUPLICATE_REQUEST_CODE`. Se arriva dopo una rete caduta vuol dire che
   il primo invio era arrivato: si mostra "Richiesta inviata" con i numeri presi
   da "Le mie richieste". Poi la frase con "Riprova".
+- Invio del preventivo (Luca, 19/11: "sì"): una riprova da sola dopo 2
+  secondi (`RequestCard.tsx`). Ripetere è sicuro: `createOrUpdate` aggiorna lo
+  stesso preventivo, e uguale non avvisa il cliente; ora non scrive nemmeno
+  "Il professionista ha modificato il preventivo" nella cronologia.
+- Caricamenti diretti di foto e video (`apps/web/src/lib/mediaUpload.ts`):
+  stessa frase di rete del resto del sito al posto di "Connessione interrotta".
 - `AuthContext`: l'errore di rete nuovo non scollega (come prima il
   `TypeError`).
 - Andamento del sito in Admin: gli invii non riusciti si contano anche per

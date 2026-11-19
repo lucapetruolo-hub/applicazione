@@ -488,14 +488,24 @@ export class QuotesService {
       const noteText = notesChanged && input.notes?.trim() ? ` Nota: "${input.notes.trim()}"` : "";
       const paymentText = paymentChanged ? ` Pagamento offerto: ${describePaymentOffer(offer)}.` : "";
       const repeatText = repeatChanged ? ` Ripetizione: ${repeatEvery ? RECURRING_FREQUENCY_LABELS[repeatEvery as RecurringFrequency].toLowerCase() : "una volta sola"}.` : "";
-      await this.timelineService.log(
-        lead.guidedRequestId,
-        professionalProfile.id,
-        "PROFESSIONAL",
-        what
-          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${paymentText}${repeatText}${noteText}`
-          : "Il professionista ha modificato il preventivo.",
-      );
+      // Lo stesso preventivo mandato di nuovo, identico (la riprova da sola dopo
+      // una rete caduta, docs/changelog/2026-11-19-errore-di-rete-in-italiano.md):
+      // niente riga "ha modificato il preventivo" nella cronologia.
+      const identical =
+        !what &&
+        (existingQuote.arrivalTime ?? null) === (data.arrivalTime ?? null) &&
+        existingQuote.cancellationNoticeHours === data.cancellationNoticeHours &&
+        existingQuote.lateCancelKeepsDeposit === data.lateCancelKeepsDeposit;
+      if (!identical) {
+        await this.timelineService.log(
+          lead.guidedRequestId,
+          professionalProfile.id,
+          "PROFESSIONAL",
+          what
+            ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${paymentText}${repeatText}${noteText}`
+            : "Il professionista ha modificato il preventivo.",
+        );
+      }
     }
     if (existingQuote) {
       // Metriche di affidabilità (CLAUDE.md §15, evento 7): modificare un
