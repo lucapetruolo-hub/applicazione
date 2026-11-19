@@ -30,3 +30,12 @@ un'unica dashboard" diventa "Agenda, preventivi e documenti in un posto solo"
 
 **Motivo**: il sito non fa le fatture del professionista (CLAUDE.md §6: mai
 nulla all'Agenzia delle Entrate per conto suo) e "dashboard" è gergo.
+
+## Home, "Pagamento online protetto" (voce T3)
+
+**Richiesta** (Luca, 19/11/2026: "sì"): "I soldi restano bloccati fino alla tua
+conferma" diventa "fino alla tua conferma, o 7 giorni dopo il lavoro"
+(`apps/web/src/components/QualitySection.tsx`).
+
+**Motivo**: senza conferma e senza segnalazioni i soldi si sbloccano da soli
+dopo 7 giorni (`ONLINE_RELEASE_DAYS`): la frase di prima prometteva di più.

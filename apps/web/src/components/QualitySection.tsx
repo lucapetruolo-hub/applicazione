@@ -26,7 +26,7 @@ const POINTS: { title: string; text: string; online?: boolean }[] = [
   },
   {
     title: "Pagamento online protetto",
-    text: "I soldi restano bloccati fino alla tua conferma.",
+    text: "I soldi restano bloccati fino alla tua conferma, o 7 giorni dopo il lavoro.",
     online: true,
   },
   {
