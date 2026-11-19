@@ -30,3 +30,19 @@ a quel campo.
 computer): città bianca come l'indirizzo; nome e città vuoti, l'errore porta
 al nome; poi alla città, con l'errore visibile in fondo allo schermo; poi agli
 anni di esperienza, con "Esperienza" attiva nell'indice.
+
+## Secondo giro (migliorie approvate da Luca, 19/11)
+
+- Il campo dell'errore ha il **bordo rosso** (e `aria-invalid`) finché resta
+  sbagliato: nome, città, mestieri (riquadro rosso attorno alle tessere),
+  anni, prezzo della prestazione.
+- **L'errore sparisce da solo** appena il campo è corretto: il messaggio non è
+  più salvato come testo ma ricalcolato dal campo (`profileProblem` in
+  `apps/web/src/app/dashboard/profilo/page.tsx`). Gli errori del server
+  restano finché non si salva di nuovo.
+- **"Le mie richieste"**, modifica di una richiesta: la città è bianca con il
+  bordo degli altri campi, come nel profilo (prima grigia).
+
+**Verifica**: la stessa prova controlla anche il bordo rosso della città, che
+sparisce insieme all'errore appena la città è scritta, e `aria-invalid` sugli
+anni.

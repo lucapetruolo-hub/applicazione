@@ -73,6 +73,7 @@ export function ServicesEditor({
   suggestedFor,
   serviceCategory,
   datalistNames,
+  invalidPrice,
 }: {
   services: EditableService[];
   setServices: Dispatch<SetStateAction<EditableService[]>>;
@@ -80,6 +81,8 @@ export function ServicesEditor({
   suggestedFor: (slug: ProfessionalCategorySlug) => string[];
   serviceCategory: (service: EditableService) => ProfessionalCategorySlug | undefined;
   datalistNames: string[];
+  /** Prezzo sbagliato dopo "Salva profilo": bordo rosso finché non è corretto. */
+  invalidPrice?: { index: number; which: "min" | "max" } | null;
 }) {
   const [showAllSuggested, setShowAllSuggested] = useState<Record<string, boolean>>({});
   const [showMore, setShowMore] = useState(false);
@@ -100,6 +103,7 @@ export function ServicesEditor({
   const named = services.filter((service) => service.name.trim()).length;
   const full = services.length >= MAX_PROFESSIONAL_SERVICES;
 
+  const priceInvalid = (index: number, which: "min" | "max") => (invalidPrice?.index === index && invalidPrice.which === which) || undefined;
   function patch(index: number, change: Partial<EditableService>) {
     setServices((prev) => prev.map((service, i) => (i === index ? { ...service, ...change } : service)));
   }
@@ -300,7 +304,8 @@ export function ServicesEditor({
                                 placeholder="Da €"
                                 inputMode="decimal"
                                 className="service-price"
-                                style={inputStyle}
+                                aria-invalid={priceInvalid(index, "min")}
+                                style={priceInvalid(index, "min") ? { ...inputStyle, borderColor: brand.urgenza } : inputStyle}
                               />
                               <Text fontSize={13} color={brand.grafite70}>
                                 a
@@ -314,7 +319,8 @@ export function ServicesEditor({
                                 placeholder="A €"
                                 inputMode="decimal"
                                 className="service-price"
-                                style={inputStyle}
+                                aria-invalid={priceInvalid(index, "max")}
+                                style={priceInvalid(index, "max") ? { ...inputStyle, borderColor: brand.urgenza } : inputStyle}
                               />
                               <RemoveButton label={service.name.trim() ? `Rimuovi ${service.name.trim()}` : "Rimuovi prestazione"} onPress={() => remove(index)} />
                             </XStack>

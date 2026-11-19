@@ -8,7 +8,8 @@ import { testToken } from "../fixtures/preventivi";
  * segnalazione di Luca da iPhone): "Città in cui operi" era grigia e sembrava
  * già scelta; ora è bianca come gli altri campi. Premendo "Salva profilo" con
  * un campo mancante l'errore sta sopra il pulsante e, toccato, porta al campo
- * con il cursore dentro, anche se è in un'altra parte del modulo.
+ * con il cursore dentro, anche se è in un'altra parte del modulo; il campo ha
+ * il bordo rosso finché resta sbagliato e, corretto, l'errore sparisce.
  */
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name === "telefono-new-york", "Basta un telefono e un computer.");
@@ -84,10 +85,16 @@ test("l'errore del salvataggio porta al campo che manca", async ({ page }) => {
   await expect(cityError).toBeInViewport();
   await cityError.click();
   await expectFocusedInView(city);
-
-  // Un campo in un'altra parte del modulo: gli anni di esperienza.
+  // Bordo rosso finché la città manca; scritta la città, bordo ed errore spariscono da soli.
+  const cityBox = page.locator(".guided-city").filter({ has: city });
+  const borderColor = () => cityBox.evaluate((el) => getComputedStyle(el).borderTopColor);
+  await expect.poll(borderColor).toBe("rgb(180, 35, 24)");
   await city.fill("Latina");
   await city.press("Escape");
+  await expect(cityError).toHaveCount(0);
+  await expect.poll(borderColor).not.toBe("rgb(180, 35, 24)");
+
+  // Un campo in un'altra parte del modulo: gli anni di esperienza.
   const years = page.getByLabel("Anni di esperienza");
   await years.fill("200");
   await page.evaluate(() => window.scrollTo({ top: 0 }));
@@ -95,6 +102,7 @@ test("l'errore del salvataggio porta al campo che manca", async ({ page }) => {
   const yearsError = page.getByRole("button", { name: /Gli anni di esperienza devono essere un numero tra 0 e 80\. Vai al campo/ });
   await yearsError.click();
   await expectFocusedInView(years);
+  await expect(years).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("navigation", { name: "Parti del profilo" }).getByRole("link", { name: "Esperienza" })).toHaveAttribute(
     "aria-current",
     "location",

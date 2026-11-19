@@ -10624,6 +10624,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: save-bar-in 180ms ease-out;
   }
 }
+/* Mestieri da scegliere dopo "Salva profilo": riquadro rosso finché non se ne
+   sceglie uno (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */
+.profile-field-invalid {
+  outline: 2px solid #b42318;
+  outline-offset: 8px;
+  border-radius: 12px;
+}
 /* Errore del salvataggio sopra il pulsante; se porta a un campo è un
    pulsante che sembra un link (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */
 .save-bar-error:empty {

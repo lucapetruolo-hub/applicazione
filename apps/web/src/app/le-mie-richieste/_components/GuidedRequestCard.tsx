@@ -610,8 +610,10 @@ export function GuidedRequestCard({
             Modifica · {request.categoryLabel}
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
-          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
-            <Autocomplete items={comuni?.allItalianCityNames() ?? NO_CITIES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
+          {/* Bianca con il bordo degli altri campi: grigia sembrava già scelta
+              (docs/changelog/2026-11-19-campi-obbligatori-profilo.md). */}
+          <YStack className="guided-city guided-city-inline" borderWidth={1} borderColor={brand.bordoCampo} borderRadius={10} backgroundColor="#ffffff">
+            <Autocomplete items={comuni?.allItalianCityNames() ?? NO_CITIES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} aria-label="Città" placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
             <Text fontSize={13} color={brand.grafite70}>
