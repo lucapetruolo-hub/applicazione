@@ -77,7 +77,13 @@ export function AppointmentPanel({
     el.style.height = `${el.scrollHeight}px`;
   }, [noteDraft]);
 
-  const name = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || booking.clientName || "Cliente";
+  // In testa il nome dell'account, sotto quello scritto nella richiesta se è
+  // diverso, come nei "Dettagli cliente" (richiesta di Luca,
+  // docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+  const recipient = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ").trim();
+  const name = booking.clientName || recipient || "Cliente";
+  const sameName = (a: string, b: string) => a.toLocaleLowerCase("it-IT").replace(/\s+/g, " ").trim() === b.toLocaleLowerCase("it-IT").replace(/\s+/g, " ").trim();
+  const otherRecipient = recipient && booking.clientName && !sameName(recipient, booking.clientName) ? recipient : null;
   const phone = booking.recipientPhone ?? booking.clientPhone;
   const address = formatBookingAddress(booking) ?? booking.address;
   const navigateTo = booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}, ${[booking.postalCode, booking.city].filter(Boolean).join(" ")}` : address;
@@ -124,6 +130,11 @@ export function AppointmentPanel({
           </button>
         </div>
         <h2>{name}</h2>
+        {otherRecipient ? (
+          <p className="ag-muted" style={{ fontSize: 14, marginTop: 2 }}>
+            Nome sulla richiesta: <strong style={{ color: "var(--ag-ink, inherit)" }}>{otherRecipient}</strong>
+          </p>
+        ) : null}
         {jobDays ? (
           // Lavoro su più giorni (docs/CHANGELOG.md §310).
           <p style={{ fontSize: 14.5, marginTop: 4 }}>

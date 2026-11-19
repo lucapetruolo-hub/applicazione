@@ -426,6 +426,43 @@ export function quotePaymentShortLine(choice: JobPaymentChoice, totals: { totalM
   return `${now}, il resto a lavoro finito${split.restOnline ? "" : " direttamente a lui"}`;
 }
 
+/**
+ * Il modo di pagamento scelto dal cliente, detto al professionista quando il
+ * preventivo è accettato (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+ * Solo il tipo di pagamento e le cifre del preventivo, mai i dati della carta.
+ * `short` per il popup e l'elenco delle notifiche; `long`, con le cifre, per
+ * l'email. Con l'acconto online il lavoro nasce solo a pagamento riuscito
+ * (§240): quando il professionista lo legge, l'acconto è già pagato.
+ */
+export function acceptedPaymentForPro(
+  choice: JobPaymentChoice,
+  totals: { totalMinEurCents: number; totalMaxEurCents: number } | null,
+  depositPercent: number,
+): { short: string; long: string } {
+  if (choice === "DIRECT") {
+    return { short: "Ti paga direttamente", long: "Direttamente a te (contanti, bonifico...), niente pagamento online" };
+  }
+  const restWay = choice === "ONLINE" ? "online con la stessa carta" : "direttamente a te";
+  const short = choice === "ONLINE" ? "Paga online con la carta: acconto già pagato" : "Acconto già pagato online, il resto lo paga a te";
+  const split = totals ? quotePaymentSplit(choice, totals, depositPercent) : null;
+  if (!split) {
+    return { short, long: choice === "ONLINE" ? "Acconto già pagato online con la carta, il resto online a lavoro finito" : "Acconto già pagato online con la carta, il resto direttamente a te a lavoro finito" };
+  }
+  const now = formatEurCents(split.nowEurCents);
+  if (split.restMaxEurCents === 0) {
+    return {
+      short: "Ha già pagato tutto online con la carta",
+      long: split.restIsRange
+        ? `${now} già pagati online con la carta, il prezzo massimo. Se il prezzo finale è più basso, la differenza torna al cliente`
+        : `${now} già pagati online con la carta, tutto il prezzo`,
+    };
+  }
+  if (split.nowIsMinimum) {
+    return { short, long: `${now} già pagati online con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) ${restWay} a lavoro finito, solo se il prezzo finale è più alto` };
+  }
+  return { short, long: `Acconto di ${now} già pagato online con la carta. Il resto (${quotePaymentRestText(split)}) ${restWay} a lavoro finito` };
+}
+
 /** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */
 export const ONLINE_MIN_CHARGE_EUR_CENTS = 50;
 

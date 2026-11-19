@@ -60,7 +60,8 @@ import {
   CANCELLATION_TERMS_CHANGED_CODE,
   depositKeptOnLateCancel,
   type AcceptableCancellationPhase,
-  type AcceptedTerms } from "@professionisti/shared";
+  type AcceptedTerms,
+  acceptedPaymentForPro } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { readBookingIcsToken } from "./booking-ics-token";
@@ -672,22 +673,35 @@ export class BookingsService implements OnModuleInit {
     // dell'utente, docs/CHANGELOG.md §228): si sbloccano proprio ora, con la
     // prenotazione creata (CLAUDE.md §5 punto 9). Stessi campi della scheda.
     const client = guidedRequest.client;
-    const clientFullName =
-      [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || [client?.name, client?.surname].filter(Boolean).join(" ") || null;
+    // Nome dell'account in testa, come nei "Dettagli cliente"; il nome scritto
+    // nella richiesta (chi riceve il professionista) a parte, se diverso
+    // (richiesta di Luca, docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+    const accountName = [client?.name, client?.surname].filter(Boolean).join(" ").trim();
+    const recipientName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ").trim();
+    const clientFullName = accountName || recipientName || null;
+    const sameName = (a: string, b: string) => a.toLocaleLowerCase("it-IT").replace(/\s+/g, " ") === b.toLocaleLowerCase("it-IT").replace(/\s+/g, " ");
+    const otherRecipientName = accountName && recipientName && !sameName(accountName, recipientName) ? recipientName : null;
     const clientAddress = formatBookingAddress(booking) ?? (guidedRequest.address ? `${guidedRequest.address}${guidedRequest.city ? `, ${guidedRequest.city}` : ""}` : null);
     // Fattura chiesta accettando (docs/CHANGELOG.md §378): detta subito, coi dati da copiare.
     const invoice = (await this.clientInvoiceRequestsService?.forAcceptedNotice(quote.id)) ?? {};
+    const payment = acceptedPaymentForPro(paymentMethod, quotePriceTotals(quote.items), offer.depositPercent);
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
       ...invoice,
       bookingId: booking.id,
       guidedRequestId: quote.guidedRequestId,
       clientName: clientFullName,
+      recipientName: otherRecipientName,
       // Quale lavoro, nel testo della notifica (docs/CHANGELOG.md §349).
       category: guidedRequest.category.label,
       jobLabel: notificationJobLabel(guidedRequest.description),
       clientPhone: booking.recipientPhone ?? client?.phone ?? null,
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      // Come paga il cliente, nel popup e nell'email: solo il tipo e le cifre, mai la carta
+      // (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
+      paymentMethod,
+      paymentShort: payment.short,
+      paymentLine: payment.long,
     });
     // Gli altri professionisti con un preventivo ancora aperto lo sanno
     // subito, solo sul sito (collaudo F-11): prima lo scoprivano aprendo la lista.
