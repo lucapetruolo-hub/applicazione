@@ -122,6 +122,8 @@ function FullFooter() {
             <FooterColumnTitle>Per i professionisti</FooterColumnTitle>
             <FooterLink href="/registrati?ruolo=professionista">Iscriviti gratis</FooterLink>
             <FooterLink href="/per-professionisti">Piani e prezzi</FooterLink>
+            {/* Bacheca dei clienti che aspettano (docs/changelog/2026-11-19-pagina-lavori-cercati.md). */}
+            <FooterLink href="/lavora-con-noi">Lavori cercati</FooterLink>
             <FooterLink href="/faq?per=professionisti">Domande frequenti</FooterLink>
           </div>
         </div>
