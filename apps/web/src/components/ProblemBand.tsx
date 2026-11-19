@@ -14,7 +14,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
 import { ChosenProsStrip } from "./ChosenProsStrip";
 import { ReportAiAnswer } from "./ReportAiAnswer";
-import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
+import { CATEGORY_WHO as WHO, TO_TRADE_PLURAL, joinWithOr, problemCategoryChoices, tradePlural } from "@/lib/problemChoices";
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
@@ -93,6 +93,18 @@ export function ProblemBand({
   if (city) quoteParams.set("citta", city);
   setRequestHints(quoteParams, requestHints);
   const quoteHref = `/preventivo?${quoteParams.toString()}`;
+  // Più mestieri proposti: la richiesta a tutti quelli dei mestieri con qualcuno
+  // vicino, una richiesta per mestiere (docs/changelog/2026-11-19-preventivo-piu-mestieri.md).
+  // Il mestiere dei risultati sempre per primo, anche se per ora non c'è nessuno.
+  const tradeCount = (slug: ProfessionalCategorySlug) => (slug === chosen ? count : (categoryCounts?.[slug] ?? 0));
+  const otherTrades = chosen ? choices.filter((slug) => slug !== chosen && tradeCount(slug) > 0) : [];
+  const emptyTrades = chosen && categoryCounts ? choices.filter((slug) => slug !== chosen && categoryCounts[slug] === 0) : [];
+  const allTradesCount = otherTrades.reduce((sum, slug) => sum + tradeCount(slug), count);
+  const allTradesHref = (() => {
+    const params = new URLSearchParams(quoteParams);
+    params.set("altreCategorie", otherTrades.join(","));
+    return `/preventivo?${params.toString()}`;
+  })();
   // Richiesta in attesa di un mestiere che nessuno fa vicino (docs/changelog/2026-11-17-richieste-in-attesa.md).
   const waitingHref = (trade: { key?: string; name?: string }) => {
     const params = new URLSearchParams(quoteParams);
@@ -282,6 +294,19 @@ export function ProblemBand({
           onClear={onClearChosen}
           undo={chosenUndo}
         />
+      ) : chosen && otherTrades.length > 0 ? (
+        <TradesRequestChoice
+          chosen={chosen}
+          others={otherTrades}
+          emptyTrades={emptyTrades}
+          decided={questionDone}
+          chosenCount={count}
+          allCount={allTradesCount}
+          city={city}
+          onlyHref={quoteHref}
+          allHref={allTradesHref}
+          maxChosen={maxChosen}
+        />
       ) : chosen ? (
         <YStack gap="2">
           <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
@@ -297,6 +322,7 @@ export function ProblemBand({
               <Button tabIndex={-1} variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
             </Link>
           </XStack>
+          {emptyTrades.length > 0 ? <EmptyTradesNote slugs={emptyTrades} /> : null}
           {maxChosen ? (
             <Text fontSize={16} color={brand.grafite70}>
               Oppure scegli tu fino a {maxChosen} professionisti con «Scegli» sulle schede.
@@ -355,6 +381,116 @@ export function ProblemBand({
         </>
       ) : null}
     </YStack>
+  );
+}
+
+function professionals(count: number): string {
+  return count === 1 ? "1 professionista" : `${count} professionisti`;
+}
+
+/** Mestieri proposti senza nessuno vicino: si dice perché la richiesta non va anche a loro. */
+function EmptyTradesNote({ slugs }: { slugs: ProfessionalCategorySlug[] }) {
+  return (
+    <Text fontSize={14} color={brand.grafite70}>
+      Per ora nessuno vicino per {slugs.map(categoryLabel).join(" e ")}.
+    </Text>
+  );
+}
+
+/**
+ * "A chi mandiamo la richiesta?" quando i mestieri proposti con qualcuno vicino
+ * sono più di uno (richiesta di Luca del 19/11/2026,
+ * docs/changelog/2026-11-19-preventivo-piu-mestieri.md). Prima "Chiedi
+ * preventivo a tutti" portava solo il mestiere dei risultati. Finché il
+ * cliente non sceglie, il pulsante pieno è "a tutti i mestieri" (non sappiamo
+ * quale serve); dopo un tocco su un mestiere o una risposta alla domanda, il
+ * pieno è "solo" quello scelto. Ogni pulsante dice quanti professionisti raggiunge.
+ */
+function TradesRequestChoice({
+  chosen,
+  others,
+  emptyTrades,
+  decided,
+  chosenCount,
+  allCount,
+  city,
+  onlyHref,
+  allHref,
+  maxChosen,
+}: {
+  chosen: ProfessionalCategorySlug;
+  others: ProfessionalCategorySlug[];
+  emptyTrades: ProfessionalCategorySlug[];
+  decided: boolean;
+  chosenCount: number;
+  allCount: number;
+  city?: string;
+  onlyHref: string;
+  allHref: string;
+  maxChosen?: number;
+}) {
+  const trades = [chosen, ...others];
+  const where = city ? ` a ${city}` : "";
+  // "A elettricisti e idraulici" solo se resta corto e chiaro; con un nome che ha
+  // già una "e" dentro ("caldaie e climatizzatori") o con tre mestieri, "A tutti e N i mestieri".
+  const plurals = trades.map(tradePlural);
+  const joined = `A ${plurals.join(" e ")}`;
+  const allLabel =
+    trades.length === 2 && joined.length <= 34 && !plurals.some((name) => name.includes(" e "))
+      ? joined
+      : `A tutti e ${trades.length === 2 ? "due" : "tre"} i mestieri`;
+  const onlyLabel = `Solo ${TO_TRADE_PLURAL[chosen]}`;
+  const onlyNote = chosenCount === 0 ? "per ora nessuno vicino" : `${professionals(chosenCount)}${decided ? where : ""}`;
+  const all = { href: allHref, label: decided ? (others.length === 1 ? `Anche ${TO_TRADE_PLURAL[others[0]!]}` : "Anche agli altri mestieri") : allLabel, note: decided ? `${professionals(allCount)} in tutto` : `${professionals(allCount)}${where}` };
+  const only = { href: onlyHref, label: onlyLabel, note: onlyNote };
+  const [primary, secondary] = decided ? [only, all] : [all, only];
+  return (
+    <YStack gap="3">
+      <Text fontWeight="700" fontSize={17} color={brand.grafite}>
+        A chi mandiamo la richiesta?
+      </Text>
+      <XStack gap="2" flexWrap="wrap">
+        <RequestChoiceLink {...primary} filled />
+        <RequestChoiceLink {...secondary} filled={false} />
+      </XStack>
+      {!decided ? (
+        <Text fontSize={14} color={brand.grafite70}>
+          {`Non sei sicuro? Mandala a tutti e ${trades.length === 2 ? "due" : "tre"}: parte una richiesta per mestiere e scegli tu il preventivo che preferisci.`}
+        </Text>
+      ) : null}
+      {emptyTrades.length > 0 ? <EmptyTradesNote slugs={emptyTrades} /> : null}
+      {maxChosen ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          Oppure scegli tu fino a {maxChosen} professionisti con «Scegli» sulle schede.
+        </Text>
+      ) : null}
+    </YStack>
+  );
+}
+
+/** Pulsante su due righe: a chi va e quanti professionisti raggiunge. */
+function RequestChoiceLink({ href, label, note, filled }: { href: string; label: string; note: string; filled: boolean }) {
+  return (
+    <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}, ${note}`}>
+      <YStack
+        alignItems="center"
+        justifyContent="center"
+        minHeight={56}
+        paddingHorizontal="5"
+        paddingVertical="2"
+        borderRadius={999}
+        borderWidth={1.5}
+        borderColor={brand.cianografiaPieno}
+        backgroundColor={filled ? `${brand.cianografiaPieno} hover:${brand.cianografiaScuro}` : `${brand.calce} hover:${brand.cianografiaVelo}`}
+      >
+        <Text fontWeight="700" fontSize={17} color={filled ? "white" : brand.cianografiaScuro} textAlign="center">
+          {label}
+        </Text>
+        <Text fontSize={13} color={filled ? "white" : brand.cianografiaScuro} textAlign="center" aria-hidden>
+          {note}
+        </Text>
+      </YStack>
+    </Link>
   );
 }
 
