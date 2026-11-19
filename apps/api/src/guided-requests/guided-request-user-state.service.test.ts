@@ -200,6 +200,16 @@ describe("NotificationsService — email sul nuovo lead", () => {
     expect(email.send).not.toHaveBeenCalled();
   });
 
+  // Richieste già aperte al primo profilo: un solo riassunto, non un'email
+  // ciascuna (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+  it("con emailInSummary l'email non parte subito: aspetta il riassunto", async () => {
+    const { service, email, prisma } = buildLeadNotifications(false);
+    await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false }, { emailInSummary: true });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(email.send).not.toHaveBeenCalled();
+    expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ emailHoldUntil: expect.any(Date) }) });
+  });
+
   it("nessuna email se la richiesta è silenziata", async () => {
     const { service, email } = buildLeadNotifications(true);
     await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });

@@ -128,7 +128,7 @@ export class NotificationsService {
    * comunque al prossimo poll, invariato) ma dimezza la latenza percepita
    * di badge/toast rispetto al solo poll da 15-45s già esistente.
    */
-  async notify(userId: string, type: string, rawPayload: Prisma.InputJsonValue): Promise<void> {
+  async notify(userId: string, type: string, rawPayload: Prisma.InputJsonValue, options: { emailInSummary?: boolean } = {}): Promise<void> {
     const payload = await this.withJobContext(userId, rawPayload);
     // Richiesta silenziata dall'utente (menu hamburger della scheda,
     // docs/CHANGELOG.md §130): la notifica resta nella cronologia della
@@ -151,7 +151,12 @@ export class NotificationsService {
     // Riassunto della sera e notte senza email
     // (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md): l'email
     // si segna sulla riga e parte più tardi da HeldEmailsService.
-    const emailHold = emailHoldUntil(prefs, type, payload);
+    // `emailInSummary`: tante notifiche nate insieme (le richieste già aperte
+    // in zona al primo profilo) non partono una email ciascuna ma in un solo
+    // riassunto, al prossimo giro di HeldEmailsService (5 minuti); se nel
+    // frattempo le legge sul sito, nessuna email
+    // (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+    const emailHold = emailHoldUntil(prefs, type, payload) ?? (options.emailInSummary ? new Date() : null);
     if (!muted && NOTIFICATION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
       if (emailHold) heldEmail = emailHold;
       else this.emailNotification(userId, type, payload);

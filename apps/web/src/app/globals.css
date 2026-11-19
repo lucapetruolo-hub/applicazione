@@ -2918,6 +2918,19 @@ button.today-more {
     font-size: 13px;
   }
 }
+/* Barra in cima alle pagine dei passi con 4 o più passi (con il profilo fatto
+   in testa, docs/changelog/2026-11-19-completa-profilo-migliorie.md): da
+   telefono resta il nome della pagina, gli altri per i lettori di schermo. */
+@media (max-width: 520px) {
+  .journey-bar.is-many .journey-bar-step:not(.is-here) > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
 /* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
 .profile-status {
   display: flex;

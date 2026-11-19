@@ -32,3 +32,17 @@ nascosti con "Profilo salvato" aperta, al massimo un popup dopo l'arrivo delle
 richieste, poi "Compila i dati fiscali". Anteprime in
 `analisi/completa-profilo-oggi/primo-profilo-*.png` e
 `dopo-salvataggio-*.png` (cartella del progetto).
+
+## Secondo giro (stessa giornata, sì di Luca alle due migliorie emerse)
+
+- **"1 di 3 fatti"**: `setupJourney` mette in testa il profilo pubblico come
+  passo fatto. Prima, salvato il profilo, il riquadro passava da "0 di 3" a
+  "0 di 2"; ora il conteggio sale. Anche la barra "Passo N di M" in cima alle
+  pagine dei passi lo conta; con 4 o più passi, da telefono, mostra solo il
+  nome della pagina (come il riquadro di Oggi).
+- **Email delle richieste già aperte**: al primo profilo (e quando arriva una
+  richiesta in attesa per un mestiere senza iscritti) partiva un'email per
+  ogni richiesta, nella prova più di 80. Ora `notify(..., { emailInSummary: true })`
+  le segna come rimandate e `HeldEmailsService` (ogni 5 minuti) manda un solo
+  riassunto; se nel frattempo il professionista le legge sul sito, nessuna
+  email. Prova in `guided-request-user-state.service.test.ts`.

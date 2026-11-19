@@ -63,14 +63,15 @@ describe("GuidedRequestsService.matchNewProfileToOpenRequests", () => {
     const { service, prisma, notifications } = buildService(0);
     await service.matchNewProfileToOpenRequests(profile);
     expect(prisma.lead.create).toHaveBeenCalledTimes(1);
-    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.objectContaining({ guidedRequestId: "gr-1" }));
+    // Email nel riassunto, non una per richiesta (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.objectContaining({ guidedRequestId: "gr-1" }), { emailInSummary: true });
     expect(notifications.notify).toHaveBeenCalledWith("client-1", "REQUEST_MATCHED_LATER", { guidedRequestId: "gr-1" });
   });
 
   it("non avvisa di nuovo il cliente se la richiesta aveva già dei destinatari", async () => {
     const { service, notifications } = buildService(2);
     await service.matchNewProfileToOpenRequests(profile);
-    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.anything());
+    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.anything(), { emailInSummary: true });
     expect(notifications.notify).not.toHaveBeenCalledWith("client-1", "REQUEST_MATCHED_LATER", expect.anything());
   });
 

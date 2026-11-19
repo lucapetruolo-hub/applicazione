@@ -77,7 +77,7 @@ describe("matchProfileToWaitingTrades", () => {
     });
     // Al primo che la riceve prende il mestiere della prestazione con le parole del lavoro.
     expect(prisma.guidedRequest.update).toHaveBeenCalledWith({ where: { id: "gr-1" }, data: { status: "MATCHED", categoryId: "cat-elettricista" } });
-    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.objectContaining({ guidedRequestId: "gr-1", category: "Antennista" }));
+    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "NEW_LEAD", expect.objectContaining({ guidedRequestId: "gr-1", category: "Antennista" }), { emailInSummary: true });
     expect(notifications.notify).toHaveBeenCalledWith("client-1", "REQUEST_MATCHED_LATER", { guidedRequestId: "gr-1" });
     expect(timeline.log).toHaveBeenCalledWith("gr-1", "pro-1", "SYSTEM", expect.stringContaining("quando nessuno faceva questo lavoro"));
   });

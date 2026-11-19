@@ -1477,7 +1477,7 @@ export class GuidedRequestsService {
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
         audience: "shared",
-      });
+      }, { emailInSummary: true });
       if (isFirstRecipient) {
         await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId: request.id });
       }
@@ -1603,7 +1603,7 @@ export class GuidedRequestsService {
         isUrgent: false,
         respondUntil: respondUntilForEmail(false, request.expiresAt),
         audience: "shared",
-      });
+      }, { emailInSummary: true });
       if (isFirstRecipient) {
         await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId: request.id });
       }

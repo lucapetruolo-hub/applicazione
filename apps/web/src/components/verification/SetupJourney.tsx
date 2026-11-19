@@ -104,7 +104,11 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
   // Una cosa alla volta: i dati fiscali da fare aspettano il piano.
   const fiscal: JourneyStep = fiscalTodo.state === "current" && !planReady ? { ...fiscalTodo, state: "locked", text: "Dopo il piano.", action: undefined } : fiscalTodo;
   const fiscalReady = planReady && (fiscal.state === "done" || fiscal.state === "waiting");
-  const steps: JourneyStep[] = plan ? [plan, fiscal] : [fiscal];
+  // Il profilo pubblico resta in testa come passo fatto: prima il riquadro
+  // passava da "0 di 3 fatti" a "0 di 2" appena salvato il profilo, ora si
+  // legge "1 di 3" (docs/changelog/2026-11-19-completa-profilo-migliorie.md).
+  const profile: JourneyStep = { key: "profile", icon: "user-round", title: "Profilo pubblico", short: "Profilo", state: "done", text: "Salvato. Puoi cambiarlo quando vuoi." };
+  const steps: JourneyStep[] = plan ? [profile, plan, fiscal] : [profile, fiscal];
 
   const identity = status.identity;
   let identityStep: JourneyStep | null = null;
@@ -265,7 +269,7 @@ export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: J
       <Text fontSize={16} fontWeight="700" color={brand.grafite70} marginBottom="2">
         Passo {index + 1} di {steps.length}
       </Text>
-      <ol className="journey-bar">
+      <ol className={steps.length > 3 ? "journey-bar is-many" : "journey-bar"}>
         {steps.map((step, i) => (
           <li key={step.key} className={`journey-bar-step is-${step.state}${step.key === here ? " is-here" : ""}`} aria-current={step.key === here ? "step" : undefined}>
             <StepMarker step={step} index={i} size={26} />
