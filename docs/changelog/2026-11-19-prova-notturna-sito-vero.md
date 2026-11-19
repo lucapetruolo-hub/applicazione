@@ -58,3 +58,8 @@ della prova e non del sito:
 
 L'avvio dopo l'aggiornamento del sito funziona: Vercel ha fatto partire il
 secondo giro da solo.
+- **Giri annullati**: due giri lanciati a mano sono stati annullati da
+  GitHub. La regola "un giro alla volta" stava in cima al workflow, e ogni
+  avviso di Vercel (anche di un'anteprima, poi saltato) prendeva il posto del
+  giro in attesa. Ora la regola sta sul lavoro: un avviso saltato non tocca
+  niente.
