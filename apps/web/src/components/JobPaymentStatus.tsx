@@ -195,9 +195,16 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
         const current = index === step;
         const color = current && error ? brand.urgenza : done ? brand.cianografia : current ? brand.cianografiaScuro : brand.filetto;
         return (
-          <YStack key={label} flex={1} gap={4}>
+          <YStack key={label} flex={1} gap={4} style={{ minWidth: "min-content" }}>
             <YStack height={4} borderRadius={2} backgroundColor={done || current ? color : brand.filetto} opacity={current && !error ? 0.45 : 1} />
-            <Text fontSize={13} lineHeight="14px" fontWeight={current ? "700" : "500"} color={done || current ? brand.grafite : brand.grafite70}>
+            {/* Mai a capo a metà parola ("Paga-to", "professionist-a" da telefono): si va a capo solo tra le parole. */}
+            <Text
+              fontSize={13}
+              lineHeight="16px"
+              fontWeight={current ? "700" : "500"}
+              color={done || current ? brand.grafite : brand.grafite70}
+              style={{ overflowWrap: "normal", wordBreak: "normal", hyphens: "manual" }}
+            >
               {label}
             </Text>
           </YStack>
