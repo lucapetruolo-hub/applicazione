@@ -104,7 +104,7 @@ describe("BillingService.createSubscriptionCheckout e mesi gratis", () => {
 
     await service.createSubscriptionCheckout("user-1", "BASE");
 
-    expect(stripe.checkout.sessions.create.mock.calls[0]![0].payment_method_types).toEqual(["card"]);
+    expect(stripe.checkout.sessions.create.mock.calls[0]![0].allowed_payment_method_types).toEqual(["card"]);
   });
 
   it("ultimo giorno dei mesi gratis: la prova dura 48 ore invece di far pagare subito (E3-08)", async () => {

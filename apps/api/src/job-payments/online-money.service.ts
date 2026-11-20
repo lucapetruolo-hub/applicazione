@@ -224,7 +224,13 @@ export function cardColumns(part: "deposit" | "balance", card: ChargeInfo["card"
     : { balanceCardBrand: card.brand, balanceCardLast4: card.last4, balanceCardWallet: card.wallet };
 }
 
-export const CARD_ONLY: { payment_method_types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] } = { payment_method_types: ["card"] };
+// Dalla versione 2026-09-30 delle API Stripe rifiuta `payment_method_types`
+// sul Checkout (errore 400): `allowed_payment_method_types` è il suo posto e
+// filtra i metodi accesi in Dashboard tenendo solo la carta
+// (docs/changelog/2026-11-20-stripe-23-nestjs-12.md).
+export const CARD_ONLY: { allowed_payment_method_types: Stripe.Checkout.SessionCreateParams.AllowedPaymentMethodType[] } = {
+  allowed_payment_method_types: ["card"],
+};
 
 @Injectable()
 export class OnlineMoneyService {
