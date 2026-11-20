@@ -35,6 +35,10 @@ G nell'email del lunedì, avviso sopra 5 richieste senza nessuno).
 - Tutti i numeri dal lancio e senza account di prova. Privacy (punto 9) e
   pagina Cookie aggiornate.
 
+- *Sicurezza:* osv-scanner segnalava `effect` 3.21.0 (usato da `@prisma/config`,
+  GHSA-7589-6fvf-x4pw, corretto dalla 3.22.1): override a 3.22.4 in
+  `pnpm-workspace.yaml`, l'ultima uscita da più di due settimane.
+
 **Motivo:** senza questi numeri non si sa se la bacheca aggiunge preventivi e
 professionisti, né dove reclutare.
 
