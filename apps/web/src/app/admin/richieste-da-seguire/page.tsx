@@ -8,6 +8,8 @@ import {
   OUT_OF_SERVICE_LABELS,
   type BoardAdminCounts,
   type BoardSpeedCounts,
+  boardUncoveredAd,
+  boardUncoveredInviteHref,
   waitingInviteHref,
   waitingTradeAd,
   type MostRequestedTrade,
@@ -225,16 +227,7 @@ function BoardMeasures({ counts }: { counts: BoardAdminCounts }) {
           Oggi c'è sempre qualcuno che può rispondere entro 100 km.
         </Text>
       ) : (
-        <div className="waiting-groups">
-          {counts.uncovered.map((row) => (
-            <div key={`${row.province}|${row.trade}`} className="waiting-group">
-              <strong>
-                {row.tradeLabel} · {row.provinceName}
-              </strong>
-              <span>{row.count === 1 ? "1 richiesta" : `${row.count} richieste`} senza nessuno entro 100 km</span>
-            </div>
-          ))}
-        </div>
+        <UncoveredGroups rows={counts.uncovered} />
       )}
       <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
         Uso della pagina
@@ -295,6 +288,50 @@ function MostRequested({ trades }: { trades: MostRequestedTrade[] }) {
         ) : null}
       </XStack>
     </YStack>
+  );
+}
+
+/**
+ * "Dove mancano professionisti" con l'annuncio da copiare e l'invito già
+ * scritto (docs/changelog/2026-11-20-migliorie-lavori-cercati.md).
+ */
+function UncoveredGroups({ rows }: { rows: BoardAdminCounts["uncovered"] }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = async (row: BoardAdminCounts["uncovered"][number]) => {
+    try {
+      await navigator.clipboard.writeText(boardUncoveredAd(row, SITE_URL));
+      setCopied(`${row.province}|${row.trade}`);
+    } catch {
+      setCopied(null);
+    }
+  };
+  return (
+    <>
+      <div className="waiting-groups">
+        {rows.map((row) => {
+          const key = `${row.province}|${row.trade}`;
+          return (
+            <div key={key} className="waiting-group">
+              <strong>
+                {row.tradeLabel} · {row.provinceName}
+              </strong>
+              <span>{row.count === 1 ? "1 richiesta" : `${row.count} richieste`} senza nessuno entro 100 km</span>
+              <XStack gap="2" flexWrap="wrap" marginTop="2">
+                <Button size="2" variant="secondary" onPress={() => void copy(row)}>
+                  {copied === key ? "Copiato" : "Copia annuncio"}
+                </Button>
+                <Link href={boardUncoveredInviteHref(row)} className="waiting-group-link">
+                  Invita un professionista
+                </Link>
+              </XStack>
+            </div>
+          );
+        })}
+      </div>
+      <Text fontSize={13} color={brand.grafite70}>
+        L&apos;annuncio porta alla pagina con le richieste di quella zona. Chi si iscrive da lì conta in «Da Lavori cercati».
+      </Text>
+    </>
   );
 }
 

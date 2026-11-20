@@ -1,5 +1,5 @@
 import type { UnreadNotification } from "./AuthContext";
-import { isProfessionalCategorySlug } from "@professionisti/shared";
+import { BOARD_FROM_PARAM, isProfessionalCategorySlug } from "@professionisti/shared";
 
 /**
  * A quale sezione/tab appartiene ogni tipo di notifica — usato per i
@@ -114,7 +114,8 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const count = typeof payload === "object" && payload !== null ? (payload as { count?: unknown }).count : undefined;
     if (!id || (typeof count === "number" && count > 1)) return "/lavora-con-noi";
     const trade = getPayloadValue(payload, "boardTrade");
-    return `/rispondi?richiesta=${encodeURIComponent(id)}${trade && isProfessionalCategorySlug(trade) ? `&categoria=${trade}` : ""}`;
+    // `da=avviso` serve solo a contare da dove parte "Rispondi" (docs/changelog/2026-11-20-migliorie-lavori-cercati.md).
+    return `/rispondi?richiesta=${encodeURIComponent(id)}${trade && isProfessionalCategorySlug(trade) ? `&categoria=${trade}` : ""}&${BOARD_FROM_PARAM}=avviso`;
   }
   // Promemoria (docs/CHANGELOG.md §130): stesso tipo per entrambi i ruoli,
   // il lato è nel payload (`audience`), non deducibile dal solo `type`.

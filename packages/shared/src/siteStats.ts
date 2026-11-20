@@ -116,8 +116,12 @@ export const CHURN_REASON_LABEL: Record<ChurnReason, string> = {
   OTHER: "Altro",
 };
 
-/** Da dove arrivano i professionisti: le provenienze delle richieste più l'invito al telefono. */
-export type SignupSourceKey = TrafficSource | "INVITE" | "COLLEAGUE" | "PARTNER" | "unknown";
+/**
+ * Da dove arrivano i professionisti: le provenienze delle richieste più l'invito
+ * al telefono e "Lavori cercati" (`User.signupFromBoard`,
+ * docs/changelog/2026-11-20-migliorie-lavori-cercati.md).
+ */
+export type SignupSourceKey = TrafficSource | "INVITE" | "COLLEAGUE" | "PARTNER" | "BOARD" | "unknown";
 
 /** Da dove parte una richiesta: a tutti i professionisti della zona o dalla pagina di uno di loro. */
 export const REQUEST_ORIGINS = ["GENERAL", "PROFILE"] as const;
@@ -193,6 +197,7 @@ export const BOARD_USE_ACTIONS = [
   "RISPONDI_PAGINA",
   "RISPONDI_OGGI",
   "RISPONDI_EMAIL",
+  "RISPONDI_AVVISO",
 ] as const;
 export type BoardUseAction = (typeof BOARD_USE_ACTIONS)[number];
 
@@ -207,11 +212,12 @@ export const BOARD_USE_LABEL: Record<BoardUseAction, string> = {
   RISPONDI_PAGINA: "«Rispondi» dalle pagine per mestiere",
   RISPONDI_OGGI: "«Rispondi» dal riquadro in Oggi",
   RISPONDI_EMAIL: "«Rispondi» dall'email del lunedì",
+  RISPONDI_AVVISO: "«Rispondi» dall'avviso sul sito",
 };
 
 /** Parametro dei link "Rispondi" che dice da dove si parte (solo per contare). */
 export const BOARD_FROM_PARAM = "da";
-export const BOARD_FROM_VALUES = { mappa: "RISPONDI_MAPPA", pagina: "RISPONDI_PAGINA", oggi: "RISPONDI_OGGI", email: "RISPONDI_EMAIL" } as const satisfies Record<string, BoardUseAction>;
+export const BOARD_FROM_VALUES = { mappa: "RISPONDI_MAPPA", pagina: "RISPONDI_PAGINA", oggi: "RISPONDI_OGGI", email: "RISPONDI_EMAIL", avviso: "RISPONDI_AVVISO" } as const satisfies Record<string, BoardUseAction>;
 export type BoardFrom = keyof typeof BOARD_FROM_VALUES;
 
 /**

@@ -337,3 +337,32 @@ export function insideBoardBounds(point: { lat: number; lon: number }, bounds: B
  * dalla sua zona in km (0 per un lavoro online).
  */
 export type BoardNearMe = { cards: (BoardCard & { km: number })[]; total: number };
+
+/**
+ * Annuncio anonimo per "Dove mancano professionisti" nell'Admin
+ * (docs/changelog/2026-11-20-migliorie-lavori-cercati.md): mestiere,
+ * provincia e numero, mai dati del cliente, come `waitingTradeAd`. Il link
+ * porta alla pagina pubblica con le richieste vere di quella provincia, che
+ * segna l'iscrizione come arrivata da "Lavori cercati". Il sito resta un
+ * intermediario (CLAUDE.md §5 punto 18): il prezzo lo fa il professionista.
+ */
+export function boardUncoveredAd(
+  row: { province: string; provinceName: string; trade: string; tradeLabel: string; count: number },
+  siteUrl: string,
+): string {
+  const clients = row.count === 1 ? "1 cliente aspetta" : `${row.count} clienti aspettano`;
+  const link = `${siteUrl.replace(/\/$/, "")}/lavora-con-noi/${row.trade}/${provinceSlug(row.province)}`;
+  return `Fai il lavoro di ${row.tradeLabel.toLowerCase()} in provincia di ${row.provinceName}? Sul nostro sito ${clients} un preventivo e nessun professionista è vicino. Guarda le richieste e iscriviti: il prezzo lo decidi tu. ${link}`;
+}
+
+/**
+ * "Invita un professionista" da "Dove mancano professionisti": il modulo
+ * dell'Admin con il mestiere e, se il nome della provincia è anche un comune
+ * (Latina, Padova), la città già scritta; "Monza e Brianza" resta da scegliere.
+ */
+export function boardUncoveredInviteHref(row: { provinceName: string; tradeLabel: string }): string {
+  const params = new URLSearchParams({ mestiere: row.tradeLabel });
+  const comune = findComuneByName(row.provinceName);
+  if (comune) params.set("citta", comune.name);
+  return `/admin/professionisti?${params.toString()}`;
+}
