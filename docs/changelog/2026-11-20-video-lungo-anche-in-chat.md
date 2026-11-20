@@ -20,3 +20,9 @@
 83 secondi compare il box con "1 minuto e 23 secondi". La modifica di una
 richiesta usa lo stesso componente ma non è stata provata a schermo (serve una
 richiesta ancora modificabile sull'account di prova).
+
+**Controllo delle dipendenze**: il 19/11 sera è uscito l'avviso
+GHSA-7589-6fvf-x4pw su `effect` (ReDoS, corretto dalla 3.22.1), che Prisma
+(`@prisma/config` 6.19.3) ferma alla 3.21.0: `osv-scanner` era rosso su ogni
+PR. Portato alla 3.22.4 con una riga in `overrides` di `pnpm-workspace.yaml`.
+Verifica: prove dell'API (1713) verdi, Prisma legge lo schema.
