@@ -700,3 +700,21 @@ export function reconcile(counted: number, saved: number, days: number): AdminSi
   const ok = counted - saved <= Math.max(2, Math.round(saved * 0.1)) && saved - counted <= Math.max(2, Math.round(saved * 0.25));
   return { days, counted, saved, ok };
 }
+
+/**
+ * Riga dell'email del lunedì con le province e i mestieri di "Lavori cercati"
+ * senza nessuno entro 100 km, prima quelli con più richieste
+ * (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+ */
+export function boardUncoveredAdvice(rows: { tradeLabel: string; provinceName: string; count: number }[]): SiteAdvice {
+  const shown = rows.slice(0, 5).map((row) => `${row.tradeLabel}, ${row.provinceName} (${row.count === 1 ? "1 richiesta" : `${row.count} richieste`})`);
+  const more = rows.length - shown.length;
+  return {
+    key: "board-uncovered",
+    level: "IMPORTANT",
+    title: "Lavori cercati senza professionisti vicino",
+    why: "Ci sono richieste in Lavori cercati a cui nessuno può rispondere entro 100 km.",
+    todo: `Cerca professionisti qui: ${shown.join("; ")}${more > 0 ? `; e altri ${more}` : ""}.`,
+    link: { label: "Richieste da seguire", href: "/admin/richieste-da-seguire" },
+  };
+}

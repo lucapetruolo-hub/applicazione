@@ -1,12 +1,14 @@
 import { Body, Controller, Get, Headers, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
+  boardUseEventSchema,
   faqFeedbackEventSchema,
   isBotUserAgent,
   priceToolStepEventSchema,
   siteFailureEventSchema,
   siteProfileViewEventSchema,
   siteStepEventSchema,
+  type BoardUseEvent,
   type FaqFeedbackEvent,
   type PriceToolStepEvent,
   type SiteFailureEvent,
@@ -46,6 +48,15 @@ export class SiteCountsController {
   async priceTool(@Body(new ZodValidationPipe(priceToolStepEventSchema)) body: PriceToolStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordPriceToolStep(body.step).catch(() => undefined);
+  }
+
+  /** Un'azione in "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Post("board")
+  @HttpCode(204)
+  async board(@Body(new ZodValidationPipe(boardUseEventSchema)) body: BoardUseEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
+    if (isBotUserAgent(userAgent)) return;
+    await this.siteCounts.recordBoardUse(body.action).catch(() => undefined);
   }
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })

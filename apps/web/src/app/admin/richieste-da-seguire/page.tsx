@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  BOARD_USE_LABEL,
+  MIN_CASES_FOR_PERCENT,
   OUT_OF_SERVICE_LABELS,
   type BoardAdminCounts,
+  type BoardSpeedCounts,
   waitingInviteHref,
   waitingTradeAd,
   type MostRequestedTrade,
@@ -170,6 +173,82 @@ function BoardCounts({ counts }: { counts: BoardAdminCounts }) {
       </div>
       <Text fontSize={13} color={brand.grafite70}>
         Risposte, preventivi e richieste tolte: ultimi 90 giorni. Gli altri numeri sono di oggi.
+      </Text>
+      <BoardMeasures counts={counts} />
+    </YStack>
+  );
+}
+
+/** "7 su 9" sotto i 30 casi, altrimenti la percentuale (una percentuale su pochi casi inganna). */
+function shareText(part: number, total: number): string {
+  if (total === 0) return "Nessuna richiesta ancora";
+  return total < MIN_CASES_FOR_PERCENT ? `${part} su ${total}` : `${Math.round((part / total) * 100)}%`;
+}
+
+function speedText(speed: BoardSpeedCounts): string {
+  const hours = speed.medianHours === null ? "" : ` · primo preventivo in ${speed.medianHours} ore (a metà)`;
+  return `${shareText(speed.withQuote, speed.requests)}${hours}`;
+}
+
+/**
+ * Misure della bacheca (docs/changelog/2026-11-20-misure-lavori-cercati.md):
+ * il numero che conta, gli iscritti partiti da lì, l'uso della pagina e
+ * dove mancano professionisti. Solo numeri, dal lancio.
+ */
+function BoardMeasures({ counts }: { counts: BoardAdminCounts }) {
+  return (
+    <YStack gap="3" marginTop="3">
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Preventivo entro 7 giorni
+      </Text>
+      <div className="waiting-groups">
+        <div className="waiting-group">
+          <strong>{speedText(counts.speedOnBoard)}</strong>
+          <span>Richieste entrate in Lavori cercati</span>
+        </div>
+        <div className="waiting-group">
+          <strong>{speedText(counts.speedOutside)}</strong>
+          <span>Richieste rimaste fuori. Si conta da quando sarebbero entrate.</span>
+        </div>
+        <div className="waiting-group">
+          <strong>
+            {counts.signupsFromBoard} · {counts.signupsFromBoardQuoted} con un preventivo
+          </strong>
+          <span>Iscritti da Lavori cercati. Con un preventivo: entro 30 giorni.</span>
+        </div>
+      </div>
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Dove mancano professionisti
+      </Text>
+      {counts.uncovered.length === 0 ? (
+        <Text fontSize={14} color={brand.grafite70}>
+          Oggi c'è sempre qualcuno che può rispondere entro 100 km.
+        </Text>
+      ) : (
+        <div className="waiting-groups">
+          {counts.uncovered.map((row) => (
+            <div key={`${row.province}|${row.trade}`} className="waiting-group">
+              <strong>
+                {row.tradeLabel} · {row.provinceName}
+              </strong>
+              <span>{row.count === 1 ? "1 richiesta" : `${row.count} richieste`} senza nessuno entro 100 km</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Uso della pagina
+      </Text>
+      <div className="waiting-groups">
+        {counts.use.map((row) => (
+          <div key={row.action} className="waiting-group">
+            <strong>{row.count}</strong>
+            <span>{BOARD_USE_LABEL[row.action]}</span>
+          </div>
+        ))}
+      </div>
+      <Text fontSize={13} color={brand.grafite70}>
+        Ultimi 90 giorni, dal lancio e senza account di prova. Non contano i browser con «Non contare questo browser».
       </Text>
     </YStack>
   );

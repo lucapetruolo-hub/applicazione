@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BOARD_MAX_QUOTES, isProfessionalCategorySlug, type BoardCard } from "@professionisti/shared";
+import { BOARD_FROM_PARAM, BOARD_MAX_QUOTES, isProfessionalCategorySlug, type BoardCard, type BoardFrom } from "@professionisti/shared";
 import { CategoryIcon } from "@/components/icons/CategoryIcons";
 import styles from "./BoardCards.module.css";
 
@@ -30,13 +30,15 @@ function photosLabel(count: number): string | null {
   return count === 1 ? "1 foto · la vedi dopo l'iscrizione" : `${count} foto · le vedi dopo l'iscrizione`;
 }
 
-export function replyHref(card: BoardCard): string {
+/** `from`: da dove si tocca "Rispondi", solo per contarlo (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+export function replyHref(card: BoardCard, from?: BoardFrom): string {
   const params = new URLSearchParams({ richiesta: card.id });
   if (isProfessionalCategorySlug(card.trade)) params.set("categoria", card.trade);
+  if (from) params.set(BOARD_FROM_PARAM, from);
   return `/rispondi?${params.toString()}`;
 }
 
-export function BoardCards({ cards, now }: { cards: BoardCard[]; now: number }) {
+export function BoardCards({ cards, now, from }: { cards: BoardCard[]; now: number; from?: BoardFrom }) {
   return (
     <ul className={styles.list}>
       {cards.map((card) => {
@@ -77,7 +79,7 @@ export function BoardCards({ cards, now }: { cards: BoardCard[]; now: number }) 
                 </span>
                 {slotsLabel(card.quoteCount)}
               </span>
-              <Link className={styles.cta} href={replyHref(card)} aria-label={`Rispondi: ${card.title}`}>
+              <Link className={styles.cta} href={replyHref(card, from)} aria-label={`Rispondi: ${card.title}`}>
                 Rispondi
               </Link>
             </div>

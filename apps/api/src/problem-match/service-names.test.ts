@@ -34,7 +34,7 @@ describe("Prestazioni per mestiere (§388)", () => {
     };
     const audit = { record: vi.fn() };
     const names = new ServiceNamesService(prisma as never);
-    return { prisma, service: new ProblemMatchAdminService(prisma as never, audit as never, {} as never, names, {} as never) };
+    return { prisma, service: new ProblemMatchAdminService(prisma as never, audit as never, {} as never, names, {} as never, {} as never) };
   }
 
   it("conta chi usa le standard e mette a parte quelle scritte a mano, per ogni mestiere del professionista", async () => {

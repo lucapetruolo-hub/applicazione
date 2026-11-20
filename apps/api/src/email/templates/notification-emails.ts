@@ -1724,6 +1724,25 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
+  // Province con tante richieste in "Lavori cercati" e nessuno entro 100 km (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  ADMIN_BOARD_UNCOVERED: (payload) => ({
+    kind: "notification",
+    subject: "Lavori cercati senza professionisti vicino",
+    title: "Qui mancano professionisti",
+    paragraphs: [
+      "In Lavori cercati ci sono queste richieste e nessun professionista che possa rispondere entro 100 km:",
+      ...(Array.isArray(payload.zones)
+        ? payload.zones.flatMap((zone) => {
+            if (!zone || typeof zone !== "object") return [];
+            const z = zone as Record<string, unknown>;
+            if (typeof z.tradeLabel !== "string" || typeof z.provinceName !== "string" || typeof z.count !== "number") return [];
+            return [`**${z.tradeLabel}, ${z.provinceName}**: ${z.count} ${z.count === 1 ? "richiesta" : "richieste"}`];
+          })
+        : []),
+      "Lì conviene cercare nuovi professionisti, uno per uno.",
+    ],
+    cta: { label: "Vedi dove", url: `${frontendUrl()}/admin/richieste-da-seguire` },
+  }),
   // Documenti contabili (docs/CHANGELOG.md §378).
   // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01): la prepara dal sito a lavoro terminato.
   JOB_INVOICE_REQUESTED: (payload, ctx) => {

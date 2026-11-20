@@ -8,6 +8,8 @@ import {
   type WaitingRequestAdminRow,
   type WaitingRequestsAdmin,
   ALL_SUGGESTED_SERVICES,
+  BOARD_DELAY_HOURS,
+  BOARD_USE_ACTIONS,
   MISSING_TRADES_SHOWN,
   buildMissingTrades,
   OUT_OF_SERVICE_LABELS,
@@ -32,6 +34,8 @@ import { ProblemMatchService } from "./problem-match.service";
 import { ServiceNamesService } from "./service-names.service";
 import { ServiceCatalogService } from "./service-catalog.service";
 import { boardListedWhere } from "../request-board/board-rules";
+import { boardSpeed } from "../request-board/board-speed";
+import { RequestBoardService } from "../request-board/request-board.service";
 
 /** Un nome scritto a mano da almeno tanti professionisti si propone da unire. */
 export const HANDWRITTEN_SUGGEST_MIN = 3;
@@ -140,6 +144,7 @@ export class ProblemMatchAdminService {
     private readonly problemMatchService: ProblemMatchService,
     private readonly serviceNamesService: ServiceNamesService,
     private readonly serviceCatalog: ServiceCatalogService,
+    private readonly requestBoard: RequestBoardService,
   ) {}
 
   async overview(filter: "tutte" | "fuori" | "ia" | "nessuno") {
@@ -492,8 +497,71 @@ export class ProblemMatchAdminService {
         : Promise.resolve(0);
     // Richieste a un professionista scelto, entrate in bacheca dopo l'inoltro: per capire se l'inoltro rende.
     const forwarded = boardLeads.filter((lead) => lead.guidedRequest.professionalProfileId !== null);
-    const [quotes, quotesAfterForward] = await Promise.all([quotesOf(boardLeads), quotesOf(forwarded)]);
-    return { listed, optedOut, replies: boardLeads.length, quotes, repliesAfterForward: forwarded.length, quotesAfterForward, claimsPending, alertsPending };
+    const [quotes, quotesAfterForward, measures] = await Promise.all([quotesOf(boardLeads), quotesOf(forwarded), this.boardMeasures(since, now)]);
+    return { listed, optedOut, replies: boardLeads.length, quotes, repliesAfterForward: forwarded.length, quotesAfterForward, claimsPending, alertsPending, ...measures };
+  }
+
+  /**
+   * Misure C, D, E e G della versione profonda (docs/changelog/2026-11-20-misure-lavori-cercati.md):
+   * uso di pagina e mappa, iscritti partiti dalla bacheca, preventivo entro 7
+   * giorni contro le richieste rimaste fuori, dove mancano professionisti.
+   * Dal lancio e senza account di prova.
+   */
+  private async boardMeasures(since: Date, now: Date) {
+    const from = sinceLaunch(since, countingFrom(now));
+    const day = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+    const quotesSelect = { select: { createdAt: true } } as const;
+    const [useDays, boardSignups, onBoard, outside, uncovered] = await Promise.all([
+      this.prisma.boardUseDay.groupBy({ by: ["action"], where: { day: { gte: day } }, _sum: { count: true } }),
+      this.prisma.user.findMany({
+        where: { role: "PROFESSIONAL", signupFromBoard: true, createdAt: { gte: from }, ...COUNTED_USER },
+        take: 2000,
+        select: { createdAt: true, professionalProfile: { select: { quotes: { orderBy: { createdAt: "asc" }, take: 1, select: { createdAt: true } } } } },
+      }),
+      this.prisma.guidedRequest.findMany({
+        where: { boardAt: { gte: from }, client: COUNTED_USER },
+        take: 2000,
+        select: { boardAt: true, quotes: quotesSelect },
+      }),
+      // Richieste generali rimaste fuori (tolte dal cliente o non pubblicabili): partono quando sarebbero entrate.
+      this.prisma.guidedRequest.findMany({
+        where: {
+          boardAt: null,
+          createdAt: { gte: from },
+          professionalProfileId: null,
+          chosenProfileIds: { isEmpty: true },
+          fromProfessionalLink: false,
+          isUrgent: false,
+          waitingTrade: null,
+          client: COUNTED_USER,
+        },
+        take: 2000,
+        select: { createdAt: true, quotes: quotesSelect },
+      }),
+      this.requestBoard.uncovered(now),
+    ]);
+    const delay = BOARD_DELAY_HOURS * 3_600_000;
+    const monthMs = 30 * 24 * 3_600_000;
+    return {
+      use: BOARD_USE_ACTIONS.map((action) => ({ action, count: useDays.find((row) => row.action === action)?._sum.count ?? 0 })),
+      signupsFromBoard: boardSignups.length,
+      signupsFromBoardQuoted: boardSignups.filter((user) => {
+        const first = user.professionalProfile?.quotes[0]?.createdAt;
+        return first !== undefined && first.getTime() - user.createdAt.getTime() <= monthMs;
+      }).length,
+      speedOnBoard: boardSpeed(
+        onBoard.flatMap((row) => (row.boardAt ? [{ start: row.boardAt, quotes: row.quotes.map((quote) => quote.createdAt) }] : [])),
+        now,
+      ),
+      speedOutside: boardSpeed(
+        outside
+          .map((row) => ({ start: new Date(row.createdAt.getTime() + delay), quotes: row.quotes.map((quote) => quote.createdAt) }))
+          // Con un preventivo nelle prime 48 ore non sarebbe mai entrata: fuori dal confronto.
+          .filter((row) => !row.quotes.some((quote) => quote.getTime() < row.start.getTime()) && row.start.getTime() <= now.getTime()),
+        now,
+      ),
+      uncovered: uncovered.slice(0, 20),
+    };
   }
 
   async takeovers(status: "OPEN" | "DONE") {

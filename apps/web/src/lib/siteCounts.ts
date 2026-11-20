@@ -1,5 +1,6 @@
 import {
   NO_COUNT_COOKIE,
+  type BoardUseAction,
   type DeviceKind,
   type PriceToolStepKey,
   type ProfileRequestSource,
@@ -66,7 +67,7 @@ export function chooseCountingDisabled(disabled: boolean): void {
   setCountingDisabled(disabled);
 }
 
-function send(path: "step" | "failure" | "profile-view" | "price-tool" | "faq-feedback", body: object): void {
+function send(path: "step" | "failure" | "profile-view" | "price-tool" | "faq-feedback" | "board", body: object): void {
   if (isCountingDisabled()) return;
   // `keepalive`: parte anche se la pagina cambia subito dopo (invio riuscito).
   void fetch(`${API_URL}/site/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(
@@ -170,4 +171,37 @@ export function countSubmitFailure({ method, path, status }: { method: string; p
 /** "Ti è stata utile?" sotto una domanda frequente: solo l'id e sì/no (docs/changelog/2026-11-16-domande-frequenti.md). */
 export function countFaqFeedback(faqId: string, helpful: boolean): void {
   send("faq-feedback", { faqId, helpful });
+}
+
+/**
+ * "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md):
+ * un'azione su pagina o mappa, o "Rispondi" per punto di partenza. Solo
+ * l'azione; il giorno lo mette l'API.
+ */
+export function countBoardUse(action: BoardUseAction): void {
+  send("board", { action });
+}
+
+/**
+ * Segno nella scheda del browser (sessionStorage, nessun cookie) di chi è
+ * passato da "Lavori cercati" o da "Rispondi": se poi si iscrive come
+ * professionista, l'account lo ricorda (proposta D).
+ */
+const BOARD_VISIT_KEY = "da_lavori_cercati";
+
+export function markBoardVisit(): void {
+  try {
+    window.sessionStorage.setItem(BOARD_VISIT_KEY, "1");
+  } catch {
+    // Senza sessionStorage l'iscrizione parte senza il segno.
+  }
+}
+
+export function visitedBoard(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(BOARD_VISIT_KEY) === "1";
+  } catch {
+    return false;
+  }
 }

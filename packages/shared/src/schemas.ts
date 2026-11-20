@@ -101,6 +101,8 @@ export const googleVerifySchema = z.object({
   signupSource: trafficSourceSchema.optional(),
   // Link d'invito aperto prima di iscriversi (docs/changelog/2026-11-09-passaparola.md).
   inviteCode: inviteCodeSchema.optional(),
+  // Passato da "Lavori cercati" nella stessa visita (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  fromBoard: z.boolean().optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -243,6 +245,8 @@ export const registerSchema = emailPasswordSchema.extend({
   signupSource: trafficSourceSchema.optional(),
   // Link d'invito di un collega o di un partner (docs/changelog/2026-11-09-passaparola.md).
   inviteCode: inviteCodeSchema.optional(),
+  // Passato da "Lavori cercati" nella stessa visita (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  fromBoard: z.boolean().optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.entityType) {
     ctx.addIssue({ code: "custom", message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });

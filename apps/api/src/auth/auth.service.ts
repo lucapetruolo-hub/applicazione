@@ -177,6 +177,7 @@ export class AuthService {
     device?: LoginDeviceInfo,
     signupSource?: TrafficSource,
     inviteCode?: string,
+    fromBoard?: boolean,
   ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -205,6 +206,8 @@ export class AuthService {
         signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
         // Da dove arrivava la visita (docs/CHANGELOG.md §372): dice dove reclutare.
         signupSource: signupSource ?? null,
+        // Passato da "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+        signupFromBoard: role === "PROFESSIONAL" && fromBoard === true,
         ...(role === "PROFESSIONAL" ? await this.inviteFields(inviteCode) : {}),
       },
     });
@@ -310,6 +313,7 @@ export class AuthService {
     device?: LoginDeviceInfo,
     signupSource?: TrafficSource,
     inviteCode?: string,
+    fromBoard?: boolean,
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -385,6 +389,7 @@ export class AuthService {
           signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
           signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
           signupSource: signupSource ?? null,
+          signupFromBoard: role === "PROFESSIONAL" && fromBoard === true,
           ...(role === "PROFESSIONAL" ? await this.inviteFields(inviteCode) : {}),
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,

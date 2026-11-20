@@ -18,6 +18,7 @@ import { BoardCards } from "@/components/requestBoard/BoardCards";
 import { BoardAlertForm } from "@/components/requestBoard/BoardAlertForm";
 import styles from "@/components/requestBoard/BoardPage.module.css";
 import { BoardWeeklySwitch } from "@/components/requestBoard/BoardWeeklySwitch";
+import { BoardVisitMark } from "@/components/requestBoard/BoardVisitMark";
 
 /**
  * Bacheca "Lavori cercati" per mestiere e provincia
@@ -103,6 +104,7 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
   return (
     <div className={styles.page}>
       <JsonLd data={breadcrumbs} />
+      <BoardVisitMark />
       <h1 className={styles.title}>
         Lavori cercati: {label} in provincia di {found.provinceName}
       </h1>
@@ -133,7 +135,7 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
               <p className={styles.count}>
                 {total === 1 ? "1 lavoro in attesa" : `${total} lavori in attesa`} · prima quelli con meno preventivi
               </p>
-              <BoardCards cards={cards} now={now} />
+              <BoardCards cards={cards} now={now} from="pagina" />
               {hasMore ? (
                 <Link className={styles.more} href={`/lavora-con-noi/${found.trade}/${params.provincia}?pagina=${page + 1}`}>
                   Altri lavori

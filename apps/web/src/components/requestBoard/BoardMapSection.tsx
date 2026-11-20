@@ -15,6 +15,7 @@ import {
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { countBoardUse, markBoardVisit } from "@/lib/siteCounts";
 import { BoardCards } from "./BoardCards";
 import { pointKey, type BoardMapView } from "./BoardMap";
 import styles from "./BoardPage.module.css";
@@ -87,6 +88,13 @@ export function BoardMapSection({ province }: { province: string | null }) {
   const [nowMs, setNowMs] = useState(0);
   // Il primo "idle" di ogni vista nuova sostituisce i bordi stimati con quelli veri, senza pulsante.
   const firstIdle = useRef(true);
+  // Misure d'uso (docs/changelog/2026-11-20-misure-lavori-cercati.md): pagina una volta, mappa al primo caricamento vero.
+  const mapCounted = useRef(false);
+
+  useEffect(() => {
+    markBoardVisit();
+    countBoardUse("PAGINA");
+  }, []);
 
   function move(next: BoardMapView) {
     firstIdle.current = true;
@@ -135,6 +143,7 @@ export function BoardMapSection({ province }: { province: string | null }) {
   }, [filters, searched]);
 
   function changeFilter(next: Partial<Filters>) {
+    countBoardUse("FILTRO");
     const merged = { ...filters, ...next };
     setFilters(merged);
     setSelected(null);
@@ -146,6 +155,7 @@ export function BoardMapSection({ province }: { province: string | null }) {
   }
 
   function nearMe() {
+    countBoardUse("VICINO_A_ME");
     if (!("geolocation" in navigator)) {
       setLocating("denied");
       return;
@@ -203,8 +213,15 @@ export function BoardMapSection({ province }: { province: string | null }) {
           points={points}
           selected={selected}
           proZone={proZone}
-          onSelect={setSelected}
+          onSelect={(key) => {
+            if (key) countBoardUse("CERCHIO");
+            setSelected(key);
+          }}
           onIdle={(bounds, current) => {
+            if (!mapCounted.current) {
+              mapCounted.current = true;
+              countBoardUse("MAPPA");
+            }
             setVisible({ bounds, view: current });
             if (firstIdle.current) {
               firstIdle.current = false;
@@ -214,7 +231,14 @@ export function BoardMapSection({ province }: { province: string | null }) {
         />
         <div className={styles.mapActions}>
           {canSearchArea ? (
-            <button type="button" className={styles.mapSearch} onClick={() => setSearched(visible.view.zoom <= 6 ? null : visible.bounds)}>
+            <button
+              type="button"
+              className={styles.mapSearch}
+              onClick={() => {
+                countBoardUse("CERCA_AREA");
+                setSearched(visible.view.zoom <= 6 ? null : visible.bounds);
+              }}
+            >
               Cerca in quest&apos;area
             </button>
           ) : null}
@@ -252,7 +276,7 @@ export function BoardMapSection({ province }: { province: string | null }) {
                 `${data.total} ${data.total === 1 ? "richiesta" : "richieste"} in quest'area${data.total > data.cards.length ? `, qui le prime ${data.cards.length}` : ""}`
               )}
             </p>
-            <BoardCards cards={shownCards} now={nowMs} />
+            <BoardCards cards={shownCards} now={nowMs} from="mappa" />
           </>
         )}
       </div>
