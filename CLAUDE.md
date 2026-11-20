@@ -52,7 +52,7 @@ servizi. Le note tecniche per cartella stanno nei `CLAUDE.md` di `apps/web`,
 | Web | **Next.js 16** (App Router, TypeScript, Turbopack), pagine SEO in SSR/SSG |
 | App mobile | **Expo 58 / React Native 0.88**: si rifà solo a sito finito |
 | UI condivisa | **Tamagui 3** in `packages/ui` (regole in `docs/architettura/interfaccia.md`) |
-| Backend API | **NestJS 11** (Express 5), un solo backend per web e mobile |
+| Backend API | **NestJS 12** (Express 5), un solo backend per web e mobile |
 | Database e ORM | **PostgreSQL** + PostGIS, **Prisma 6** (`packages/database`) |
 | Ricerca avanzata (fase 2) | Meilisearch o Typesense, non ancora introdotto |
 | Autenticazione | Email+password + Google Sign-In (OpenID Connect, finestra Google, nessuno script Google sul sito), JWT emesso da `apps/api` con bcrypt e `@nestjs/jwt`; niente Auth.js/Clerk né Apple |
