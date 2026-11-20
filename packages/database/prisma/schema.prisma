@@ -1768,6 +1768,9 @@ model Review {
   // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
   heldAt                DateTime?
   heldReasons           String[]  @default([])
+  // Ancora in controllo dopo 7 giorni: il cliente e gli admin sono stati
+  // avvisati, una volta sola (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+  heldNoticeSentAt      DateTime?
   // "Lavori fatti" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
   // il cliente acconsente, recensendo, a mostrare le foto di fine lavoro del
   // professionista nel suo profilo pubblico. Null = mai mostrate (anche dopo

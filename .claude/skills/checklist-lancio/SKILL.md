@@ -507,9 +507,12 @@ aperti solo:
       sul Mac. Passi uno per uno in `docs/ops/protezione-account.md`.
     - **Copia esterna automatica del database** (decisione di Luca del
       16/11/2026): una copia cifrata a settimana su Backblaze B2 in UE
-      (Amsterdam), cancellata dopo 30 giorni, con avviso se fallisce. Da
-      preparare con un thread insieme al passaggio del database a Basic,
-      prima che entrino dati veri. Non più di 30 giorni: lo promette la
+      (Amsterdam), cancellata dopo 30 giorni, con avviso se fallisce. Il
+      giro è pronto ma spento (`.github/workflows/copia-database.yml`,
+      20/11/2026): per accenderlo restano i passi a mano di
+      `docs/ops/copia-esterna.md` (account B2, bucket, chiave, frase, segreti
+      su GitHub, Backblaze nella Privacy, una prova di ripristino), da fare
+      insieme al passaggio del database a Basic, prima che entrino dati veri. Non più di 30 giorni: lo promette la
       Privacy (punto 5).
     - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
       perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e

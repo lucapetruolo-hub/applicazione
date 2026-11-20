@@ -984,6 +984,10 @@ export function RequestCard({
         setAskingEarlyDone(true);
       },
     });
+  } else if (earlyDoneAsked) {
+    // Già chiesto al cliente: la voce resta, grigia, così non sembra sparita
+    // (richiesta di Luca, docs/changelog/2026-11-20-lavoro-terminato-in-attesa.md).
+    menuActions.push({ icon: "clock", text: "Lavoro terminato", hint: "In attesa del cliente", waiting: true, onPress: () => {} });
   }
   if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "x", text: booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });

@@ -172,6 +172,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_CLAIMED_CASES_DUE",
       // Account sospetti nuovi con qualcosa da fare, dal controllo delle 7 (docs/changelog/2026-10-30-admin-persone.md).
       "ADMIN_SUSPICIOUS_ACCOUNTS",
+      // Una recensione è finita in controllo, o ci resta da 7 giorni (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+      "ADMIN_REVIEW_HELD",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       // "Lavoro terminato" del professionista prima del giorno fissato: il cliente conferma (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
@@ -202,6 +204,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "NEW_REVIEW",
       // Al cliente: il professionista ha risposto alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
       "REVIEW_REPLIED",
+      // Al cliente: la sua recensione è in controllo da 7 giorni (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+      "REVIEW_STILL_HELD",
       // Al professionista: recensione da 1-2 stelle senza risposta da 3 giorni (stessa voce del changelog).
       "REVIEW_REPLY_REMINDER",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
@@ -516,7 +520,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.recensioni",
     topic: "lavori",
-    types: ["NEW_REVIEW", "REVIEW_REPLIED", "REVIEW_REPLY_REMINDER"],
+    types: ["NEW_REVIEW", "REVIEW_REPLIED", "REVIEW_STILL_HELD", "REVIEW_REPLY_REMINDER"],
     professional: { label: "Nuove recensioni" },
     client: { label: "Risposte alle tue recensioni" },
   },
@@ -549,6 +553,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_WEEKLY_ADVICE",
       "ADMIN_CLAIMED_CASES_DUE",
       "ADMIN_SUSPICIOUS_ACCOUNTS",
+      "ADMIN_REVIEW_HELD",
       "ADMIN_JOB_NOT_CLOSED",
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
       "ADMIN_FEE_RECONCILIATION",

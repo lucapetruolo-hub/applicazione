@@ -139,6 +139,9 @@ test("menu dell'account con Esci raggiungibile dalla tastiera", async ({ browser
   const client = await createClient(prisma);
   const page = await pageAsClient(browser, client.id, COMPUTER);
   await page.goto("/le-mie-richieste");
+  // Il pulsante compare quando l'account è caricato: si aspetta prima dei Tab
+  // (docs/changelog/2026-11-20-prova-tastiera-registrazione.md).
+  await expect(page.getByRole("button", { name: /il mio account/i }).first()).toBeVisible();
   await tabTo(page, (name) => name.includes("il mio account"));
   // Se l'intestazione si ridisegna dopo il caricamento dell'account il fuoco
   // torna alla pagina: si rimette sul pulsante e si riprova.
@@ -157,10 +160,16 @@ test("menu dell'account con Esci raggiungibile dalla tastiera", async ({ browser
 test("la casella dei Termini della registrazione si spunta con Spazio", async ({ browser }) => {
   const page = await anonymousPage(browser, COMPUTER);
   await page.goto("/registrati");
+  await expect(page.getByRole("link", { name: /^Sono un professionista/ })).toBeVisible();
   await tabTo(page, (name) => name.startsWith("Sono un professionista"));
   await page.keyboard.press("Enter");
+  // Si aspetta che il passo dopo sia sulla pagina prima di premere Tab: se la
+  // pagina tarda, i 150 Tab finivano sul passo vecchio e la prova cadeva
+  // (docs/changelog/2026-11-20-prova-tastiera-registrazione.md).
+  await expect(page.getByRole("link", { name: /^Privato/ })).toBeVisible();
   await tabTo(page, (name) => name.startsWith("Privato"));
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("checkbox").first()).toBeVisible();
   await tabTo(page, (_name, role) => role === "checkbox");
   await page.keyboard.press(" ");
   await expect.poll(async () => (await focused(page)).checked).toBe("true");

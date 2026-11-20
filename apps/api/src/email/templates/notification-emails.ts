@@ -986,6 +986,37 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Leggi la risposta", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
   }),
 
+  // Al cliente: recensione in controllo da 7 giorni (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+  REVIEW_STILL_HELD: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Stiamo ancora controllando la tua recensione",
+    greeting: ctx.name,
+    title: "La tua recensione è ancora in controllo",
+    paragraphs: [
+      `La recensione che hai lasciato per **${job(ctx)}** non è ancora pubblicata: il controllo sta durando più del previsto e ci scusiamo.`,
+      "Non devi fare niente: appena è pubblicata la vedi in Le mie recensioni.",
+    ],
+    cta: { label: "Vedi la tua recensione", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
+  }),
+
+  // Agli admin: una recensione è in controllo, o ci resta da 7 giorni (stessa voce del changelog).
+  ADMIN_REVIEW_HELD: (payload) => {
+    const late = payload.late === true;
+    const clientId = str(payload.clientId);
+    return {
+      kind: "notification",
+      subject: late ? "Una recensione aspetta da 7 giorni" : "Una recensione da controllare",
+      title: late ? "Recensione ferma da 7 giorni" : "Recensione da controllare",
+      paragraphs: [
+        late
+          ? "Una recensione è in controllo da 7 giorni e nessuno ha deciso. Al cliente abbiamo scritto che ci vuole più del previsto."
+          : "Una recensione ha un segnale di possibile falsità e non è stata pubblicata: resta nascosta finché non decidi.",
+        "Aprila, guarda i motivi e scegli **Pubblica** o **Nascondi**. Al cliente abbiamo promesso una risposta di solito entro 2 giorni.",
+      ],
+      cta: { label: "Apri la recensione", url: `${frontendUrl()}/admin${clientId ? `/utenti/${clientId}?scheda=recensioni` : ""}` },
+    };
+  },
+
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).
   JOB_ISSUE_REPORTED: (payload, ctx) => {
     const type = payload.issueType as JobIssueType | undefined;

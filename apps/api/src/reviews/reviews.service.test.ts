@@ -44,6 +44,8 @@ function buildService(booking: Record<string, unknown>, holdData: Record<string,
   const prisma = {
     booking: { findUnique: vi.fn().mockResolvedValue(base) },
     review: { create: vi.fn().mockResolvedValue({ id: "r-1" }), findMany: vi.fn().mockResolvedValue([]) },
+    // Gli admin da avvisare quando una recensione resta in controllo.
+    user: { findMany: vi.fn().mockResolvedValue([{ id: "admin-1" }]) },
   };
   const metrics = { recordReview: vi.fn() };
   const notifications = { notify: vi.fn() };
@@ -62,11 +64,13 @@ describe("ReviewsService.create — recensione subito dopo \"Lavoro terminato\""
     expect(notifications.notify).toHaveBeenCalledWith("pro-user-1", "NEW_REVIEW", expect.objectContaining({ professionalCompleted: false }));
   });
 
-  it("con lo stesso telefono del professionista resta in controllo, senza avviso né media (collaudo P-01)", async () => {
+  it("con lo stesso telefono del professionista resta in controllo, senza avviso al professionista né media (collaudo P-01)", async () => {
     const { service, prisma, notifications, metrics } = buildService({ status: "CONFIRMED", clientConfirmedCompletedAt: new Date() }, { client: person({ phone: "+39 333 999 8888" }) });
     await expect(service.create("client-1", input)).resolves.toEqual({ id: "r-1", held: true });
     expect(prisma.review.create).toHaveBeenCalledWith({ data: expect.objectContaining({ hiddenAt: expect.any(Date), heldAt: expect.any(Date), heldReasons: ["SAME_PHONE"] }) });
-    expect(notifications.notify).not.toHaveBeenCalled();
+    // Al professionista niente; agli admin sì (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("admin-1", "ADMIN_REVIEW_HELD", { reviewId: "r-1", clientId: "client-1" });
     expect(metrics.recordReview).not.toHaveBeenCalled();
   });
 
