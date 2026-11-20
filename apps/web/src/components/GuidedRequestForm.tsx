@@ -67,6 +67,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { useRequestMedia } from "@/lib/useRequestMedia";
+import { VideoTooLongChoice } from "@/components/VideoTooLongChoice";
 import { searchPhotoFor } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
@@ -1861,26 +1862,16 @@ export function GuidedRequestForm({
           {photos
             .filter((photo) => photo.status === "error" && photo.tooLong)
             .map((photo) => (
-              <div key={photo.id} className="guided-video-choice" role="alert" data-testid="video-troppo-lungo">
-                <p>
-                  <strong>Il video dura {photo.tooLong}: il massimo è 1 minuto.</strong> Puoi tenerlo, al professionista arriva solo il primo minuto.
-                </p>
-                <div>
-                  <button type="button" className="guided-video-choice-keep" onClick={() => media.keepFirstMinute(photo.id)}>
-                    Tieni il primo minuto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      removePhoto(photo.id);
-                      // Tolto il video si riapre la scelta (fotocamera, video, galleria), senza cercare il pulsante.
-                      setTimeout(() => document.querySelector<HTMLButtonElement>("button.guided-photo-add")?.click(), 0);
-                    }}
-                  >
-                    Rifai il video
-                  </button>
-                </div>
-              </div>
+              <VideoTooLongChoice
+                key={photo.id}
+                duration={photo.tooLong ?? ""}
+                onKeep={() => media.keepFirstMinute(photo.id)}
+                onRetake={() => {
+                  removePhoto(photo.id);
+                  // Tolto il video si riapre la scelta (fotocamera, video, galleria), senza cercare il pulsante.
+                  setTimeout(() => document.querySelector<HTMLButtonElement>("button.guided-photo-add")?.click(), 0);
+                }}
+              />
             ))}
           {photos.some((photo) => photo.trimmed) ? (
             <Text color={brand.grafite70} fontSize={13}>

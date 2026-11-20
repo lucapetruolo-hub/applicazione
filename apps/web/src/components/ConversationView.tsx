@@ -8,7 +8,8 @@ import { JOB_LIMIT_REACHED_MESSAGE, type ConversationEvent, type MySubscription 
 import { ApiError } from "@professionisti/api-client";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
+import { MediaTooLongError, checkMediaFile, durationText, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
+import { VideoTooLongChoice } from "@/components/VideoTooLongChoice";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { markConversationOpen } from "@/lib/openConversations";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
@@ -220,6 +221,7 @@ export function ConversationView({
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [tooLongVideo, setTooLongVideo] = useState<{ file: File; duration: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Prima risposta con i lavori esauriti (docs/CHANGELOG.md §362): la stessa
@@ -428,19 +430,23 @@ export function ConversationView({
   // (`CameraCaptureOverlay`, sotto), che produce un `File` senza passare
   // da un `<input>` — stessa identica pipeline di upload/errore per
   // entrambe le sorgenti.
-  async function uploadFile(file: File) {
+  async function uploadFile(file: File, keepFirstMinute = false) {
     setMediaError(null);
+    setTooLongVideo(null);
     setIsUploadingMedia(true);
     setUploadProgress(0);
     try {
       // Peso e durata controllati prima, video direttamente a Cloudinary con la
       // percentuale; "Invia" resta fermo finché non è caricato
       // (docs/changelog/2026-11-18-video-che-carica-ancora.md).
-      await checkMediaFile(file);
+      // Tenuto il primo minuto: la durata non si ricontrolla, taglia Cloudinary.
+      if (!keepFirstMinute) await checkMediaFile(file);
       const url = await uploadMediaFile(token, file, { forChat: true, onProgress: setUploadProgress });
       setMediaUrls((prev) => [...prev, url].slice(0, MAX_UPDATE_MEDIA));
     } catch (err) {
-      setMediaError(uploadErrorMessage(err));
+      // Video oltre il minuto: due scelte invece dell'errore.
+      if (err instanceof MediaTooLongError) setTooLongVideo({ file, duration: durationText(err.seconds) });
+      else setMediaError(uploadErrorMessage(err));
     } finally {
       setIsUploadingMedia(false);
     }
@@ -935,6 +941,17 @@ export function ConversationView({
               ),
             )}
           </XStack>
+        ) : null}
+        {tooLongVideo ? (
+          <VideoTooLongChoice
+            duration={tooLongVideo.duration}
+            recipient={viewerRole === "PROFESSIONAL" ? "al cliente" : "al professionista"}
+            onKeep={() => void uploadFile(tooLongVideo.file, true)}
+            onRetake={() => {
+              setTooLongVideo(null);
+              galleryInputRef.current?.click();
+            }}
+          />
         ) : null}
         {mediaError ? (
           <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>

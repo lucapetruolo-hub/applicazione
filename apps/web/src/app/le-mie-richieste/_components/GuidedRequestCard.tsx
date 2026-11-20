@@ -24,7 +24,8 @@ import {
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { setChosenParams } from "@/lib/chosenParams";
 import { apiClient } from "@/lib/apiClient";
-import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
+import { MediaTooLongError, checkMediaFile, durationText, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
+import { VideoTooLongChoice } from "@/components/VideoTooLongChoice";
 import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
@@ -234,6 +235,8 @@ export function GuidedRequestCard({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [tooLongVideos, setTooLongVideos] = useState<{ id: number; file: File; duration: string }[]>([]);
+  const tooLongIdRef = useRef(0);
   // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -452,10 +455,32 @@ export function GuidedRequestCard({
         const url = await uploadMediaFile(token, file, { onProgress: setUploadProgress });
         setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
       } catch (err) {
-        problems.push(kept.length > 1 ? `${file.name}: ${uploadErrorMessage(err)}` : uploadErrorMessage(err));
+        // Video oltre il minuto: due scelte invece dell'errore
+        // (docs/changelog/2026-11-20-video-lungo-anche-in-chat.md).
+        if (err instanceof MediaTooLongError) {
+          const duration = durationText(err.seconds);
+          setTooLongVideos((prev) => [...prev, { id: ++tooLongIdRef.current, file, duration }]);
+        } else problems.push(kept.length > 1 ? `${file.name}: ${uploadErrorMessage(err)}` : uploadErrorMessage(err));
       }
     }
     setPhotoError(problems.length > 0 ? problems.join("\n") : null);
+    setIsUploadingPhoto(false);
+  }
+
+  /** "Tieni il primo minuto": si carica com'è, taglia Cloudinary. */
+  async function keepFirstMinute(id: number) {
+    const item = tooLongVideos.find((video) => video.id === id);
+    if (!item || isUploadingPhoto) return;
+    setTooLongVideos((prev) => prev.filter((video) => video.id !== id));
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    setUploadProgress(0);
+    try {
+      const url = await uploadMediaFile(token, item.file, { onProgress: setUploadProgress });
+      setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
+    } catch (err) {
+      setPhotoError(uploadErrorMessage(err));
+    }
     setIsUploadingPhoto(false);
   }
 
@@ -767,6 +792,17 @@ export function GuidedRequestCard({
               </Text>
             ) : null}
             <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
+            {tooLongVideos.map((video) => (
+              <VideoTooLongChoice
+                key={video.id}
+                duration={video.duration}
+                onKeep={() => void keepFirstMinute(video.id)}
+                onRetake={() => {
+                  setTooLongVideos((prev) => prev.filter((item) => item.id !== video.id));
+                  photoInputRef.current?.click();
+                }}
+              />
+            ))}
             {photoError
               ? photoError.split("\n").map((line) => (
                   <Text key={line} color={brand.urgenza} fontSize={13}>
