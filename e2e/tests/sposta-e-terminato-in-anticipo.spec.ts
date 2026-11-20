@@ -128,7 +128,7 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await clientPage.getByText("Il lavoro è già finito?").scrollIntoViewIfNeeded();
     await clientPage.screenshot({ path: `test-results/terminato-prima-cliente-${device}.png` });
     await clientPage.getByRole("button", { name: "Lavoro terminato" }).first().click();
-    await clientPage.getByRole("button", { name: "Conferma lavoro terminato" }).click();
+    await clientPage.getByRole("button", { name: "Sì, conferma" }).click();
     await expect.poll(async () => (await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).clientConfirmedCompletedAt).not.toBeNull();
     await clientPage.context().close();
 

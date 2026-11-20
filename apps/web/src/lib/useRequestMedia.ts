@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@professionisti/api-client";
 import { localPreviewUrl } from "@/lib/media";
 import { moveItem } from "@/lib/usePhotoReorder";
-import { MediaRejectedError, checkMediaFile, mediaSizeProblem, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
+import { MediaRejectedError, MediaTooLongError, checkMediaFile, durationText, mediaSizeProblem, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { frameFromVideo, withoutHiddenData } from "@/lib/photoSearch";
 
 /**
@@ -36,6 +36,13 @@ export type RequestMediaItem = {
   error: string | null;
   /** Falso per un file troppo pesante: riprovare non serve, va tolto. */
   retryable: boolean;
+  /**
+   * Video oltre il minuto, in attesa della scelta del cliente: "2 minuti".
+   * Si tiene (solo il primo minuto) con `keepFirstMinute` o si toglie.
+   */
+  tooLong?: string | null;
+  /** Video lungo tenuto: se ne conserva solo il primo minuto. */
+  trimmed?: boolean;
 };
 
 type Prepared = { file: Blob };
@@ -47,6 +54,8 @@ export function useRequestMedia(token: string | null, maxItems: number) {
   const preparedRef = useRef(new Map<string, Promise<Prepared>>());
   const uploadsRef = useRef(new Map<string, Promise<string>>());
   const abortRef = useRef(new Map<string, AbortController>());
+  // I video troppo lunghi in attesa della scelta: il file serve se si decide di tenerlo.
+  const tooLongFilesRef = useRef(new Map<string, Blob>());
   const tokenRef = useRef(token);
   // Le copie piccole per l'IA (una foto o un fotogramma del video), pronte anche dopo.
   const aiCopiesRef = useRef(new Map<string, Blob>());
@@ -146,6 +155,11 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     prepared.catch((err: unknown) => {
       if (!(err instanceof MediaRejectedError) || !exists(id)) return;
       preparedRef.current.delete(id);
+      if (err instanceof MediaTooLongError) {
+        tooLongFilesRef.current.set(id, picked);
+        patch(id, { status: "error", progress: 0, error: err.message, retryable: false, tooLong: durationText(err.seconds) });
+        return;
+      }
       patch(id, { status: "error", progress: 0, error: err.message, retryable: false });
     });
     const activeToken = tokenRef.current;
@@ -161,7 +175,23 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     return true;
   }
 
+  /**
+   * Il cliente tiene il video troppo lungo: si carica com'è e Cloudinary ne
+   * conserva solo il primo minuto (docs/changelog/2026-11-19-video-lungo-due-scelte.md).
+   */
+  function keepFirstMinute(id: string) {
+    const file = tooLongFilesRef.current.get(id);
+    if (!file || !exists(id)) return;
+    tooLongFilesRef.current.delete(id);
+    uploadsRef.current.delete(id);
+    preparedRef.current.set(id, Promise.resolve({ file }));
+    patch(id, { status: "local", progress: 0, error: null, retryable: true, tooLong: null, trimmed: true });
+    const activeToken = tokenRef.current;
+    if (activeToken) void upload(id, activeToken).catch(() => undefined);
+  }
+
   function remove(id: string) {
+    tooLongFilesRef.current.delete(id);
     abortRef.current.get(id)?.abort();
     abortRef.current.delete(id);
     uploadsRef.current.delete(id);
@@ -229,6 +259,7 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     remove,
     move,
     retry,
+    keepFirstMinute,
     waitAll,
     uploadingCount: uploading.length,
     uploadingVideo: uploading.some((item) => item.isVideo),

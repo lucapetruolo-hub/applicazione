@@ -1805,6 +1805,11 @@ export function GuidedRequestForm({
                         <span style={{ width: `${Math.max(4, percent)}%` }} />
                       </span>
                     </div>
+                  ) : photo.status === "error" && photo.tooLong ? (
+                    // Video oltre il minuto: la scelta sta sotto i riquadri, con due pulsanti veri.
+                    <div className="guided-photo-state guided-photo-state-wait" aria-hidden="true">
+                      <span>Troppo lungo</span>
+                    </div>
                   ) : photo.status === "error" ? (
                     <button
                       type="button"
@@ -1851,8 +1856,39 @@ export function GuidedRequestForm({
             </Text>
           ) : null}
           {/* Il motivo di un file non caricato, sotto i riquadri (uno per riga). */}
+          {/* Video oltre il minuto: non si butta via, sceglie il cliente
+              (richiesta di Luca, docs/changelog/2026-11-19-video-lungo-due-scelte.md). */}
           {photos
-            .filter((photo) => photo.status === "error" && photo.error)
+            .filter((photo) => photo.status === "error" && photo.tooLong)
+            .map((photo) => (
+              <div key={photo.id} className="guided-video-choice" role="alert" data-testid="video-troppo-lungo">
+                <p>
+                  <strong>Il video dura {photo.tooLong}: il massimo è 1 minuto.</strong> Puoi tenerlo, al professionista arriva solo il primo minuto.
+                </p>
+                <div>
+                  <button type="button" className="guided-video-choice-keep" onClick={() => media.keepFirstMinute(photo.id)}>
+                    Tieni il primo minuto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removePhoto(photo.id);
+                      // Tolto il video si riapre la scelta (fotocamera, video, galleria), senza cercare il pulsante.
+                      setTimeout(() => document.querySelector<HTMLButtonElement>("button.guided-photo-add")?.click(), 0);
+                    }}
+                  >
+                    Rifai il video
+                  </button>
+                </div>
+              </div>
+            ))}
+          {photos.some((photo) => photo.trimmed) ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Del video più lungo teniamo il primo minuto.
+            </Text>
+          ) : null}
+          {photos
+            .filter((photo) => photo.status === "error" && photo.error && !photo.tooLong)
             .map((photo) => (
               <Text key={photo.id} role="alert" color={brand.urgenza} fontSize={13}>
                 {photo.isVideo ? "Video non caricato" : "Foto non caricata"}: {photo.error}

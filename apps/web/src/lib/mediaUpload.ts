@@ -22,6 +22,21 @@ const SIZE_MB = 1024 * 1024;
 /** Un file che non va caricato (troppo pesante o troppo lungo): riprovare non serve. */
 export class MediaRejectedError extends Error {}
 
+/**
+ * Video più lungo del massimo ma non troppo pesante: si può tenere lo stesso,
+ * Cloudinary conserva solo il primo minuto (`du_` all'arrivo). Dove il modulo
+ * lo sa fare offre la scelta "Tieni il primo minuto" o "Rifai il video"
+ * (docs/changelog/2026-11-19-video-lungo-due-scelte.md).
+ */
+export class MediaTooLongError extends MediaRejectedError {
+  constructor(
+    message: string,
+    readonly seconds: number,
+  ) {
+    super(message);
+  }
+}
+
 /** Durata del video in secondi, o null se il browser non la sa leggere entro 4 secondi. */
 function videoDuration(file: Blob): Promise<number | null> {
   return new Promise((resolve) => {
@@ -44,7 +59,7 @@ function videoDuration(file: Blob): Promise<number | null> {
   });
 }
 
-function durationText(seconds: number): string {
+export function durationText(seconds: number): string {
   if (seconds < 90) return `${Math.round(seconds)} secondi`;
   return `${Math.round(seconds / 60)} minuti`;
 }
@@ -73,7 +88,7 @@ export async function checkMediaFile(file: Blob): Promise<void> {
   if (!isVideoFile(file)) return;
   const seconds = await videoDuration(file);
   if (seconds !== null && seconds > MEDIA_VIDEO_MAX_SECONDS + 5) {
-    throw new MediaRejectedError(`Il video dura ${durationText(seconds)}, il massimo è 1 minuto. Fanne uno più corto.`);
+    throw new MediaTooLongError(`Il video dura ${durationText(seconds)}, il massimo è 1 minuto. Fanne uno più corto.`, seconds);
   }
 }
 
