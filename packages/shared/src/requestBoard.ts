@@ -20,6 +20,15 @@ import type { RequestTiming } from "./requestTiming";
 
 /** Ore di precedenza agli iscritti della zona prima della bacheca. */
 export const BOARD_DELAY_HOURS = 48;
+
+/**
+ * Avviso ai super admin quando una provincia arriva a tante richieste di un
+ * mestiere in "Lavori cercati" senza nessun professionista entro 100 km
+ * (miglioria scelta da Luca il 20/11/2026, docs/changelog/2026-11-20-misure-lavori-cercati.md).
+ */
+export const BOARD_UNCOVERED_ALERT_MIN = 5;
+/** Lo stesso mestiere nella stessa provincia non si riavvisa prima di questi giorni. */
+export const BOARD_UNCOVERED_ALERT_DAYS = 7;
 /** Preventivi al massimo per una richiesta presa dalla bacheca. */
 export const BOARD_MAX_QUOTES = 5;
 /** Giorni in bacheca: la richiesta vale 60 giorni, ma una scheda vecchia fa sembrare il sito fermo. */

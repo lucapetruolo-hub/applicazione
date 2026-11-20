@@ -327,3 +327,44 @@ describe("bacheca: dove mancano professionisti", () => {
     expect(await setup([profile("roma", "idraulico", 41.9028, 12.4964), profile("milano", "idraulico", 45.4642, 9.19)]).uncovered(NOW)).toEqual([]);
   });
 });
+
+describe("bacheca: avviso ai super admin per le province senza professionisti", () => {
+  // Miglioria scelta da Luca il 20/11/2026 (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  function setup(count: number, alreadyAlerted: string[] = []) {
+    process.env.REQUEST_BOARD_ENABLED = "true";
+    const rows = Array.from({ length: count }, (_, index) => ({
+      ...boardRow(`milano-${index}`, "Milano"),
+      boardProvince: "MI",
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: [],
+    }));
+    const prisma = {
+      guidedRequest: { findMany: vi.fn().mockResolvedValue(rows) },
+      professionalProfile: { findMany: vi.fn().mockResolvedValue([]) },
+      notification: { findMany: vi.fn().mockResolvedValue(alreadyAlerted.length ? [{ payload: { keys: alreadyAlerted } }] : []) },
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "super", adminRoles: ["SUPER"] },
+          { id: "moderatore", adminRoles: ["MODERATION"] },
+        ]),
+      },
+    };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    return { service: new RequestBoardService(prisma as never, {} as never, {} as never, notifications as never), notifications };
+  }
+
+  it("da 5 richieste senza nessuno avvisa solo i super admin", async () => {
+    const { service, notifications } = setup(5);
+    expect(await service.alertUncovered(NOW)).toEqual({ zones: 1 });
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("super", "ADMIN_BOARD_UNCOVERED", expect.objectContaining({ keys: ["MI|idraulico"] }));
+  });
+
+  it("sotto 5 richieste, o già avvisato in settimana, niente", async () => {
+    expect(await setup(4).service.alertUncovered(NOW)).toEqual({ zones: 0 });
+    const { service, notifications } = setup(6, ["MI|idraulico"]);
+    expect(await service.alertUncovered(NOW)).toEqual({ zones: 0 });
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+});

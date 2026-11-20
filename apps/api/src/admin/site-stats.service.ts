@@ -41,6 +41,8 @@ import {
   popularJobsFromRows,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { uncoveredBoardRequests } from "../request-board/board-coverage";
+import { boardUncoveredAdvice } from "./site-stats";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { identityVerificationRequired } from "../identity-verification/identity-provider-env";
@@ -513,7 +515,11 @@ export class SiteStatsService {
   @ScheduledJob("0 9 * * 1", { timeZone: "Europe/Rome" })
   async weeklyAdvice(now: Date = new Date()): Promise<AdminSiteStats["advice"] | null> {
     if (!hasLaunched(now, launchDate())) return null;
-    const { advice } = await this.getStats(now);
+    const { advice: siteAdvice } = await this.getStats(now);
+    // Dove mancano professionisti in "Lavori cercati" (miglioria scelta da Luca il 20/11/2026,
+    // docs/changelog/2026-11-20-misure-lavori-cercati.md): una riga in più nell'email.
+    const uncovered = await uncoveredBoardRequests(this.prisma, now).catch(() => []);
+    const advice = uncovered.length > 0 ? [...siteAdvice, boardUncoveredAdvice(uncovered)] : siteAdvice;
     // Proposte da approvare in Da fare (docs/changelog/2026-11-03-automazioni-admin.md): l'email ne dice il numero.
     const proposals = await this.prisma.adminProposal.count({ where: { OR: [{ status: "PENDING" }, { status: "SNOOZED", snoozedUntil: { lte: now } }] } });
     if (advice.length === 0 && proposals === 0) return advice;
