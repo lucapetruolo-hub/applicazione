@@ -41,6 +41,11 @@ export type CardAction = {
   onPress: () => void | Promise<void>;
   /** Se presente, il click mostra prima una domanda di conferma nella tendina. */
   confirm?: { question: string; confirmLabel: string; busyLabel: string };
+  /**
+   * Voce già fatta che aspetta l'altra persona: grigia, si legge ma non si
+   * preme (docs/changelog/2026-11-20-lavoro-terminato-in-attesa.md).
+   */
+  waiting?: boolean;
 };
 
 export function CardActionsMenu({
@@ -276,8 +281,7 @@ export function CardActionsMenu({
                   </YStack>
                 ) : (
                   orderedActions.map((action) => {
-                    const color =
-                      action.tone === "danger" ? brand.urgenza : brand.grafite;
+                    const color = action.waiting ? brand.grafite70 : action.tone === "danger" ? brand.urgenza : brand.grafite;
                     return (
                       <XStack
                         key={action.text}
@@ -285,10 +289,12 @@ export function CardActionsMenu({
                         paddingVertical="3"
                         alignItems="center"
                         gap="2"
-                        cursor="pointer"
-                        backgroundColor={`hover:${brand.gesso} focus-visible:${brand.gesso}`}
+                        cursor={action.waiting ? "default" : "pointer"}
+                        backgroundColor={action.waiting ? undefined : `hover:${brand.gesso} focus-visible:${brand.gesso}`}
+                        aria-disabled={action.waiting ? true : undefined}
                         onPress={(e: { stopPropagation: () => void }) => {
                                                 e.stopPropagation();
+                                                if (action.waiting) return;
                                                 if (action.confirm) {
                                                   setConfirming(action);
                                                   return;
@@ -301,7 +307,7 @@ export function CardActionsMenu({
                       >
                         <Icon name={action.icon} size={16} color={color} />
                         <YStack>
-                          <Text fontSize={16} color={color} fontWeight="600">
+                          <Text fontSize={16} color={color} fontWeight={action.waiting ? "500" : "600"}>
                             {action.text}
                           </Text>
                           {action.hint ? (

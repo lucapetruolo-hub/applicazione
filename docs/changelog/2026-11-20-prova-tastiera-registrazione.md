@@ -17,3 +17,10 @@ prova controlla le stesse cose di prima.
 
 **Verifica**: in locale, rallentando di 1,5 secondi il passo successivo, la
 prova di prima cade 8 volte su 8 e quella nuova passa 8 volte su 8.
+
+**Le altre prove con i Tab** (richiesta di Luca, stesso giorno): ripassate
+tutte (`tastiera`, `fisco-schede`, `barra-preventivo`, `badge-fumetto`). La
+stessa attesa mancava in due punti di `tastiera.spec.ts`: il primo passo della
+registrazione e il pulsante dell'account in "Le mie richieste", che compare
+solo ad account caricato. Aggiunta lì; le altre prove aspettavano già un
+elemento della pagina o mettevano il fuoco a mano.
