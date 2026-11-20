@@ -159,8 +159,13 @@ test("la casella dei Termini della registrazione si spunta con Spazio", async ({
   await page.goto("/registrati");
   await tabTo(page, (name) => name.startsWith("Sono un professionista"));
   await page.keyboard.press("Enter");
+  // Si aspetta che il passo dopo sia sulla pagina prima di premere Tab: se la
+  // pagina tarda, i 150 Tab finivano sul passo vecchio e la prova cadeva
+  // (docs/changelog/2026-11-20-prova-tastiera-registrazione.md).
+  await expect(page.getByRole("link", { name: /^Privato/ })).toBeVisible();
   await tabTo(page, (name) => name.startsWith("Privato"));
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("checkbox").first()).toBeVisible();
   await tabTo(page, (_name, role) => role === "checkbox");
   await page.keyboard.press(" ");
   await expect.poll(async () => (await focused(page)).checked).toBe("true");
