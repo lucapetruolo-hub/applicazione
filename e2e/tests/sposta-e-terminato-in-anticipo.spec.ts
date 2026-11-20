@@ -121,7 +121,12 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await page.getByText(/Hai chiesto al cliente di confermare/).scrollIntoViewIfNeeded();
     await page.screenshot({ path: `test-results/terminato-prima-in-attesa-${device}.png` });
     // La voce resta nel menu, grigia e non premibile (docs/changelog/2026-11-20-lavoro-terminato-in-attesa.md).
-    await page.getByRole("button", { name: "Azioni sulla richiesta" }).first().click();
+    // Prima si torna al pulsante e solo dopo si preme: il menu si chiude quando la pagina
+    // scorre, e lo scorrimento fatto dal clic stesso lo richiudeva appena aperto.
+    const menuButton = page.getByRole("button", { name: "Azioni sulla richiesta" }).first();
+    await menuButton.scrollIntoViewIfNeeded();
+    await menuButton.click();
+    await expect(menuButton).toHaveAttribute("aria-expanded", "true");
     const waiting = page.getByRole("menuitem", { name: /Lavoro terminato.*In attesa del cliente/s });
     await expect(waiting).toBeVisible();
     await expect(waiting).toHaveAttribute("aria-disabled", "true");
