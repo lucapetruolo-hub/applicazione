@@ -1,0 +1,78 @@
+# Copia esterna del database (decisione di Luca del 16/11/2026,
+# docs/ops/copia-esterna.md): una volta a settimana una copia cifrata del
+# database va su Backblaze B2 in UE, fuori da Render. Dopo 30 giorni la
+# cancella il bucket da solo (lo promette la Privacy, punto 5).
+#
+# È SPENTA finché mancano i segreti: senza, il giro si salta e resta verde.
+# Se la copia fallisce il workflow diventa rosso e GitHub manda l'email.
+#
+# Segreti (GitHub → Settings → Secrets and variables → Actions → Secrets):
+#   BACKUP_DATABASE_URL   indirizzo "External Database URL" di Render
+#   BACKUP_PASSPHRASE     frase lunga per cifrare (va anche nel gestore di password e su carta)
+#   B2_KEY_ID, B2_APPLICATION_KEY   chiave di Backblaze che può solo scrivere in quel bucket
+# Variabili (stessa pagina, scheda Variables):
+#   B2_BUCKET             nome del bucket
+#   B2_ENDPOINT           es. https://s3.eu-central-003.backblazeb2.com
+name: Copia del database
+
+on:
+  schedule:
+    # Domenica alle 03:15 UTC: lontano dalla prova notturna (02:40) e dalle attività del mattino.
+    - cron: "15 3 * * 0"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: copia-database
+  cancel-in-progress: false
+
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_BUCKET: ${{ vars.B2_BUCKET }}
+      B2_ENDPOINT: ${{ vars.B2_ENDPOINT }}
+    steps:
+      - name: Pronta?
+        id: pronta
+        run: |
+          mancano=""
+          for nome in BACKUP_DATABASE_URL BACKUP_PASSPHRASE AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY B2_BUCKET B2_ENDPOINT; do
+            if [ -z "${!nome}" ]; then mancano="$mancano $nome"; fi
+          done
+          if [ -n "$mancano" ]; then
+            echo "::notice::Copia del database spenta: mancano$mancano (docs/ops/copia-esterna.md)."
+            echo "ok=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Copia cifrata
+        if: steps.pronta.outputs.ok == 'si'
+        run: |
+          set -euo pipefail
+          case "$B2_ENDPOINT" in
+            https://s3.eu-central-*.backblazeb2.com) ;;
+            *) echo "::error::B2_ENDPOINT non è un indirizzo di Backblaze in UE: la copia deve restare in Europa."; exit 1 ;;
+          esac
+          # pg_dump della stessa versione principale del database: così il
+          # ripristino funziona su un database uguale a quello di oggi.
+          versione=$(docker run --rm -e PGURL="$BACKUP_DATABASE_URL" postgres:18-alpine sh -c 'psql "$PGURL" -Atc "show server_version_num"')
+          principale=$((versione / 10000))
+          echo "Database PostgreSQL $principale"
+          file="professionisti-$(date -u +%Y-%m-%d).dump.gpg"
+          # Mai in chiaro sul disco: pg_dump scrive direttamente dentro gpg.
+          docker run --rm -e PGURL="$BACKUP_DATABASE_URL" "postgres:${principale}-alpine" sh -c 'pg_dump "$PGURL" --format=custom --no-owner --no-privileges' \
+            | gpg --batch --symmetric --cipher-algo AES256 --passphrase-fd 3 --output "$file" 3<<<"$BACKUP_PASSPHRASE"
+          byte=$(stat -c %s "$file")
+          echo "Copia cifrata: $byte byte"
+          # Un database vuoto con lo schema pesa già più di così: sotto, qualcosa è andato storto.
+          if [ "$byte" -lt 20000 ]; then echo "::error::La copia è troppo piccola ($byte byte)."; exit 1; fi
+          aws s3 cp "$file" "s3://$B2_BUCKET/database/$file" --endpoint-url "$B2_ENDPOINT" --only-show-errors
+          echo "Copia caricata: database/$file"
