@@ -482,6 +482,8 @@ export type ApiClientConfig = {
   trafficSource?: () => TrafficSource | undefined;
   /** Codice del link d'invito aperto prima di iscriversi (docs/changelog/2026-11-09-passaparola.md). */
   inviteCode?: () => string | undefined;
+  /** Passato da "Lavori cercati" in questa visita (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+  fromBoard?: () => boolean;
   /**
    * Chiamata quando una richiesta all'API non riesce (rete assente o
    * risposta d'errore): il sito conta gli invii falliti per modulo, mai chi
@@ -1370,7 +1372,7 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, onFailure, extraHeaders }: ApiClientConfig) {
+export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, fromBoard, onFailure, extraHeaders }: ApiClientConfig) {
   // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
   // Ciclo e non una regex: CodeQL segnala /\/+$/ come lenta su tante barre.
   let baseUrl = rawBaseUrl;
@@ -1636,7 +1638,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/register", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.(), fromBoard: fromBoard?.() || undefined }),
       }),
 
     emailStatus: (email: string) =>
@@ -1672,7 +1674,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.(), fromBoard: fromBoard?.() || undefined }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */

@@ -10,9 +10,10 @@ import { ProblemExamplesService } from "./problem-examples.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 import { ServiceCatalogService } from "./service-catalog.service";
 import { ServiceNamesModule } from "./service-names.module";
+import { RequestBoardModule } from "../request-board/request-board.module";
 
 @Module({
-  imports: [AuthModule, AdminModule, AuditLogModule, CategoriesModule, ServiceNamesModule],
+  imports: [AuthModule, AdminModule, AuditLogModule, CategoriesModule, ServiceNamesModule, RequestBoardModule],
   controllers: [ProblemMatchController, ServiceNamesController, AdminProblemMatchController],
   providers: [ServiceCatalogService, ProblemMatchService, ProblemMatchAdminService, ProblemTakeoverService, ProblemExamplesService],
   // Le proposte da approvare in Admin usano gli stessi servizi dei pulsanti di "Mestieri richiesti".

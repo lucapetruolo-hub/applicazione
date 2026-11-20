@@ -1,6 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import {
+  BOARD_USE_ACTIONS,
   CHURN_REASONS,
   DEVICE_KINDS,
   PRICE_TOOL_STEP_KEYS,
@@ -34,6 +35,10 @@ export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
 
 export const priceToolStepEventSchema = z.object({ step: z.enum(PRICE_TOOL_STEP_KEYS) });
 export type PriceToolStepEvent = z.infer<typeof priceToolStepEventSchema>;
+
+/** Un'azione in "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+export const boardUseEventSchema = z.object({ action: z.enum(BOARD_USE_ACTIONS) });
+export type BoardUseEvent = z.infer<typeof boardUseEventSchema>;
 
 export const siteFailureEventSchema = z.object({
   form: z.enum(SUBMIT_FORM_KEYS),

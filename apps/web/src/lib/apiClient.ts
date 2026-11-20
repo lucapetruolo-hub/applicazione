@@ -1,5 +1,5 @@
 import { createApiClient } from "@professionisti/api-client";
-import { countSubmitFailure } from "./siteCounts";
+import { countSubmitFailure, visitedBoard } from "./siteCounts";
 import { storedTrafficSource } from "./storedTrafficSource";
 import { storedInviteCode } from "./storedInviteCode";
 import { API_URL } from "./apiUrl";
@@ -45,6 +45,7 @@ export const apiClient = createApiClient({
   // Andamento del sito (docs/CHANGELOG.md §372): provenienza delle iscrizioni e invii non riusciti.
   trafficSource: storedTrafficSource,
   inviteCode: storedInviteCode,
+  fromBoard: visitedBoard,
   onFailure: (failure) => {
     if (typeof window !== "undefined") countSubmitFailure(failure);
   },

@@ -596,6 +596,31 @@ export class RequestBoardService {
     });
   }
 
+  /**
+   * Dove mancano professionisti (proposta G, docs/changelog/2026-11-20-misure-lavori-cercati.md):
+   * richieste in bacheca a cui nessun professionista visibile può rispondere
+   * (stesse regole di "Rispondi", anche se l'ha già ricevuta), per provincia
+   * e mestiere, prima quelle con più richieste. Solo per l'Admin.
+   */
+  async uncovered(now: Date = new Date()): Promise<{ province: string; provinceName: string; trade: string; tradeLabel: string; count: number }[]> {
+    let open = await this.replyableRequests({}, now);
+    if (open.length === 0) return [];
+    for (const profile of await this.visibleProfiles(now)) {
+      const facts = profileFacts(profile);
+      open = open.filter((request) => boardReplyProblem({ request: request.row, profile: facts }) !== null);
+      if (open.length === 0) return [];
+    }
+    const groups = new Map<string, { province: string; provinceName: string; trade: string; tradeLabel: string; count: number }>();
+    for (const request of open) {
+      const { province, trade, tradeLabel } = request.card;
+      const key = `${province}|${trade}`;
+      const group = groups.get(key) ?? { province, provinceName: PROVINCE_NAMES[province] ?? province, trade, tradeLabel, count: 0 };
+      group.count += 1;
+      groups.set(key, group);
+    }
+    return [...groups.values()].sort((a, b) => b.count - a.count || a.provinceName.localeCompare(b.provinceName, "it"));
+  }
+
   /** Professionisti visibili nella ricerca, con quello che serve a "Rispondi". */
   private visibleProfiles(now: Date) {
     return this.prisma.professionalProfile.findMany({

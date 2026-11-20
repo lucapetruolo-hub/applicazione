@@ -287,3 +287,43 @@ describe("bacheca: richieste inoltrate in Lavori cercati", () => {
     ]);
   });
 });
+
+describe("bacheca: dove mancano professionisti", () => {
+  // docs/changelog/2026-11-20-misure-lavori-cercati.md (proposta G)
+  const profile = (id: string, slug: string, lat: number, lon: number) => ({
+    id,
+    userId: `u-${id}`,
+    category: { slug },
+    extraCategories: [],
+    services: [],
+    certifications: null,
+    bio: null,
+    latitude: lat,
+    longitude: lon,
+    remoteAvailable: false,
+    user: { name: "Mario" },
+  });
+
+  function setup(profiles: ReturnType<typeof profile>[]) {
+    const rows = [boardRow("tivoli", "Tivoli"), boardRow("milano", "Milano"), boardRow("monza", "Monza")].map((row) => ({
+      ...row,
+      boardProvince: row.id === "tivoli" ? "RM" : row.id === "milano" ? "MI" : "MB",
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: [],
+    }));
+    const prisma = { guidedRequest: { findMany: vi.fn().mockResolvedValue(rows) }, professionalProfile: { findMany: vi.fn().mockResolvedValue(profiles) } };
+    return new RequestBoardService(prisma as never, {} as never, {} as never, {} as never);
+  }
+
+  it("solo le richieste a cui nessuno del mestiere può rispondere entro 100 km, per provincia", async () => {
+    const result = await setup([profile("roma", "idraulico", 41.9028, 12.4964), profile("elettricista-milano", "elettricista", 45.4642, 9.19)]).uncovered(NOW);
+    expect(result.map((row) => row.province).sort()).toEqual(["MB", "MI"]);
+    expect(result.every((row) => row.count === 1 && row.tradeLabel.length > 0)).toBe(true);
+    expect(result.find((row) => row.province === "MI")?.provinceName).toBe("Milano");
+  });
+
+  it("con un professionista vicino nessuna provincia scoperta", async () => {
+    expect(await setup([profile("roma", "idraulico", 41.9028, 12.4964), profile("milano", "idraulico", 45.4642, 9.19)]).uncovered(NOW)).toEqual([]);
+  });
+});
