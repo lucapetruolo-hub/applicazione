@@ -146,6 +146,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },
   ADMIN_DAC7_DUE: { icon: "⏰", message: "DAC7: la comunicazione dell'anno scorso va inviata entro il 31 gennaio." },
   ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
+  ADMIN_BOARD_UNCOVERED: { icon: "📍", message: "In Lavori cercati ci sono richieste senza nessun professionista vicino: guarda dove." },
   ADMIN_SEARCH_DEMAND_ALERT: { icon: "🔎", message: "Questa settimana alcune ricerche non hanno trovato nessun professionista vicino: guarda dove." },
   ADMIN_WEEKLY_ADVICE: { icon: "💡", message: "Sono pronti i consigli della settimana: cosa fare, già deciso dai numeri." },
   ADMIN_JOB_ISSUE_TO_REVIEW: { icon: "⚖️", message: "Una segnalazione su un lavoro è passata al nostro team: apri Problemi segnalati." },

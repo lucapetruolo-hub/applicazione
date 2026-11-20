@@ -44,7 +44,7 @@ export function boardWeeklyEmail(input: { name: string | null; cards: { id: stri
       "Tocca una richiesta per riceverla nel tuo elenco e mandare il preventivo. Il prezzo lo decidi tu.",
     ],
     detailsTitle: "Le richieste",
-    details: shown.map((card) => ({ label: `${card.tradeLabel} · ${card.place}`, value: card.title, url: `${frontendUrl()}/rispondi?richiesta=${card.id}` })),
+    details: shown.map((card) => ({ label: `${card.tradeLabel} · ${card.place}`, value: card.title, url: `${frontendUrl()}/rispondi?richiesta=${card.id}&da=email` })),
     ...(more > 0 ? { after: [more === 1 ? "C'è anche un'altra richiesta in Lavori cercati." : `Ci sono anche altre ${more} richieste in Lavori cercati.`] } : {}),
     // Si spegne e si riaccende nella pagina "Lavori cercati" del suo mestiere (decisione di Luca del 18/11,
     // docs/changelog/2026-11-18-email-settimana-in-bacheca.md).

@@ -161,6 +161,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_DAC7_DUE") return "/admin/finanza/dac7";
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
+  if (type === "ADMIN_BOARD_UNCOVERED") return "/admin/richieste-da-seguire";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
   if (type === "ADMIN_CLAIMED_CASES_DUE") return "/admin?chi=mie";
   if (type === "ADMIN_SUSPICIOUS_ACCOUNTS") return "/admin/account-sospetti";

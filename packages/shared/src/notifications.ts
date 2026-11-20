@@ -164,6 +164,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_URGENCY_ALERT",
       // Lavori e città con molte ricerche senza nessun professionista vicino, ogni lunedì (docs/CHANGELOG.md §371).
       "ADMIN_SEARCH_DEMAND_ALERT",
+      // Una provincia con tante richieste di un mestiere in "Lavori cercati" e nessuno entro 100 km (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+      "ADMIN_BOARD_UNCOVERED",
       // Cosa fare questa settimana, consigli dai numeri del sito, ogni lunedì (docs/CHANGELOG.md §372).
       "ADMIN_WEEKLY_ADVICE",
       // Casi presi con "Prendo io" che scadono entro 24 ore, ogni mattina (docs/changelog/2026-10-30-admin-riordino.md).
@@ -543,6 +545,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_DAC7_DUE",
       "ADMIN_URGENCY_ALERT",
       "ADMIN_SEARCH_DEMAND_ALERT",
+      "ADMIN_BOARD_UNCOVERED",
       "ADMIN_WEEKLY_ADVICE",
       "ADMIN_CLAIMED_CASES_DUE",
       "ADMIN_SUSPICIOUS_ACCOUNTS",

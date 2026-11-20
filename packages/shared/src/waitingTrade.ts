@@ -5,6 +5,7 @@ import {
   type ProblemOutOfService,
 } from "./problemMatch";
 import type { ProfessionalCategorySlug } from "./categories";
+import type { BoardUseAction } from "./siteStats";
 
 /**
  * Richieste in attesa di un mestiere che nessuno fa ancora vicino al cliente
@@ -126,7 +127,19 @@ export type BoardAdminCounts = {
   claimsPending: number;
   /** Persone che aspettano l'email "Avvisami". */
   alertsPending: number;
+  /** Uso di pagina, mappa e "Rispondi" negli ultimi 90 giorni (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+  use: { action: BoardUseAction; count: number }[];
+  /** Professionisti iscritti partendo da "Lavori cercati", e quanti hanno mandato un preventivo entro 30 giorni. */
+  signupsFromBoard: number;
+  signupsFromBoardQuoted: number;
+  /** Preventivo entro 7 giorni e ore al primo: richieste in bacheca e richieste generali rimaste fuori. */
+  speedOnBoard: BoardSpeedCounts;
+  speedOutside: BoardSpeedCounts;
+  /** Province e mestieri con richieste in bacheca a cui nessuno può rispondere entro 100 km. */
+  uncovered: { province: string; provinceName: string; trade: string; tradeLabel: string; count: number }[];
 };
+
+export type BoardSpeedCounts = { requests: number; withQuote: number; medianHours: number | null };
 
 /**
  * Contatore dei mestieri più chiesti (decisioni di Luca del 17/11/2026,

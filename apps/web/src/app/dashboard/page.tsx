@@ -827,7 +827,7 @@ function BoardNearbySection({ token }: { token: string }) {
       action={{ href: "/lavora-con-noi", label: data.total > data.cards.length ? `Tutte le ${data.total}` : "Sulla mappa" }}
     >
       {data.cards.map((card) => (
-        <Link key={card.id} href={replyHref(card)} className="today-row">
+        <Link key={card.id} href={replyHref(card, "oggi")} className="today-row">
           <span className="today-row-main">
             <strong>{card.title}</strong>
             <span className="today-row-sub">

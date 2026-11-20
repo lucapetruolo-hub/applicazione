@@ -12,6 +12,7 @@ import {
   type DeviceKind,
   type ProfileRequestEvent,
   type ProfileRequestSource,
+  type BoardUseAction,
   type PriceToolStepKey,
   type RequestOrigin,
   type RequestStepKey,
@@ -103,6 +104,16 @@ export class SiteCountsService {
     });
   }
 
+  /** Un'azione in "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md). */
+  async recordBoardUse(action: BoardUseAction): Promise<void> {
+    const day = today();
+    await this.prisma.boardUseDay.upsert({
+      where: { action_day: { action, day } },
+      create: { action, day, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
+
   async recordFailure(form: SubmitFormKey, kind: SubmitFailureKind): Promise<void> {
     const day = today();
     await this.prisma.submitFailureDay.upsert({
@@ -190,6 +201,7 @@ export class SiteCountsService {
       this.prisma.requestStepDay.deleteMany({ where: before }),
       this.prisma.profileRequestSourceDay.deleteMany({ where: before }),
       this.prisma.priceToolStepDay.deleteMany({ where: before }),
+      this.prisma.boardUseDay.deleteMany({ where: before }),
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
       this.prisma.serviceSearchDay.deleteMany({ where: before }),

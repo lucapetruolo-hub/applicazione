@@ -178,6 +178,43 @@ export const PRICE_TOOL_STEP_LABEL: Record<PriceToolStepKey, string> = {
 };
 
 /**
+ * Uso di "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md,
+ * proposta C della versione profonda): azioni sulla pagina e sulla mappa e
+ * "Rispondi" per punto di partenza. Solo l'azione e il giorno.
+ */
+export const BOARD_USE_ACTIONS = [
+  "PAGINA",
+  "MAPPA",
+  "FILTRO",
+  "CERCA_AREA",
+  "VICINO_A_ME",
+  "CERCHIO",
+  "RISPONDI_MAPPA",
+  "RISPONDI_PAGINA",
+  "RISPONDI_OGGI",
+  "RISPONDI_EMAIL",
+] as const;
+export type BoardUseAction = (typeof BOARD_USE_ACTIONS)[number];
+
+export const BOARD_USE_LABEL: Record<BoardUseAction, string> = {
+  PAGINA: "Pagina «Lavori cercati» aperta",
+  MAPPA: "Mappa caricata",
+  FILTRO: "Filtro cambiato",
+  CERCA_AREA: "«Cerca in quest'area»",
+  VICINO_A_ME: "«Vicino a me»",
+  CERCHIO: "Toccato un cerchio della mappa",
+  RISPONDI_MAPPA: "«Rispondi» dalla mappa",
+  RISPONDI_PAGINA: "«Rispondi» dalle pagine per mestiere",
+  RISPONDI_OGGI: "«Rispondi» dal riquadro in Oggi",
+  RISPONDI_EMAIL: "«Rispondi» dall'email del lunedì",
+};
+
+/** Parametro dei link "Rispondi" che dice da dove si parte (solo per contare). */
+export const BOARD_FROM_PARAM = "da";
+export const BOARD_FROM_VALUES = { mappa: "RISPONDI_MAPPA", pagina: "RISPONDI_PAGINA", oggi: "RISPONDI_OGGI", email: "RISPONDI_EMAIL" } as const satisfies Record<string, BoardUseAction>;
+export type BoardFrom = keyof typeof BOARD_FROM_VALUES;
+
+/**
  * Cose successe che cambiano i numeri, segnate da sole sul grafico (§372).
  * Il lancio arriva da `LAUNCH_DATE`; i cambi di prezzo vanno aggiunti qui.
  */

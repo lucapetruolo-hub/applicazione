@@ -147,6 +147,9 @@ model User {
   // diretto..., docs/CHANGELOG.md §372): stessa categoria delle richieste
   // (§296), mai l'indirizzo di provenienza. Dice dove reclutare.
   signupSource               TrafficSource?
+  // Iscritto partendo da "Lavori cercati" (/lavora-con-noi o /rispondi) nella
+  // stessa scheda del browser (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  signupFromBoard            Boolean                 @default(false)
   // "Porta un collega" e link dei partner (docs/changelog/2026-11-09-passaparola.md):
   // chi ha portato questo professionista, dal link d'invito aperto prima di
   // iscriversi. Nessun premio a nessuno (decisione di Luca: ci sono già i
@@ -3163,6 +3166,20 @@ model PriceToolStepDay {
   @@id([step, day])
   @@index([day])
   @@map("price_tool_step_days")
+}
+
+// Uso di "Lavori cercati" (docs/changelog/2026-11-20-misure-lavori-cercati.md):
+// mappa, filtri, "Cerca in quest'area", "Vicino a me" e "Rispondi" per punto
+// di partenza. Solo l'azione e il giorno, mai chi è la persona.
+model BoardUseDay {
+  /// BOARD_USE_ACTIONS in packages/shared.
+  action String
+  day    DateTime @db.Date
+  count  Int      @default(0)
+
+  @@id([action, day])
+  @@index([day])
+  @@map("board_use_days")
 }
 
 // Invii non riusciti nel browser, per modulo e tipo di errore (rete,

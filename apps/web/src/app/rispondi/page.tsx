@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { BoardCard, BoardReplyResult } from "@professionisti/shared";
+import { BOARD_FROM_PARAM, BOARD_FROM_VALUES, type BoardCard, type BoardFrom, type BoardReplyResult } from "@professionisti/shared";
 import { BoardCards } from "@/components/requestBoard/BoardCards";
 import { useAuth } from "@/lib/AuthContext";
 import { apiClient } from "@/lib/apiClient";
+import { countBoardUse, markBoardVisit } from "@/lib/siteCounts";
 import styles from "@/components/requestBoard/BoardPage.module.css";
 
 /**
@@ -85,6 +86,17 @@ function RispondiContent() {
   const valid = UUID.test(requestId);
   const [view, setView] = useState<View | null>(null);
   const started = useRef(false);
+  const from = searchParams.get(BOARD_FROM_PARAM);
+  const counted = useRef(false);
+
+  // "Rispondi" contato per punto di partenza e segno per l'iscrizione
+  // (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  useEffect(() => {
+    if (counted.current) return;
+    counted.current = true;
+    markBoardVisit();
+    if (from && Object.hasOwn(BOARD_FROM_VALUES, from)) countBoardUse(BOARD_FROM_VALUES[from as BoardFrom]);
+  }, [from]);
 
   useEffect(() => {
     if (!valid || isLoading || started.current) return;

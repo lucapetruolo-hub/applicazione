@@ -287,3 +287,84 @@ describe("bacheca: richieste inoltrate in Lavori cercati", () => {
     ]);
   });
 });
+
+describe("bacheca: dove mancano professionisti", () => {
+  // docs/changelog/2026-11-20-misure-lavori-cercati.md (proposta G)
+  const profile = (id: string, slug: string, lat: number, lon: number) => ({
+    id,
+    userId: `u-${id}`,
+    category: { slug },
+    extraCategories: [],
+    services: [],
+    certifications: null,
+    bio: null,
+    latitude: lat,
+    longitude: lon,
+    remoteAvailable: false,
+    user: { name: "Mario" },
+  });
+
+  function setup(profiles: ReturnType<typeof profile>[]) {
+    const rows = [boardRow("tivoli", "Tivoli"), boardRow("milano", "Milano"), boardRow("monza", "Monza")].map((row) => ({
+      ...row,
+      boardProvince: row.id === "tivoli" ? "RM" : row.id === "milano" ? "MI" : "MB",
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: [],
+    }));
+    const prisma = { guidedRequest: { findMany: vi.fn().mockResolvedValue(rows) }, professionalProfile: { findMany: vi.fn().mockResolvedValue(profiles) } };
+    return new RequestBoardService(prisma as never, {} as never, {} as never, {} as never);
+  }
+
+  it("solo le richieste a cui nessuno del mestiere può rispondere entro 100 km, per provincia", async () => {
+    const result = await setup([profile("roma", "idraulico", 41.9028, 12.4964), profile("elettricista-milano", "elettricista", 45.4642, 9.19)]).uncovered(NOW);
+    expect(result.map((row) => row.province).sort()).toEqual(["MB", "MI"]);
+    expect(result.every((row) => row.count === 1 && row.tradeLabel.length > 0)).toBe(true);
+    expect(result.find((row) => row.province === "MI")?.provinceName).toBe("Milano");
+  });
+
+  it("con un professionista vicino nessuna provincia scoperta", async () => {
+    expect(await setup([profile("roma", "idraulico", 41.9028, 12.4964), profile("milano", "idraulico", 45.4642, 9.19)]).uncovered(NOW)).toEqual([]);
+  });
+});
+
+describe("bacheca: avviso ai super admin per le province senza professionisti", () => {
+  // Miglioria scelta da Luca il 20/11/2026 (docs/changelog/2026-11-20-misure-lavori-cercati.md).
+  function setup(count: number, alreadyAlerted: string[] = []) {
+    process.env.REQUEST_BOARD_ENABLED = "true";
+    const rows = Array.from({ length: count }, (_, index) => ({
+      ...boardRow(`milano-${index}`, "Milano"),
+      boardProvince: "MI",
+      waitingTrade: null,
+      waitingTradeKey: null,
+      leads: [],
+    }));
+    const prisma = {
+      guidedRequest: { findMany: vi.fn().mockResolvedValue(rows) },
+      professionalProfile: { findMany: vi.fn().mockResolvedValue([]) },
+      notification: { findMany: vi.fn().mockResolvedValue(alreadyAlerted.length ? [{ payload: { keys: alreadyAlerted } }] : []) },
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "super", adminRoles: ["SUPER"] },
+          { id: "moderatore", adminRoles: ["MODERATION"] },
+        ]),
+      },
+    };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    return { service: new RequestBoardService(prisma as never, {} as never, {} as never, notifications as never), notifications };
+  }
+
+  it("da 5 richieste senza nessuno avvisa solo i super admin", async () => {
+    const { service, notifications } = setup(5);
+    expect(await service.alertUncovered(NOW)).toEqual({ zones: 1 });
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("super", "ADMIN_BOARD_UNCOVERED", expect.objectContaining({ keys: ["MI|idraulico"] }));
+  });
+
+  it("sotto 5 richieste, o già avvisato in settimana, niente", async () => {
+    expect(await setup(4).service.alertUncovered(NOW)).toEqual({ zones: 0 });
+    const { service, notifications } = setup(6, ["MI|idraulico"]);
+    expect(await service.alertUncovered(NOW)).toEqual({ zones: 0 });
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+});

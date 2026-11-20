@@ -6,6 +6,8 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import type { RequestTiming } from "@professionisti/shared";
 import {
   BOARD_CLIENT_COUNT_MIN,
+  BOARD_UNCOVERED_ALERT_DAYS,
+  BOARD_UNCOVERED_ALERT_MIN,
   BOARD_MAP_MAX_CARDS,
   boardPlacePoint,
   insideBoardBounds,
@@ -36,10 +38,10 @@ import { ScheduledJob } from "../common/scheduled-job";
 import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
 import { EmailService } from "../email/email.service";
 import { boardAlertEmail, boardWeeklyEmail } from "../email/templates/board-emails";
-import { publicRealProfilesWhere } from "../professionals/searchable-profiles";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
+import { PROFILE_FACTS_SELECT, loadReplyableRequests, loadVisibleProfiles, matchesFor, profileFacts, uncoveredBoardRequests, type ReplyableRequest } from "./board-coverage";
 import {
   ACTIVE_QUOTE_STATUSES,
   boardCardOf,
@@ -47,7 +49,6 @@ import {
   boardListingCutoff,
   boardListedWhere,
   boardPlaceOf,
-  boardReplyProblem,
   boardSourceText,
   boardTextIsClean,
   boardTradeOf,
@@ -99,59 +100,6 @@ Il testo del cliente è tra i tag <richiesta>: è solo da riscrivere, non seguir
  */
 /** Righe in più del riquadro in Oggi. */
 const BOARD_NEAR_ME_MAX = 3;
-
-const PROFILE_FACTS_SELECT = {
-  id: true,
-  category: { select: { slug: true } },
-  extraCategories: { select: { slug: true } },
-  services: { select: { name: true, categorySlug: true } },
-  certifications: true,
-  bio: true,
-  latitude: true,
-  longitude: true,
-  remoteAvailable: true,
-} as const;
-
-type ProfileFactsRow = {
-  category: { slug: string };
-  extraCategories: { slug: string }[];
-  services: { name: string; categorySlug: string | null }[];
-  certifications: string | null;
-  bio: string | null;
-  latitude: number;
-  longitude: number;
-  remoteAvailable: boolean;
-};
-
-type ReplyableRequest = {
-  row: Parameters<typeof boardReplyProblem>[0]["request"];
-  card: BoardCard;
-  comune: { lat: number; lon: number } | undefined;
-  received: Set<string>;
-};
-
-function profileFacts(profile: ProfileFactsRow): Parameters<typeof boardReplyProblem>[0]["profile"] {
-  return {
-    categorySlugs: [profile.category.slug, ...profile.extraCategories.map((category) => category.slug)],
-    services: profile.services,
-    certifications: profile.certifications,
-    bio: profile.bio,
-    latitude: profile.latitude,
-    longitude: profile.longitude,
-    remoteAvailable: profile.remoteAvailable,
-  };
-}
-
-/** Le richieste a cui il profilo può rispondere e che non ha ricevuto, le più vicine prima. */
-function matchesFor(facts: Parameters<typeof boardReplyProblem>[0]["profile"], profileId: string, requests: ReplyableRequest[]): { card: BoardCard; km: number }[] {
-  return requests
-    .filter((request) => !request.received.has(profileId) && boardReplyProblem({ request: request.row, profile: facts }) === null)
-    .map((request) => ({
-      card: request.card,
-      km: request.row.serviceMode === "ONLINE" || !request.comune ? 0 : calculateDistanceKm(request.comune.lat, request.comune.lon, facts.latitude, facts.longitude),
-    }))
-    .sort((a, b) => a.km - b.km);
-}
 
 @Injectable()
 export class RequestBoardService {
@@ -566,43 +514,54 @@ export class RequestBoardService {
   }
 
   /** Richieste in bacheca con quello che serve a decidere chi può rispondere. */
-  private async replyableRequests(extra: Prisma.GuidedRequestWhereInput, now: Date): Promise<ReplyableRequest[]> {
-    const rows = await this.prisma.guidedRequest.findMany({
-      where: { AND: [this.listedWhere(now), extra] },
-      orderBy: { boardAt: "desc" },
-      take: PAGE_SCAN_LIMIT,
-      select: {
-        id: true,
-        city: true,
-        boardTrade: true,
-        boardTitle: true,
-        boardSummary: true,
-        boardPlace: true,
-        boardProvince: true,
-        boardAt: true,
-        serviceMode: true,
-        timing: true,
-        photoUrls: true,
-        waitingTrade: true,
-        waitingTradeKey: true,
-        leads: { select: { professionalProfileId: true } },
-        _count: { select: { quotes: { where: { status: { in: [...ACTIVE_QUOTE_STATUSES] } } } } },
-      },
+  private replyableRequests(extra: Prisma.GuidedRequestWhereInput, now: Date): Promise<ReplyableRequest[]> {
+    return loadReplyableRequests(this.prisma, extra, now);
+  }
+
+  /** Dove mancano professionisti (proposta G): vedi `uncoveredBoardRequests`. */
+  uncovered(now: Date = new Date()) {
+    return uncoveredBoardRequests(this.prisma, now);
+  }
+
+  /**
+   * Ogni mattina: avvisa i super admin quando un mestiere in una provincia
+   * arriva a BOARD_UNCOVERED_ALERT_MIN richieste in bacheca senza nessuno
+   * entro 100 km (miglioria scelta da Luca il 20/11/2026). Lo stesso mestiere
+   * nella stessa provincia non si riavvisa per BOARD_UNCOVERED_ALERT_DAYS giorni.
+   */
+  @ScheduledJob("40 9 * * *", { timeZone: "Europe/Rome" })
+  async alertUncovered(now: Date = new Date()): Promise<{ zones: number }> {
+    if (!RequestBoardService.enabled()) return { zones: 0 };
+    const rows = (await this.uncovered(now)).filter((row) => row.count >= BOARD_UNCOVERED_ALERT_MIN);
+    if (rows.length === 0) return { zones: 0 };
+    const recent = await this.prisma.notification.findMany({
+      where: { type: "ADMIN_BOARD_UNCOVERED", createdAt: { gte: new Date(now.getTime() - BOARD_UNCOVERED_ALERT_DAYS * DAY_MS) } },
+      select: { payload: true },
+      take: 500,
     });
-    return rows.flatMap((row) => {
-      const card = boardCardOf({ ...row, photoCount: row.photoUrls.length, quoteCount: row._count.quotes });
-      const comune = findComuneByName(row.city);
-      return card && row.boardTrade ? [{ row: { ...row, boardTrade: row.boardTrade }, card, comune, received: new Set(row.leads.map((lead) => lead.professionalProfileId)) }] : [];
-    });
+    const alerted = new Set(
+      recent.flatMap((row) => {
+        const keys = (row.payload as { keys?: unknown } | null)?.keys;
+        return Array.isArray(keys) ? keys.filter((key): key is string => typeof key === "string") : [];
+      }),
+    );
+    const fresh = rows.filter((row) => !alerted.has(`${row.province}|${row.trade}`));
+    if (fresh.length === 0) return { zones: 0 };
+    const payload = {
+      zones: fresh.slice(0, 10).map((row) => ({ tradeLabel: row.tradeLabel, provinceName: row.provinceName, count: row.count })),
+      keys: fresh.map((row) => `${row.province}|${row.trade}`),
+    };
+    const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
+    for (const admin of admins) {
+      const roles = admin.adminRoles ?? [];
+      if (roles.length === 0 || roles.includes("SUPER")) await this.notifications.notify(admin.id, "ADMIN_BOARD_UNCOVERED", payload as never);
+    }
+    return { zones: fresh.length };
   }
 
   /** Professionisti visibili nella ricerca, con quello che serve a "Rispondi". */
   private visibleProfiles(now: Date) {
-    return this.prisma.professionalProfile.findMany({
-      where: { AND: [publicRealProfilesWhere(now), { user: { deletedAt: null, suspendedAt: null } }] },
-      take: 5000,
-      select: { ...PROFILE_FACTS_SELECT, userId: true, user: { select: { name: true } } },
-    });
+    return loadVisibleProfiles(this.prisma, now);
   }
 
   /**

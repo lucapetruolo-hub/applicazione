@@ -47,8 +47,8 @@ export default function CookiePage() {
                 {
                   title: "Conteggi per migliorare il sito",
                   rows: [
-                    ["Nome", "traffic_source, da_quanto_costa"],
-                    ["Scopo", "contare, senza sapere chi sei, da dove arriva chi si iscrive e cosa succede dopo \"Quanto costa\" (Privacy Policy, punto 9)"],
+                    ["Nome", "traffic_source, da_quanto_costa, da_lavori_cercati"],
+                    ["Scopo", "contare, senza sapere chi sei, da dove arriva chi si iscrive (anche se è passato da \"Lavori cercati\") e cosa succede dopo \"Quanto costa\" (Privacy Policy, punto 9)"],
                     ["Durata", "fino alla chiusura della scheda"],
                   ],
                 },
