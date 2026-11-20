@@ -208,13 +208,13 @@ function BoardMeasures({ counts }: { counts: BoardAdminCounts }) {
         </div>
         <div className="waiting-group">
           <strong>{speedText(counts.speedOutside)}</strong>
-          <span>Richieste generali rimaste fuori (tolte o non pubblicabili), contate da quando sarebbero entrate</span>
+          <span>Richieste rimaste fuori. Si conta da quando sarebbero entrate.</span>
         </div>
         <div className="waiting-group">
           <strong>
             {counts.signupsFromBoard} · {counts.signupsFromBoardQuoted} con un preventivo
           </strong>
-          <span>Professionisti iscritti partendo da Lavori cercati (preventivo entro 30 giorni)</span>
+          <span>Iscritti da Lavori cercati. Con un preventivo: entro 30 giorni.</span>
         </div>
       </div>
       <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
@@ -222,7 +222,7 @@ function BoardMeasures({ counts }: { counts: BoardAdminCounts }) {
       </Text>
       {counts.uncovered.length === 0 ? (
         <Text fontSize={14} color={brand.grafite70}>
-          Oggi ogni richiesta in Lavori cercati ha almeno un professionista che può rispondere entro 100 km.
+          Oggi c'è sempre qualcuno che può rispondere entro 100 km.
         </Text>
       ) : (
         <div className="waiting-groups">
