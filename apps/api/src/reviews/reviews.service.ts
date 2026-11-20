@@ -7,6 +7,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { NotificationsService } from "../notifications/notifications.service";
 import { publicClientName } from "../common/client-name.util";
 import { loadReviewHoldReasons } from "./review-hold";
+import { notifyReviewHeldAdmins } from "./review-hold-notices.service";
 import { ReviewPhotoCheckService } from "./review-photo-check";
 
 // Le recensioni del cliente sono pubbliche subito: il professionista non
@@ -256,7 +257,12 @@ export class ReviewsService {
         ...(held ? { hiddenAt: now, heldAt: now, heldReasons } : {}),
       },
     });
-    if (held) return { id: review.id, held: true };
+    if (held) {
+      // Prima lo sapeva solo la coda "Da fare": ora gli admin ricevono l'avviso
+      // (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
+      await notifyReviewHeldAdmins(this.prisma, this.notificationsService, { reviewId: review.id, clientId: booking.clientId });
+      return { id: review.id, held: true };
+    }
     if (homeEligible(input.rating, input.comment)) this.reviewPhotoCheck.checkInBackground([{ id: review.id, hasPhotos: input.photoUrls.length > 0 }]);
 
     await this.afterPublished(booking.professionalProfileId, input.rating, {
