@@ -104,7 +104,7 @@ jobs:
           fi
 
       - name: Cache di Next.js
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
@@ -196,7 +196,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache di Next.js
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
@@ -284,7 +284,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache di Next.js
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
