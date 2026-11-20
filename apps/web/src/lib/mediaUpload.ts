@@ -59,9 +59,15 @@ function videoDuration(file: Blob): Promise<number | null> {
   });
 }
 
+/** "45 secondi", "1 minuto e 23 secondi", "2 minuti". */
 export function durationText(seconds: number): string {
-  if (seconds < 90) return `${Math.round(seconds)} secondi`;
-  return `${Math.round(seconds / 60)} minuti`;
+  const total = Math.round(seconds);
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  const secondsText = rest === 1 ? "1 secondo" : `${rest} secondi`;
+  if (minutes === 0) return secondsText;
+  const minutesText = minutes === 1 ? "1 minuto" : `${minutes} minuti`;
+  return rest === 0 ? minutesText : `${minutesText} e ${secondsText}`;
 }
 
 const isVideoFile = (file: Blob) => file.type.startsWith("video/");
