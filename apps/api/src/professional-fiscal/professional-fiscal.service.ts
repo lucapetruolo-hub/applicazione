@@ -554,12 +554,14 @@ export class ProfessionalFiscalService {
       });
     } else await this.ensureMerchantConfiguration(stripeAccountId);
 
+    // Niente `configurations` (merchant, recipient): dalla versione 2026-09-30
+    // Stripe le ricava da quelle già sull'account e rifiuta il parametro
+    // (docs/changelog/2026-11-20-stripe-23-nestjs-12.md).
     const accountLink = await this.stripe.v2.core.accountLinks.create({
       account: stripeAccountId,
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["merchant", "recipient"],
           // Scheda "Pagamenti online" (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md); il vecchio indirizzo rimanda qui.
           refresh_url: `${this.frontendUrl()}/dashboard/fiscale/pagamenti?stripeConnect=refresh`,
           return_url: `${this.frontendUrl()}/dashboard/fiscale/pagamenti?stripeConnect=completato`,

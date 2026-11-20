@@ -10,7 +10,7 @@ sezione di `CLAUDE.md` che rimanda qui.
 | Web (desktop/mobile browser) | **Next.js 16** (App Router, TypeScript, Turbopack) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
 | App mobile (iOS + Android) | **Expo 58 / React Native 0.88** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
 | UI condivisa web+mobile | **Tamagui 3** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
-| Backend API | **NestJS 11** (Node.js, TypeScript, Express 5) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
+| Backend API | **NestJS 12** (Node.js, TypeScript, Express 5; dal 20/11/2026, pacchetti solo ESM caricati con `require` grazie a `"module": "Node20"` in `apps/api/tsconfig.json`, docs/changelog/2026-11-20-stripe-23-nestjs-12.md) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
 | Database | **PostgreSQL** + **PostGIS** | Ricerca geografica (professionisti vicini) nativa in SQL; PostGIS evita di introdurre subito un motore di ricerca separato |
 | ORM | **Prisma 6** | Type-safety end-to-end condivisa col resto del monorepo TS |
 | Ricerca full-text avanzata (fase 2) | **Meilisearch** o **Typesense** | Da introdurre quando serve ranking sponsorizzato + filtri complessi oltre a ciò che Postgres gestisce bene |

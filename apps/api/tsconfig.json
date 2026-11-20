@@ -1,6 +1,10 @@
 {
   "extends": "@professionisti/config/tsconfig.node.json",
   "compilerOptions": {
+    // NestJS 12 è pubblicato solo come ESM: "Node20" permette a TypeScript di
+    // compilare i nostri file CommonJS che lo caricano con require(), come fa
+    // Node.js dalla 20.19/22.12 (docs/changelog/2026-11-20-stripe-23-nestjs-12.md).
+    "module": "Node20",
     "rootDir": "src",
     "outDir": "dist",
     "types": ["node", "multer"]
