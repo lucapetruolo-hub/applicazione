@@ -927,6 +927,7 @@ const SOURCE_LABEL: Record<SignupSourceKey, string> = {
   INVITE: "Profilo creato al telefono",
   COLLEAGUE: "Invitati da un collega",
   PARTNER: "Dal link di un partner",
+  BOARD: "Da «Lavori cercati»",
   unknown: "Non si sa",
 };
 
