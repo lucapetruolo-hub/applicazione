@@ -29,14 +29,9 @@ describe("avviso agli admin", () => {
 });
 
 describe("il giro del mattino", () => {
-  const held = (id: string, clientDeleted = false) => ({
-    id,
-    heldAt: daysAgo(8),
-    heldNoticeSentAt: null,
-    booking: { id: `b-${id}`, clientId: `c-${id}`, client: { deletedAt: clientDeleted ? daysAgo(1) : null }, quote: { guidedRequestId: `g-${id}` } },
-  });
+  const held = (id: string) => ({ id, heldAt: daysAgo(8), heldNoticeSentAt: null, booking: { clientId: `c-${id}` } });
 
-  it("scrive al cliente e ricorda agli admin, segnando la recensione", async () => {
+  it("ricorda agli admin, segnando la recensione, e al cliente non scrive", async () => {
     const prisma = {
       review: { findMany: vi.fn().mockResolvedValue([held("r-1")]), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       user: { findMany: vi.fn().mockResolvedValue([{ id: "a-1" }]) },
@@ -44,7 +39,8 @@ describe("il giro del mattino", () => {
     const notifications = { notify: vi.fn() };
     await new ReviewHoldNoticesService(prisma as never, notifications as never).noticeLongHeld(now);
     expect(prisma.review.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { heldNoticeSentAt: now } }));
-    expect(notifications.notify).toHaveBeenCalledWith("c-r-1", "REVIEW_STILL_HELD", { reviewId: "r-1", bookingId: "b-r-1", guidedRequestId: "g-r-1" });
+    // Al cliente niente (decisione di Luca del 23/11/2026): un solo avviso, quello agli admin.
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
     expect(notifications.notify).toHaveBeenCalledWith("a-1", "ADMIN_REVIEW_HELD", { reviewId: "r-1", clientId: "c-r-1", late: true });
   });
 
@@ -56,16 +52,5 @@ describe("il giro del mattino", () => {
     const notifications = { notify: vi.fn() };
     await new ReviewHoldNoticesService(prisma as never, notifications as never).noticeLongHeld(now);
     expect(notifications.notify).not.toHaveBeenCalled();
-  });
-
-  it("a un cliente con l'account chiuso non scrive, agli admin sì", async () => {
-    const prisma = {
-      review: { findMany: vi.fn().mockResolvedValue([held("r-1", true)]), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-      user: { findMany: vi.fn().mockResolvedValue([{ id: "a-1" }]) },
-    };
-    const notifications = { notify: vi.fn() };
-    await new ReviewHoldNoticesService(prisma as never, notifications as never).noticeLongHeld(now);
-    expect(notifications.notify).toHaveBeenCalledTimes(1);
-    expect(notifications.notify).toHaveBeenCalledWith("a-1", "ADMIN_REVIEW_HELD", expect.objectContaining({ late: true }));
   });
 });

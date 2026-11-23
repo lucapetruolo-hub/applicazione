@@ -986,19 +986,6 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Leggi la risposta", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
   }),
 
-  // Al cliente: recensione in controllo da 7 giorni (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
-  REVIEW_STILL_HELD: (payload, ctx) => ({
-    kind: "notification",
-    subject: "Stiamo ancora controllando la tua recensione",
-    greeting: ctx.name,
-    title: "La tua recensione è ancora in controllo",
-    paragraphs: [
-      `La recensione che hai lasciato per **${job(ctx)}** non è ancora pubblicata: il controllo sta durando più del previsto e ci scusiamo.`,
-      "Non devi fare niente: appena è pubblicata la vedi in Le mie recensioni.",
-    ],
-    cta: { label: "Vedi la tua recensione", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
-  }),
-
   // Agli admin: una recensione è in controllo, o ci resta da 7 giorni (stessa voce del changelog).
   ADMIN_REVIEW_HELD: (payload) => {
     const late = payload.late === true;
