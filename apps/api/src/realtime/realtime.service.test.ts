@@ -62,3 +62,17 @@ describe("Tempo reale con più copie dell'API (docs/changelog/2026-11-16-traffic
     expect(received).toEqual([]);
   });
 });
+
+describe("Chiusura dell'API (docs/changelog/2026-11-23-chiusura-api-e-express-perdite-stripe.md)", () => {
+  it("alla chiusura segnala `closing$` una volta, anche a chi si iscrive dopo", () => {
+    const service = new RealtimeService(sharedTable() as never);
+    const before: string[] = [];
+    service.closing$.subscribe({ next: () => before.push("chiusura"), complete: () => before.push("fine") });
+    expect(before).toEqual([]);
+    service.onModuleDestroy();
+    expect(before).toEqual(["chiusura", "fine"]);
+    const after: string[] = [];
+    service.closing$.subscribe({ next: () => after.push("chiusura") });
+    expect(after).toEqual(["chiusura"]);
+  });
+});

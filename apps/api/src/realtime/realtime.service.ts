@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
-import { Subject, type Observable } from "rxjs";
+import { ReplaySubject, Subject, type Observable } from "rxjs";
 import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import type { RealtimeEvent } from "@professionisti/shared";
@@ -36,6 +36,17 @@ export class RealtimeService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private polling = false;
   private polls = 0;
+  /** Emette una volta, quando l'API si sta chiudendo (vedi `closing$`). */
+  private readonly closingSubject = new ReplaySubject<void>(1);
+
+  /**
+   * Segnale di chiusura dell'API: chiude tutti i flussi aperti. Senza, a ogni
+   * riavvio (Render manda SIGTERM) il server aspettava la fine dei flussi in
+   * tempo reale, che non finiscono mai da soli, e Render lo spegneva di forza
+   * dopo 30 secondi. Il browser si ricollega da solo alla copia nuova
+   * (docs/changelog/2026-11-23-chiusura-api-e-express-perdite-stripe.md).
+   */
+  readonly closing$: Observable<void> = this.closingSubject.asObservable();
 
   constructor(@Inject(PRISMA) private readonly prisma: Pick<PrismaClient, "realtimeEvent">) {}
 
@@ -47,6 +58,9 @@ export class RealtimeService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    // Prima di chiudere il server HTTP (Nest chiama questo aggancio prima).
+    this.closingSubject.next();
+    this.closingSubject.complete();
   }
 
   private getOrCreateSubject(userId: string): Subject<RealtimeEvent> {

@@ -46,8 +46,11 @@ services:
     # Niente "corepack enable": con Node 24 Render ha già pnpm in /usr/bin
     # (cartella di sola lettura) e il comando falliva con EROFS
     # (docs/CHANGELOG.md §377). pnpm legge la versione da "packageManager".
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
-    startCommand: pnpm --filter @professionisti/api start
+    # Da Node 25 corepack non è più dentro Node: se un giorno Render non
+    # avesse pnpm, la build lo installa con npm (che c'è sempre) e l'avvio
+    # usa npm al suo posto (docs/changelog/2026-11-23-node-26.md).
+    buildCommand: command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.33.0; pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
+    startCommand: if command -v pnpm >/dev/null 2>&1; then pnpm --filter @professionisti/api start; else cd apps/api && npm run start; fi
     # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API
     buildFilter:
       paths:
