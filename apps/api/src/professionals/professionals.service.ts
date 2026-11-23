@@ -70,6 +70,7 @@ import {
   serviceCategoryOf,
   validSubTags,
   validInstallerQualifications,
+  validFgasNumber,
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   OUT_OF_SERVICE_KEYWORDS,
@@ -1377,6 +1378,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       installerQualifications: profile.installerQualifications,
+      fgasRegistrationNumber: profile.fgasRegistrationNumber,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
       // Solo la pausa scelta da lui si dice al cliente, mai il motivo delle altre (§162, §167).
@@ -1445,6 +1447,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       installerQualifications: profile.installerQualifications,
+      fgasRegistrationNumber: profile.fgasRegistrationNumber,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
@@ -1513,6 +1516,7 @@ export class ProfessionalsService {
         categoryId: true,
         extraCategories: { select: { id: true } },
         installerQualifications: true,
+        fgasRegistrationNumber: true,
       },
     });
     const isFirstTimeCreation = existingProfile === null;
@@ -1521,6 +1525,11 @@ export class ProfessionalsService {
     // così togliendo Idraulico sparisce anche "Impianti dell'acqua".
     const installerQualifications = validInstallerQualifications(
       input.installerQualifications ?? existingProfile?.installerQualifications ?? [],
+      categorySlugs as ProfessionalCategorySlug[],
+    );
+    // Registro F-gas: non inviato = quello salvato; sparisce senza Climatizzazione o Elettrodomestici.
+    const fgasRegistrationNumber = validFgasNumber(
+      input.fgasRegistrationNumber ?? existingProfile?.fgasRegistrationNumber,
       categorySlugs as ProfessionalCategorySlug[],
     );
     // Un privato senza partita IVA non può avere il nome di una società
@@ -1581,6 +1590,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         installerQualifications,
+        fgasRegistrationNumber,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         cancellationNoticeHours: input.cancellationNoticeHours,
         lateCancelKeepsDeposit: input.lateCancelKeepsDeposit,
@@ -1606,6 +1616,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         installerQualifications,
+        fgasRegistrationNumber,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         cancellationNoticeHours: input.cancellationNoticeHours,
         lateCancelKeepsDeposit: input.lateCancelKeepsDeposit,
@@ -1726,6 +1737,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       installerQualifications: profile.installerQualifications,
+      fgasRegistrationNumber: profile.fgasRegistrationNumber,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),

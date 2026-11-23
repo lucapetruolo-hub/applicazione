@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { qualificationServicesFor, installerQualificationsFor, installerQualificationsText, validInstallerQualifications } from "./installerQualifications";
+import { validFgasNumber, qualificationServicesFor, installerQualificationsFor, installerQualificationsText, validInstallerQualifications } from "./installerQualifications";
 import { COMBINED_TRADES, MOVED_SUB_TAGS, categorySubTags } from "./categories";
 
 test("il termoidraulico vede riscaldamento, acqua e gas", () => {
@@ -30,4 +30,11 @@ test("con la lettera A l'elettricista vede prima Certificazione impianto", () =>
   assert.deepEqual(qualificationServicesFor(["a", "b"], "elettricista"), ["Certificazione impianto"]);
   assert.deepEqual(qualificationServicesFor(["a"], "idraulico"), []);
   assert.deepEqual(qualificationServicesFor([], "elettricista"), []);
+});
+
+test("Registro F-gas solo con Climatizzazione o Elettrodomestici", () => {
+  assert.equal(validFgasNumber(" FI/123 ", ["idraulico", "climatizzazione"]), "FI/123");
+  assert.equal(validFgasNumber("FI/123", ["idraulico"]), null);
+  assert.equal(validFgasNumber("", ["elettrodomestici"]), null);
+  assert.equal(validFgasNumber(undefined, ["climatizzazione"]), null);
 });

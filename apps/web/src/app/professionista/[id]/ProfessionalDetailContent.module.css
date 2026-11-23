@@ -196,6 +196,14 @@
   color: var(--c-grafite70);
 }
 
+/* Link dentro una riga di testo (Registro F-gas): stesso verde dei link del sito, sottolineato. */
+.inlineLink {
+  color: var(--c-cianografiaScuro);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .muted {
   color: var(--c-grafite70);
 }

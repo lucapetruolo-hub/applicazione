@@ -56,3 +56,20 @@ progetto); 308 della vecchia pagina provato.
 
 **Verifica**: test di `packages/shared`, typecheck e lint del sito, foto da
 telefono e computer.
+
+## Registro F-gas (23/11/2026, sera)
+
+**Richiesta** (Luca): sì alla proposta del numero di iscrizione al Registro
+F-gas.
+
+**Decisione**: campo facoltativo `ProfessionalProfile.fgasRegistrationNumber`
+(migrazione `20261123180000_registro_fgas`), solo per chi ha Climatizzazione e
+caldaie o Elettrodomestici (`FGAS_CATEGORIES`, `validFgasNumber`): togliendo
+quei mestieri il numero sparisce. Lettere, numeri, barre e trattini, al massimo
+40 caratteri. Sul profilo pubblico: "Iscritto al Registro F-gas (dichiarato) ·
+n. … · Controlla sul registro", che apre la ricerca pubblica
+https://www.fgas.it/Ricerca (senza accesso). Nessun controllo automatico: non
+c'è un servizio ufficiale da interrogare; il formato del numero non è
+pubblicato, quindi niente controllo del formato oltre ai caratteri.
+
+**Verifica**: test di `packages/shared`, typecheck di API e sito, lint, foto.

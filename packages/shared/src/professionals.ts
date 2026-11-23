@@ -458,6 +458,8 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
   certifications: string | null;
   /** Abilitazioni DM 37/2008 dichiarate, lettere a-e (docs/changelog/2026-11-23-termoidraulico.md). */
   installerQualifications: string[];
+  /** Numero di iscrizione al Registro F-gas dichiarato (docs/changelog/2026-11-23-termoidraulico.md). */
+  fgasRegistrationNumber: string | null;
   hasLiabilityInsurance: boolean;
   /**
    * Falso quando l'account è in pausa per l'abbonamento (docs/CHANGELOG.md

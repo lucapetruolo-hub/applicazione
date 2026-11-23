@@ -69,3 +69,24 @@ export function installerQualificationsText(letters: readonly string[]): string 
   if (parts.length <= 1) return parts.join("");
   return `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
 }
+
+/**
+ * Registro nazionale F-gas (Camere di Commercio, DPR 146/2018 e regolamento
+ * UE 2024/573): chi installa, ricarica o ripara condizionatori, pompe di calore
+ * e frigoriferi deve esserci iscritto. Il professionista scrive il numero, il
+ * cliente lo controlla da sé sulla ricerca pubblica (richiesta di Luca,
+ * docs/changelog/2026-11-23-termoidraulico.md): mai "verificato" da noi.
+ */
+export const FGAS_REGISTRY_SEARCH_URL = "https://www.fgas.it/Ricerca";
+export const FGAS_CATEGORIES: readonly ProfessionalCategorySlug[] = ["climatizzazione", "elettrodomestici"];
+export const FGAS_NUMBER_MAX_LENGTH = 40;
+
+export function hasFgasCategory(categorySlugs: readonly ProfessionalCategorySlug[]): boolean {
+  return categorySlugs.some((slug) => FGAS_CATEGORIES.includes(slug));
+}
+
+/** Il numero da salvare: solo con un mestiere che tocca i gas fluorurati, vuoto = nessuno. */
+export function validFgasNumber(value: string | null | undefined, categorySlugs: readonly ProfessionalCategorySlug[]): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed && hasFgasCategory(categorySlugs) ? trimmed : null;
+}
