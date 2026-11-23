@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { CATEGORY_COMPANIONS, COMBINED_TRADES, MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CategoryTiles } from "@/components/CategoryTiles";
@@ -183,20 +184,29 @@ export function CategoryMultiPicker({
   );
 }
 
-/** La domanda con le parole del mestiere in grassetto ("Fai il **termoidraulico**..."). */
+/** La domanda con le parole del mestiere in grassetto ("Fai il **termoidraulico**..."), senza RegExp costruite a mano. */
 function highlighted(text: string, words: readonly string[]) {
-  if (words.length === 0) return text;
-  // Parole semplici scritte da noi in COMBINED_TRADES: niente caratteri speciali da proteggere.
-  const pattern = new RegExp(`(${words.join("|")})`, "g");
-  return text.split(pattern).map((part, index) =>
-    words.includes(part) ? (
-      <Text key={index} fontSize={13} fontWeight="700" color={brand.grafite}>
-        {part}
-      </Text>
-    ) : (
-      part
-    ),
-  );
+  const parts: ReactNode[] = [];
+  let rest = text;
+  while (rest.length > 0) {
+    const next = words
+      .filter((word) => word.length > 0)
+      .map((word) => ({ word, at: rest.indexOf(word) }))
+      .filter((found) => found.at >= 0)
+      .sort((a, b) => a.at - b.at)[0];
+    if (!next) {
+      parts.push(rest);
+      break;
+    }
+    if (next.at > 0) parts.push(rest.slice(0, next.at));
+    parts.push(
+      <Text key={parts.length} fontSize={13} fontWeight="700" color={brand.grafite}>
+        {next.word}
+      </Text>,
+    );
+    rest = rest.slice(next.at + next.word.length);
+  }
+  return parts;
 }
 
 function moved(list: ProfessionalCategorySlug[], index: number, step: -1 | 1): ProfessionalCategorySlug[] {
