@@ -69,6 +69,7 @@ import {
   isProfessionalCategorySlug,
   serviceCategoryOf,
   validSubTags,
+  validInstallerQualifications,
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   OUT_OF_SERVICE_KEYWORDS,
@@ -1375,6 +1376,7 @@ export class ProfessionalsService {
         (profile.metrics?.totalResponsesMeasured ?? 0) >= MIN_RESPONSES_FOR_PUBLIC_TIME ? (profile.metrics?.avgResponseTimeMinutes ?? null) : null,
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
+      installerQualifications: profile.installerQualifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
       // Solo la pausa scelta da lui si dice al cliente, mai il motivo delle altre (§162, §167).
@@ -1442,6 +1444,7 @@ export class ProfessionalsService {
       spokenLanguages: profile.spokenLanguages,
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
+      installerQualifications: profile.installerQualifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
@@ -1509,9 +1512,17 @@ export class ProfessionalsService {
         invitePendingAt: true,
         categoryId: true,
         extraCategories: { select: { id: true } },
+        installerQualifications: true,
       },
     });
     const isFirstTimeCreation = existingProfile === null;
+    // Abilitazioni DM 37/2008 (docs/changelog/2026-11-23-termoidraulico.md):
+    // non inviate = quelle già salvate; sempre solo quelle dei mestieri scelti,
+    // così togliendo Idraulico sparisce anche "Impianti dell'acqua".
+    const installerQualifications = validInstallerQualifications(
+      input.installerQualifications ?? existingProfile?.installerQualifications ?? [],
+      categorySlugs as ProfessionalCategorySlug[],
+    );
     // Un privato senza partita IVA non può avere il nome di una società
     // (collaudo A-11, M-03): ai clienti comparirebbe "Privato" accanto a "S.R.L.".
     if (looksLikeCompanyName(input.businessName)) {
@@ -1569,6 +1580,7 @@ export class ProfessionalsService {
         spokenLanguages: input.spokenLanguages,
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
+        installerQualifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         cancellationNoticeHours: input.cancellationNoticeHours,
         lateCancelKeepsDeposit: input.lateCancelKeepsDeposit,
@@ -1593,6 +1605,7 @@ export class ProfessionalsService {
         spokenLanguages: input.spokenLanguages,
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
+        installerQualifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         cancellationNoticeHours: input.cancellationNoticeHours,
         lateCancelKeepsDeposit: input.lateCancelKeepsDeposit,
@@ -1712,6 +1725,7 @@ export class ProfessionalsService {
       spokenLanguages: profile.spokenLanguages,
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
+      installerQualifications: profile.installerQualifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),

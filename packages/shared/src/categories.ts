@@ -17,7 +17,7 @@ export const PROFESSIONAL_CATEGORIES = [
     slug: "idraulico",
     label: "Idraulico",
     icon: "wrench",
-    subTags: ["riparazioni-urgenti", "caldaie", "impianti-sanitari"],
+    subTags: ["riparazioni-urgenti", "impianti-gas", "impianti-sanitari"],
   },
   {
     slug: "elettricista",
@@ -128,6 +128,16 @@ export const CATEGORY_COMPANIONS: Partial<Record<ProfessionalCategorySlug, { sug
   },
 };
 
+/**
+ * Mestieri che sul sito sono due categorie insieme, suggeriti sopra la scelta
+ * dei mestieri (richiesta di Luca, docs/changelog/2026-11-23-termoidraulico.md):
+ * il termoidraulico non trova la sua parola tra le schede e sceglieva solo
+ * Idraulico, perdendo le richieste sulle caldaie.
+ */
+export const COMBINED_TRADES: readonly { question: string; categories: readonly ProfessionalCategorySlug[] }[] = [
+  { question: "Fai il termoidraulico o l'impiantista?", categories: ["idraulico", "climatizzazione"] },
+];
+
 export function isProfessionalCategorySlug(value: string): value is ProfessionalCategorySlug {
   return PROFESSIONAL_CATEGORIES.some((category) => category.slug === value);
 }
@@ -140,7 +150,7 @@ export function isProfessionalCategorySlug(value: string): value is Professional
  */
 export const SUB_TAG_LABELS: Record<(typeof PROFESSIONAL_CATEGORIES)[number]["subTags"][number], string> = {
   "riparazioni-urgenti": "Riparazioni urgenti",
-  caldaie: "Caldaie",
+  "impianti-gas": "Impianti gas",
   "impianti-sanitari": "Impianti sanitari",
   "impianti-civili": "Impianti civili",
   domotica: "Domotica",
@@ -183,6 +193,17 @@ export const SUB_TAG_LABELS: Record<(typeof PROFESSIONAL_CATEGORIES)[number]["su
   serate: "Serate",
   "dopo-scuola": "Dopo scuola",
   neonati: "Neonati",
+};
+
+/**
+ * Specializzazioni tolte e dove portano ora le loro pagine per servizio
+ * (docs/changelog/2026-11-23-termoidraulico.md): "Caldaie" sotto Idraulico
+ * prometteva lavori che il sito manda a "Climatizzazione e caldaie" (DM
+ * 37/2008); la vecchia /cerca/idraulico/<città>/caldaie va alla pagina di
+ * Climatizzazione e caldaie della stessa città.
+ */
+export const MOVED_SUB_TAGS: Partial<Record<ProfessionalCategorySlug, Record<string, ProfessionalCategorySlug>>> = {
+  idraulico: { caldaie: "climatizzazione" },
 };
 
 /** Nome leggibile di una specializzazione; uno slug sconosciuto (dati vecchi) resta leggibile. */

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, installerQualificationsText, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -686,6 +686,7 @@ export function ProfessionalDetailContent({
           {professional.yearsOfExperience !== null ||
           professional.spokenLanguages.length > 0 ||
           professional.certifications ||
+          installerQualificationsText(professional.installerQualifications ?? []) ||
           professional.hasLiabilityInsurance ? (
             <div className={`is_View ${styles.facts}`}>
               {professional.yearsOfExperience !== null ? (
@@ -709,6 +710,15 @@ export function ProfessionalDetailContent({
                   <span className={`is_Text ${styles.small} ${styles.grow}`}>{professional.certifications}</span>
                 </div>
               ) : null}
+              {/* Abilitazioni DM 37/2008 dichiarate (docs/changelog/2026-11-23-termoidraulico.md). */}
+              {installerQualificationsText(professional.installerQualifications ?? []) ? (
+                <div className={`is_View ${styles.fact} ${styles.factTop}`}>
+                  <Icon name="file-text" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small} ${styles.grow}`}>
+                    Abilitazioni impianti (DM 37/08): {installerQualificationsText(professional.installerQualifications ?? [])}
+                  </span>
+                </div>
+              ) : null}
               {professional.hasLiabilityInsurance ? (
                 <div className={`is_View ${styles.fact}`}>
                   <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
@@ -718,8 +728,8 @@ export function ProfessionalDetailContent({
               {/* Cosa abbiamo controllato e cosa no, senza contraddire "Verificato" (collaudo B-11, E-10). */}
               <span className={`is_Text ${styles.small} ${styles.italic}`}>
                 {professional.verified
-                  ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."
-                  : "Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."}
+                  ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche, abilitazioni e assicurazione le scrive il professionista."
+                  : "Esperienza, lingue, qualifiche, abilitazioni e assicurazione le scrive il professionista."}
               </span>
             </div>
           ) : null}

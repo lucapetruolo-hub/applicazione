@@ -401,6 +401,10 @@ model ProfessionalProfile {
   // fuori scope finché non esiste un flusso di verifica reale) — es.
   // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
   certifications               String?
+  // Abilitazioni DM 37/2008 dichiarate (lettere a-e, INSTALLER_QUALIFICATIONS
+  // in packages/shared), solo quelle dei mestieri scelti
+  // (docs/changelog/2026-11-23-termoidraulico.md). Mai verificate.
+  installerQualifications      String[]  @default([])
   hasLiabilityInsurance        Boolean   @default(false)
   // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
   // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).

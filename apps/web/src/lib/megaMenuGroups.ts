@@ -18,7 +18,7 @@ export const MEGA_MENU_GROUPS: MegaMenuGroup[] = [
 ];
 
 export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, string> = {
-  idraulico: "Perdite, caldaie, impianti sanitari",
+  idraulico: "Perdite, scarichi, impianti sanitari",
   elettricista: "Impianti civili e domotica",
   imbianchino: "Tinteggiature interni ed esterni",
   pulizie: "Casa, ufficio, fine cantiere",
