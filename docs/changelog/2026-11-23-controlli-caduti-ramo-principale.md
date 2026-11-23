@@ -18,6 +18,11 @@ degli avvisi dove promette tempi che GitHub non rispetta.
   ogni 2 ore o più, la prova notturna delle 2:40 UTC parte verso le 10-11 UTC:
   l'avviso rapido è solo UptimeRobot.
 
+- Stessa segnalazione anche per "Prova notturna" e "Copia del database" (sì di
+  Luca alla miglioria proposta): prima avvisavano solo con l'email di GitHub.
+  La copia del database senza i segreti si salta e resta verde, quindi non
+  apre nulla finché Backblaze non è impostato.
+
 **Motivo**: il 23/11 CodeQL era rosso sul ramo principale da giorni e lo si è
 visto solo aprendo una PR (`2026-11-23-sicurezza-ramo-principale.md`). Le PR
 mostrano solo i propri controlli, e CodeQL nelle PR guarda solo le righe
