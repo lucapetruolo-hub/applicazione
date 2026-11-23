@@ -47,10 +47,15 @@ services:
     # (cartella di sola lettura) e il comando falliva con EROFS
     # (docs/CHANGELOG.md §377). pnpm legge la versione da "packageManager".
     # Da Node 25 corepack non è più dentro Node: se un giorno Render non
-    # avesse pnpm, la build lo installa con npm (che c'è sempre) e l'avvio
-    # usa npm al suo posto (docs/changelog/2026-11-23-node-26.md).
+    # avesse pnpm, la build lo installa con npm (che c'è sempre)
+    # (docs/changelog/2026-11-23-node-26.md).
+    # Avvio senza pnpm né npm in mezzo e con "exec": il segnale SIGTERM di
+    # Render arriva all'API stessa, che chiude bene (attività a orario,
+    # flussi in tempo reale) invece di essere uccisa dopo 30 secondi
+    # (docs/changelog/2026-11-23-chiusura-api-su-render.md). Stessi passi
+    # dello script "start" di apps/api: migrazioni, poi l'API.
     buildCommand: command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.33.0; pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
-    startCommand: if command -v pnpm >/dev/null 2>&1; then pnpm --filter @professionisti/api start; else cd apps/api && npm run start; fi
+    startCommand: cd apps/api && node ../../packages/database/scripts/migrate-deploy.mjs && exec node dist/main.js
     # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API
     buildFilter:
       paths:
