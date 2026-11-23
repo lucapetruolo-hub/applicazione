@@ -3,14 +3,26 @@
 | Cosa | Chi lo vede | Come arriva |
 |---|---|---|
 | API o database giù (sul telefono) | UptimeRobot, ogni 5 minuti su `/health/db` e sulla homepage | Notifica dell'app UptimeRobot ed email, anche di notte; un'altra quando torna su |
-| API o database giù | Uptime (`.github/workflows/uptime.yml`, ogni 10 minuti su `/health/db` e sulla homepage) | Email di GitHub a chi ha le notifiche di Actions accese (di solito chi ha toccato per ultimo il workflow): una sola al primo giro rosso |
+| API o database giù (controllo di riserva, lento) | Uptime (`.github/workflows/uptime.yml`, sulla carta ogni 10 minuti su `/health/db` e sulla homepage; in pratica GitHub lo fa partire ogni 2 ore o più, vedi sotto) | Email di GitHub a chi ha le notifiche di Actions accese (di solito chi ha toccato per ultimo il workflow): una sola al primo giro rosso |
 | Stream in tempo reale muto | Uptime, ogni ora | Come sopra. Servono i segreti `UPTIME_EMAIL` e `UPTIME_PASSWORD` (un account di prova); senza, il controllo fallisce apposta |
 | Suggerimenti di indirizzo rotti (chiave Google) | Uptime, una volta al giorno alle 7:17 UTC | Come sopra |
-| Il percorso richiesta, preventivo, accettazione fino a Stripe non funziona sul sito vero; una pagina non si apre con Safari o Firefox | Prova notturna (`.github/workflows/notte.yml`, ogni notte alle 2:40 UTC e dopo ogni aggiornamento del sito su Vercel) | Come sopra. Servono i segreti `NOTTE_CLIENT_EMAIL`, `NOTTE_PRO_EMAIL` e `NOTTE_PASSWORD` (due account di prova); senza, la prova fallisce apposta |
+| Il percorso richiesta, preventivo, accettazione fino a Stripe non funziona sul sito vero; una pagina non si apre con Safari o Firefox | Prova notturna (`.github/workflows/notte.yml`, ogni notte: l'orario scritto è le 2:40 UTC, GitHub la fa partire verso le 11 italiane; e dopo ogni aggiornamento del sito su Vercel) | Come sopra. Servono i segreti `NOTTE_CLIENT_EMAIL`, `NOTTE_PRO_EMAIL` e `NOTTE_PASSWORD` (due account di prova); senza, la prova fallisce apposta |
+| CI o controlli di sicurezza caduti sul ramo principale (dopo un'unione o nel giro del lunedì) | `.github/workflows/ramo-principale.yml` | Segnalazione (issue) su GitHub con i passi caduti, mandata per email; si chiude da sola quando il controllo torna verde |
 | Errori 500, attività a orario fallite | Sentry (con `SENTRY_DSN` su Render) | Email di Sentry, se gli avvisi sono accesi in Sentry → Alerts |
 | Servizio esterno giù o al limite (Google, Resend al limite delle email o con la chiave rifiutata, …) | Sentry, al massimo una volta l'ora per tipo (`opsAlert`) | Come sopra |
 | Deploy fallito | Render | Email di Render al titolare dell'account |
 | Fatture scartate dallo SdI, quadratura, versione di PostgreSQL | Super admin | Notifica ed email del sito |
+
+## I giri a orario di GitHub partono in ritardo
+
+Misurato il 23/11/2026: GitHub non garantisce l'orario dei giri a orario
+(`schedule`) e sul piano gratuito li fa partire quando ha posto. "Uptime",
+scritto per ogni 10 minuti, gira ogni 2 ore o più; la prova notturna delle
+2:40 UTC parte verso le 10-11 UTC. Per questo **l'avviso rapido se il sito va
+giù è solo UptimeRobot** (sezione sotto): finché non è impostato, di un sito
+giù ci si può accorgere con ore di ritardo. I controlli di GitHub restano come
+riserva e per le cose che UptimeRobot non guarda (stream in tempo reale,
+indirizzi, percorso fino a Stripe).
 
 ## Da controllare una volta (Luca)
 
