@@ -1,0 +1,96 @@
+name: Controlli caduti sul ramo principale
+
+# Quando la CI, i controlli di sicurezza, la prova notturna o la copia del
+# database cadono sul ramo principale (dopo un'unione o in un giro a orario)
+# nessuna PR lo mostra: lo si scopriva solo
+# aprendo la PR successiva. Questo controllo apre una segnalazione (issue) con
+# i passi caduti e il link al giro; GitHub la manda per email. Quando lo stesso
+# controllo torna verde la chiude da solo
+# (docs/changelog/2026-11-23-controlli-caduti-ramo-principale.md).
+#
+# Non scarica il codice e non esegue nulla del repository: legge solo l'esito
+# del giro. I valori dell'evento passano da variabili d'ambiente, mai dentro
+# lo script.
+on:
+  workflow_run:
+    workflows: ["CI", "Controlli di sicurezza", "Prova notturna", "Copia del database"]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: ramo-principale-${{ github.event.workflow_run.name }}
+  cancel-in-progress: false
+
+jobs:
+  segnala:
+    # Solo i giri del ramo principale (unione, giro a orario, avvio a mano) e la
+    # prova dopo un aggiornamento del sito; mai le PR. Un giro saltato (per
+    # esempio la prova notturna per un'anteprima di Vercel) non è né rosso né
+    # verde e qui non fa nulla.
+    if: >-
+      ${{ github.event.workflow_run.event != 'pull_request'
+      && (github.event.workflow_run.event == 'deployment_status'
+      || github.event.workflow_run.head_branch == 'claude/professionisti-platform-architecture-xr9gmn')
+      && (github.event.workflow_run.conclusion == 'failure'
+      || github.event.workflow_run.conclusion == 'timed_out'
+      || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NOME: ${{ github.event.workflow_run.name }}
+      ESITO: ${{ github.event.workflow_run.conclusion }}
+      GIRO_ID: ${{ github.event.workflow_run.id }}
+      GIRO_URL: ${{ github.event.workflow_run.html_url }}
+      COMMIT: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Apre o chiude la segnalazione
+        run: |
+          titolo="Controllo caduto sul ramo principale: $NOME"
+          aperta="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$titolo\" in:title" --json number,title --jq "[.[] | select(.title == \"$titolo\")][0].number // empty")"
+
+          if [ "$ESITO" = "success" ]; then
+            if [ -n "$aperta" ]; then
+              gh issue close "$aperta" --repo "$GITHUB_REPOSITORY" --comment "Il controllo \"$NOME\" è tornato verde: $GIRO_URL"
+              echo "Segnalazione #$aperta chiusa."
+            else
+              echo "Tutto verde, nessuna segnalazione aperta."
+            fi
+            exit 0
+          fi
+
+          caduti="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GIRO_ID/jobs?filter=latest&per_page=100" --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- " + .name + ": " + .html_url')"
+          if [ -z "$caduti" ]; then
+            caduti="- (elenco non disponibile, aprire il giro)"
+          fi
+
+          if [ -n "$aperta" ]; then
+            gh issue comment "$aperta" --repo "$GITHUB_REPOSITORY" --body "$(cat <<FINE_TESTO
+          Ancora rosso al commit \`${COMMIT:0:7}\`: $GIRO_URL
+
+          $caduti
+          FINE_TESTO
+          )"
+            echo "Segnalazione #$aperta aggiornata."
+            exit 0
+          fi
+
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$(cat <<FINE_TESTO
+          Il controllo "$NOME" è caduto sul ramo principale, al commit \`${COMMIT:0:7}\`.
+
+          Giro: $GIRO_URL
+
+          Passi caduti:
+          $caduti
+
+          Cosa fare:
+          1. Chiedere a Claude, nel thread del collaudo, di guardare questo giro e correggere. Per la prova notturna e la copia del database vedi anche docs/ops/avvisi.md e docs/ops/copia-esterna.md.
+          2. Finché questa segnalazione è aperta, meglio non unire altre PR: il rosso del ramo principale si confonde con quello della PR.
+
+          Questa segnalazione si chiude da sola quando il controllo torna verde.
+          FINE_TESTO
+          )"
