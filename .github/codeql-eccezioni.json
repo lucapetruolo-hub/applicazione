@@ -1,0 +1,7 @@
+[
+  {
+    "regola": "js/insufficient-password-hash",
+    "file": "apps/api/src/common/email-fingerprint.ts",
+    "motivo": "Falso allarme: e' l'impronta con chiave segreta (HMAC-SHA256) di un indirizzo email, non di una password. CodeQL la collega alle email 'password cambiata' solo per il nome. Decisione di Luca del 23/11/2026, docs/changelog/2026-11-23-eccezione-codeql.md."
+  }
+]

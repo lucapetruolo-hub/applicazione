@@ -51,16 +51,22 @@ jobs:
           output: codeql-results
       - name: Nessuna segnalazione nuova
         # Errori e avvisi bloccano; i semplici consigli ("note") restano nella scheda Security.
+        # Le sole eccezioni stanno in .github/codeql-eccezioni.json: una regola in un file,
+        # con il motivo scritto. Ogni altra segnalazione, anche della stessa regola altrove, blocca.
         run: |
           python3 - <<'PY'
           import glob, json, sys
-          found = []
+          allowed = {(e["regola"], e["file"]) for e in json.load(open(".github/codeql-eccezioni.json"))}
+          found, skipped = [], []
           for path in glob.glob("codeql-results/*.sarif"):
               for run in json.load(open(path))["runs"]:
                   for r in run.get("results", []):
                       if r.get("level", "warning") in ("error", "warning"):
                           loc = r["locations"][0]["physicalLocation"]
-                          found.append(f'{r["ruleId"]} {loc["artifactLocation"]["uri"]}:{loc.get("region", {}).get("startLine")} {r["message"]["text"][:160]}')
+                          line = f'{r["ruleId"]} {loc["artifactLocation"]["uri"]}:{loc.get("region", {}).get("startLine")} {r["message"]["text"][:160]}'
+                          (skipped if (r["ruleId"], loc["artifactLocation"]["uri"]) in allowed else found).append(line)
+          for line in skipped:
+              print("Eccezione scritta:", line)
           print("\n".join(found) or "CodeQL: nessuna segnalazione")
           sys.exit(1 if found else 0)
           PY
