@@ -32,6 +32,23 @@ const LETTERS_BY_CATEGORY: Partial<Record<ProfessionalCategorySlug, readonly Ins
   idraulico: ["d", "e"],
 };
 
+/**
+ * Prestazioni da suggerire per prime a chi spunta un'abilitazione (richiesta
+ * di Luca, docs/changelog/2026-11-23-termoidraulico.md): con la lettera A
+ * l'elettricista può rilasciare la dichiarazione di conformità.
+ */
+export const SERVICES_BY_QUALIFICATION: Partial<Record<InstallerQualification, { category: ProfessionalCategorySlug; services: readonly string[] }>> = {
+  a: { category: "elettricista", services: ["Certificazione impianto"] },
+};
+
+/** Prestazioni suggerite dalle abilitazioni spuntate per un mestiere. */
+export function qualificationServicesFor(letters: readonly string[], categorySlug: ProfessionalCategorySlug): string[] {
+  return letters.flatMap((letter) => {
+    const entry = SERVICES_BY_QUALIFICATION[letter as InstallerQualification];
+    return entry && entry.category === categorySlug ? [...entry.services] : [];
+  });
+}
+
 /** Abilitazioni da proporre per i mestieri scelti, in ordine di lettera. */
 export function installerQualificationsFor(categorySlugs: readonly ProfessionalCategorySlug[]): (typeof INSTALLER_QUALIFICATIONS)[number][] {
   const allowed = new Set(categorySlugs.flatMap((slug) => LETTERS_BY_CATEGORY[slug] ?? []));
@@ -51,4 +68,25 @@ export function installerQualificationsText(letters: readonly string[]): string 
   const parts = INSTALLER_QUALIFICATIONS.filter((item) => letters.includes(item.letter)).map((item) => item.short);
   if (parts.length <= 1) return parts.join("");
   return `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+}
+
+/**
+ * Registro nazionale F-gas (Camere di Commercio, DPR 146/2018 e regolamento
+ * UE 2024/573): chi installa, ricarica o ripara condizionatori, pompe di calore
+ * e frigoriferi deve esserci iscritto. Il professionista scrive il numero, il
+ * cliente lo controlla da sé sulla ricerca pubblica (richiesta di Luca,
+ * docs/changelog/2026-11-23-termoidraulico.md): mai "verificato" da noi.
+ */
+export const FGAS_REGISTRY_SEARCH_URL = "https://www.fgas.it/Ricerca";
+export const FGAS_CATEGORIES: readonly ProfessionalCategorySlug[] = ["climatizzazione", "elettrodomestici"];
+export const FGAS_NUMBER_MAX_LENGTH = 40;
+
+export function hasFgasCategory(categorySlugs: readonly ProfessionalCategorySlug[]): boolean {
+  return categorySlugs.some((slug) => FGAS_CATEGORIES.includes(slug));
+}
+
+/** Il numero da salvare: solo con un mestiere che tocca i gas fluorurati, vuoto = nessuno. */
+export function validFgasNumber(value: string | null | undefined, categorySlugs: readonly ProfessionalCategorySlug[]): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed && hasFgasCategory(categorySlugs) ? trimmed : null;
 }

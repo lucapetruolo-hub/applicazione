@@ -31,7 +31,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath, validInstallerQualifications, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, validInstallerQualifications, qualificationServicesFor, hasFgasCategory, validFgasNumber, FGAS_NUMBER_MAX_LENGTH, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -356,6 +356,7 @@ export default function DashboardProfiloPage() {
   const [certifications, setCertifications] = useState("");
   // Abilitazioni DM 37/2008 (docs/changelog/2026-11-23-termoidraulico.md).
   const [installerQualifications, setInstallerQualifications] = useState<string[]>([]);
+  const [fgasRegistrationNumber, setFgasRegistrationNumber] = useState("");
   const [hasLiabilityInsurance, setHasLiabilityInsurance] = useState(false);
   // Conteggio reale di quante volte ogni lingua è già stata inserita da un
   // altro professionista sulla piattaforma (richiesta esplicita dell'utente:
@@ -499,6 +500,7 @@ export default function DashboardProfiloPage() {
     setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
     setCertifications(profile.certifications ?? "");
     setInstallerQualifications(profile.installerQualifications ?? []);
+    setFgasRegistrationNumber(profile.fgasRegistrationNumber ?? "");
     setHasLiabilityInsurance(profile.hasLiabilityInsurance);
     // 0,0 = comune non ancora geocodificato (stessa convenzione già
     // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
@@ -612,6 +614,7 @@ export default function DashboardProfiloPage() {
     yearsOfExperience,
     certifications,
     installerQualifications,
+    fgasRegistrationNumber,
     hasLiabilityInsurance,
   });
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
@@ -765,6 +768,7 @@ export default function DashboardProfiloPage() {
         yearsOfExperience: yearsOfExperience.trim() ? Number(yearsOfExperience.trim()) : undefined,
         certifications: certifications.trim() || undefined,
         installerQualifications: validInstallerQualifications(installerQualifications, categorySlugs),
+        fgasRegistrationNumber: validFgasNumber(fgasRegistrationNumber, categorySlugs) ?? "",
         hasLiabilityInsurance,
         services: cleanedServices.map((service) => ({
           name: service.name,
@@ -918,7 +922,8 @@ export default function DashboardProfiloPage() {
   // "Consulenza online" va col mestiere principale.
   function suggestedFor(slug: ProfessionalCategorySlug): string[] {
     return [
-      ...new Set([...(searchedServices[slug] ?? []), ...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? []), ...(remoteAvailable && slug === categorySlugs[0] ? ["Consulenza online"] : [])]),
+      // Prima le prestazioni delle abilitazioni spuntate (lettera A → "Certificazione impianto").
+      ...new Set([...qualificationServicesFor(installerQualifications, slug), ...(searchedServices[slug] ?? []), ...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? []), ...(remoteAvailable && slug === categorySlugs[0] ? ["Consulenza online"] : [])]),
     ];
   }
   // Mestiere di una prestazione: quello salvato; per le prestazioni di prima
@@ -1512,6 +1517,30 @@ export default function DashboardProfiloPage() {
           </YStack>
 
           <InstallerQualificationsPicker categorySlugs={categorySlugs} value={installerQualifications} onChange={setInstallerQualifications} />
+
+          {/* Registro F-gas (docs/changelog/2026-11-23-termoidraulico.md): solo per chi tocca il gas di condizionatori e frigoriferi. */}
+          {hasFgasCategory(categorySlugs) ? (
+            <YStack gap="2">
+              <label htmlFor="profilo-fgas">
+                <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>
+                  Numero di iscrizione al Registro F-gas (facoltativo)
+                </Text>
+              </label>
+              <Text fontSize={13} color={brand.grafite70}>
+                Serve per installare o ricaricare condizionatori, pompe di calore e frigoriferi. Lo trovi sul certificato. Sul profilo i clienti
+                possono controllarlo sul registro pubblico.
+              </Text>
+              <input
+                id="profilo-fgas"
+                value={fgasRegistrationNumber}
+                onChange={(e) => setFgasRegistrationNumber(e.target.value)}
+                maxLength={FGAS_NUMBER_MAX_LENGTH}
+                autoComplete="off"
+                placeholder="Numero sul certificato"
+                style={{ ...inputStyle, maxWidth: 320 }}
+              />
+            </YStack>
+          ) : null}
 
           <YStack gap="2">
             <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>

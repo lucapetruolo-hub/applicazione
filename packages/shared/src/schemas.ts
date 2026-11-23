@@ -5,7 +5,7 @@ import { TRAFFIC_SOURCES } from "./trafficSources";
 import { isInviteCode } from "./personalLink";
 import { isCoverPreset } from "./coverPresets";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
-import { INSTALLER_QUALIFICATION_LETTERS } from "./installerQualifications";
+import { FGAS_NUMBER_MAX_LENGTH, INSTALLER_QUALIFICATION_LETTERS } from "./installerQualifications";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
 import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
@@ -973,6 +973,13 @@ export const professionalProfileSchema = z.object({
   // Abilitazioni DM 37/2008 dichiarate (docs/changelog/2026-11-23-termoidraulico.md):
   // non inviate = invariate; il server tiene solo quelle dei mestieri scelti.
   installerQualifications: z.array(z.enum(INSTALLER_QUALIFICATION_LETTERS)).max(INSTALLER_QUALIFICATION_LETTERS.length).optional(),
+  // Numero di iscrizione al Registro F-gas, dichiarato: non inviato = invariato, "" = tolto.
+  fgasRegistrationNumber: z
+    .string()
+    .trim()
+    .max(FGAS_NUMBER_MAX_LENGTH)
+    .regex(/^[A-Za-z0-9/.\- ]*$/, "Usa solo lettere, numeri, barre e trattini.")
+    .optional(),
   hasLiabilityInsurance: z.boolean().default(false),
   // Preavviso per annullare (docs/CHANGELOG.md §347): non inviato = invariato.
   cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),

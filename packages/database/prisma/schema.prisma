@@ -405,6 +405,9 @@ model ProfessionalProfile {
   // in packages/shared), solo quelle dei mestieri scelti
   // (docs/changelog/2026-11-23-termoidraulico.md). Mai verificate.
   installerQualifications      String[]  @default([])
+  // Numero di iscrizione al Registro F-gas dichiarato, solo con Climatizzazione
+  // o Elettrodomestici (FGAS_CATEGORIES in packages/shared). Mai verificato.
+  fgasRegistrationNumber       String?
   hasLiabilityInsurance        Boolean   @default(false)
   // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
   // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).

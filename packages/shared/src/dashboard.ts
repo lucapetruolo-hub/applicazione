@@ -67,6 +67,8 @@ export type MyProfessionalProfile = {
   certifications: string | null;
   /** Abilitazioni DM 37/2008 dichiarate, lettere a-e (docs/changelog/2026-11-23-termoidraulico.md). */
   installerQualifications: string[];
+  /** Numero di iscrizione al Registro F-gas dichiarato (docs/changelog/2026-11-23-termoidraulico.md). */
+  fgasRegistrationNumber: string | null;
   hasLiabilityInsurance: boolean;
   /** Ha già accettato la versione attuale della dichiarazione di responsabilità (docs/CHANGELOG.md §158). */
   profileDeclarationAccepted: boolean;

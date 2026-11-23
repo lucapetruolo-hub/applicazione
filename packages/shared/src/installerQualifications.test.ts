@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { installerQualificationsFor, installerQualificationsText, validInstallerQualifications } from "./installerQualifications";
+import { validFgasNumber, qualificationServicesFor, installerQualificationsFor, installerQualificationsText, validInstallerQualifications } from "./installerQualifications";
 import { COMBINED_TRADES, MOVED_SUB_TAGS, categorySubTags } from "./categories";
 
 test("il termoidraulico vede riscaldamento, acqua e gas", () => {
@@ -24,4 +24,17 @@ test("niente più Caldaie sotto Idraulico: la vecchia pagina va a Climatizzazion
   assert.ok(categorySubTags("idraulico").includes("impianti-gas"));
   assert.equal(MOVED_SUB_TAGS.idraulico?.caldaie, "climatizzazione");
   assert.deepEqual(COMBINED_TRADES[0]?.categories, ["idraulico", "climatizzazione"]);
+});
+
+test("con la lettera A l'elettricista vede prima Certificazione impianto", () => {
+  assert.deepEqual(qualificationServicesFor(["a", "b"], "elettricista"), ["Certificazione impianto"]);
+  assert.deepEqual(qualificationServicesFor(["a"], "idraulico"), []);
+  assert.deepEqual(qualificationServicesFor([], "elettricista"), []);
+});
+
+test("Registro F-gas solo con Climatizzazione o Elettrodomestici", () => {
+  assert.equal(validFgasNumber(" FI/123 ", ["idraulico", "climatizzazione"]), "FI/123");
+  assert.equal(validFgasNumber("FI/123", ["idraulico"]), null);
+  assert.equal(validFgasNumber("", ["elettrodomestici"]), null);
+  assert.equal(validFgasNumber(undefined, ["climatizzazione"]), null);
 });

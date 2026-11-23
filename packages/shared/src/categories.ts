@@ -134,8 +134,9 @@ export const CATEGORY_COMPANIONS: Partial<Record<ProfessionalCategorySlug, { sug
  * il termoidraulico non trova la sua parola tra le schede e sceglieva solo
  * Idraulico, perdendo le richieste sulle caldaie.
  */
-export const COMBINED_TRADES: readonly { question: string; categories: readonly ProfessionalCategorySlug[] }[] = [
-  { question: "Fai il termoidraulico o l'impiantista?", categories: ["idraulico", "climatizzazione"] },
+export const COMBINED_TRADES: readonly { question: string; highlight: readonly string[]; categories: readonly ProfessionalCategorySlug[] }[] = [
+  // `highlight`: parole in grassetto nella domanda, perché chi fa quel mestiere si riconosca a colpo d'occhio.
+  { question: "Fai il termoidraulico o l'impiantista?", highlight: ["termoidraulico", "impiantista"], categories: ["idraulico", "climatizzazione"] },
 ];
 
 export function isProfessionalCategorySlug(value: string): value is ProfessionalCategorySlug {

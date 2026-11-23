@@ -38,3 +38,38 @@ test dell'API su seo/professionals/admin/profile-invites, typecheck di API e
 sito, `pnpm --filter @professionisti/web lint`; prova a mano sul sito in locale
 con foto da telefono e computer (anteprime/termoidraulico/ nei file del
 progetto); 308 della vecchia pagina provato.
+
+## Secondo giro (23/11/2026, sera)
+
+**Richiesta** (Luca): migliorie 1 e 3 della lista dopo la PR #466, e la riga
+"Fai il termoidraulico o l'impiantista?" in fondo alle schede.
+
+**Decisione**:
+- Menu Servizi: Climatizzazione dice "Caldaie, condizionatori e pompe di
+  calore" (prima solo "Installazione e manutenzione caldaie").
+- Con la lettera A spuntata, "Certificazione impianto" è la prima prestazione
+  suggerita all'elettricista (`SERVICES_BY_QUALIFICATION`,
+  `qualificationServicesFor` in `installerQualifications.ts`).
+- La riga del termoidraulico sta sotto le schede dei mestieri (con "termoidraulico" e "impiantista" in grassetto, `highlight` in `COMBINED_TRADES`), sopra il
+  riquadro del mestiere vicino.
+- Scartata da Luca: numero del patentino F-gas con link al registro.
+
+**Verifica**: test di `packages/shared`, typecheck e lint del sito, foto da
+telefono e computer.
+
+## Registro F-gas (23/11/2026, sera)
+
+**Richiesta** (Luca): sì alla proposta del numero di iscrizione al Registro
+F-gas.
+
+**Decisione**: campo facoltativo `ProfessionalProfile.fgasRegistrationNumber`
+(migrazione `20261123180000_registro_fgas`), solo per chi ha Climatizzazione e
+caldaie o Elettrodomestici (`FGAS_CATEGORIES`, `validFgasNumber`): togliendo
+quei mestieri il numero sparisce. Lettere, numeri, barre e trattini, al massimo
+40 caratteri. Sul profilo pubblico: "Iscritto al Registro F-gas (dichiarato) ·
+n. … · Controlla sul registro", che apre la ricerca pubblica
+https://www.fgas.it/Ricerca (senza accesso). Nessun controllo automatico: non
+c'è un servizio ufficiale da interrogare; il formato del numero non è
+pubblicato, quindi niente controllo del formato oltre ai caratteri.
+
+**Verifica**: test di `packages/shared`, typecheck di API e sito, lint, foto.

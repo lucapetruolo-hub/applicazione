@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, installerQualificationsText, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, installerQualificationsText, FGAS_REGISTRY_SEARCH_URL, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -687,6 +687,7 @@ export function ProfessionalDetailContent({
           professional.spokenLanguages.length > 0 ||
           professional.certifications ||
           installerQualificationsText(professional.installerQualifications ?? []) ||
+          professional.fgasRegistrationNumber ||
           professional.hasLiabilityInsurance ? (
             <div className={`is_View ${styles.facts}`}>
               {professional.yearsOfExperience !== null ? (
@@ -716,6 +717,18 @@ export function ProfessionalDetailContent({
                   <Icon name="file-text" size={14} strokeWidth={1.5} color={brand.grafite70} />
                   <span className={`is_Text ${styles.small} ${styles.grow}`}>
                     Abilitazioni impianti (DM 37/08): {installerQualificationsText(professional.installerQualifications ?? [])}
+                  </span>
+                </div>
+              ) : null}
+              {/* Registro F-gas: il cliente lo controlla da sé sulla ricerca pubblica (docs/changelog/2026-11-23-termoidraulico.md). */}
+              {professional.fgasRegistrationNumber ? (
+                <div className={`is_View ${styles.fact} ${styles.factTop}`}>
+                  <Icon name="badge-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small} ${styles.grow}`}>
+                    Iscritto al Registro F-gas (dichiarato) · n. {professional.fgasRegistrationNumber} ·{" "}
+                    <a href={FGAS_REGISTRY_SEARCH_URL} target="_blank" rel="noopener noreferrer" className={styles.inlineLink}>
+                      Controlla sul registro
+                    </a>
                   </span>
                 </div>
               ) : null}
