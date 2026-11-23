@@ -21,7 +21,7 @@ function professional(n, businessName) {
     longitude: 12.9037,
     imageUrl: null,
     services: [],
-    subTags: ["caldaie"],
+    subTags: ["impianti-gas"],
     spokenLanguages: ["Italiano"],
     hasLiabilityInsurance: false,
     availabilityPreview: [],

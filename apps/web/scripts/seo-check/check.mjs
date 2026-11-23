@@ -37,7 +37,7 @@ const INDEXABLE = [
   ["/termini", "/termini"],
   ["/cookie", "/cookie"],
   ["/accessibilita", "/accessibilita"],
-  ["/cerca/idraulico/latina/caldaie", "/cerca/idraulico/latina/caldaie"],
+  ["/cerca/idraulico/latina/impianti-gas", "/cerca/idraulico/latina/impianti-gas"],
   ["/prezzi/idraulico", "/prezzi/idraulico"],
   ["/prezzi/idraulico/latina", "/prezzi/idraulico/latina"],
   ["/lavora-con-noi/pulizie", "/lavora-con-noi/pulizie"],
@@ -133,8 +133,13 @@ if (mode === "public") {
   if (/"@type":"Plumber"/.test((await get(testPath)).html)) fail(testPath, "dati strutturati da attività vera su un profilo di prova");
 
   // Titolo della pagina per servizio con la specializzazione (E8-05).
-  const servicePage = (await get("/cerca/idraulico/latina/caldaie")).html;
-  if (!/<h1[^>]*>Idraulico a Latina: caldaie</.test(servicePage)) fail("/cerca/idraulico/latina/caldaie", "H1 senza la specializzazione");
+  const servicePage = (await get("/cerca/idraulico/latina/impianti-gas")).html;
+  if (!/<h1[^>]*>Idraulico a Latina: impianti gas</.test(servicePage)) fail("/cerca/idraulico/latina/impianti-gas", "H1 senza la specializzazione");
+
+  // Specializzazione tolta: la vecchia pagina va al mestiere giusto (docs/changelog/2026-11-23-termoidraulico.md).
+  const moved = await get("/cerca/idraulico/latina/caldaie");
+  if (moved.res.status !== 308) fail("/cerca/idraulico/latina/caldaie", `stato ${moved.res.status}, atteso 308`);
+  if (!(moved.res.headers.get("location") ?? "").endsWith("/cerca/climatizzazione/latina")) fail("/cerca/idraulico/latina/caldaie", `redirect verso "${moved.res.headers.get("location")}"`);
 
   // Anteprima dei link (E8-06): nome del sito, indirizzo e immagine.
   for (const [path, canonical] of [["/cerca/idraulico/latina", "/cerca/idraulico/latina"], [proPath, proPath], ["/", "/"]]) {
@@ -158,7 +163,7 @@ if (mode === "public") {
   }
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
-  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/cerca/idraulico/latina/caldaie", "/prezzi/idraulico", "/prezzi/idraulico/latina", "/lavora-con-noi/pulizie", proPath]) {
+  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/cerca/idraulico/latina/impianti-gas", "/prezzi/idraulico", "/prezzi/idraulico/latina", "/lavora-con-noi/pulizie", proPath]) {
     if (!sitemap.includes(`<loc>${SITE_URL}${path}</loc>`)) fail("/sitemap.xml", `manca ${path}`);
   }
   // Data di modifica del profilo (E8-10).

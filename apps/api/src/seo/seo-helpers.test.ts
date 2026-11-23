@@ -41,8 +41,8 @@ describe("indirizzo del profilo", () => {
 
 describe("specializzazioni", () => {
   it("tiene solo quelle delle categorie scelte, senza doppioni", () => {
-    expect(validSubTags(["caldaie", "domotica", "caldaie", "inventata"], ["idraulico"])).toEqual(["caldaie"]);
-    expect(validSubTags(["caldaie", "domotica"], ["idraulico", "elettricista"])).toEqual(["caldaie", "domotica"]);
+    expect(validSubTags(["impianti-gas", "domotica", "impianti-gas", "inventata"], ["idraulico"])).toEqual(["impianti-gas"]);
+    expect(validSubTags(["impianti-gas", "domotica"], ["idraulico", "elettricista"])).toEqual(["impianti-gas", "domotica"]);
   });
   it("nome leggibile anche per uno slug sconosciuto", () => {
     expect(subTagLabel("pensione-cani")).toBe("Pensione per cani");

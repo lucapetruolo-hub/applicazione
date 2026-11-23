@@ -65,6 +65,8 @@ export type MyProfessionalProfile = {
   /** Segnali di fiducia dichiarati (CEO, consiglio esperti), non verificati — mai confusi con `verified`. */
   yearsOfExperience: number | null;
   certifications: string | null;
+  /** Abilitazioni DM 37/2008 dichiarate, lettere a-e (docs/changelog/2026-11-23-termoidraulico.md). */
+  installerQualifications: string[];
   hasLiabilityInsurance: boolean;
   /** Ha già accettato la versione attuale della dichiarazione di responsabilità (docs/CHANGELOG.md §158). */
   profileDeclarationAccepted: boolean;

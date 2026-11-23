@@ -23,7 +23,7 @@ export type ResultFilters = {
   insured?: boolean;
   /** Accetta pagamenti online (bollino "Pagamenti online"). */
   onlinePayment?: boolean;
-  /** Specializzazione (pagine per servizio, es. /cerca/idraulico/latina/caldaie). */
+  /** Specializzazione (pagine per servizio, es. /cerca/idraulico/latina/impianti-gas). */
   subTag?: string;
 };
 

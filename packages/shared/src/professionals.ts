@@ -456,6 +456,8 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
   /** Segnali di fiducia dichiarati dal professionista, non verificati — mai confusi con `verified`. */
   yearsOfExperience: number | null;
   certifications: string | null;
+  /** Abilitazioni DM 37/2008 dichiarate, lettere a-e (docs/changelog/2026-11-23-termoidraulico.md). */
+  installerQualifications: string[];
   hasLiabilityInsurance: boolean;
   /**
    * Falso quando l'account è in pausa per l'abbonamento (docs/CHANGELOG.md

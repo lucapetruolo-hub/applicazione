@@ -31,7 +31,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, validInstallerQualifications, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -44,6 +44,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { SaveBar } from "@/components/SaveBar";
+import { InstallerQualificationsPicker } from "@/components/InstallerQualificationsPicker";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
@@ -353,6 +354,8 @@ export default function DashboardProfiloPage() {
   // mai verificati documentalmente — non vanno confusi con `verified`.
   const [yearsOfExperience, setYearsOfExperience] = useState("");
   const [certifications, setCertifications] = useState("");
+  // Abilitazioni DM 37/2008 (docs/changelog/2026-11-23-termoidraulico.md).
+  const [installerQualifications, setInstallerQualifications] = useState<string[]>([]);
   const [hasLiabilityInsurance, setHasLiabilityInsurance] = useState(false);
   // Conteggio reale di quante volte ogni lingua è già stata inserita da un
   // altro professionista sulla piattaforma (richiesta esplicita dell'utente:
@@ -495,6 +498,7 @@ export default function DashboardProfiloPage() {
     setSpokenLanguages(profile.spokenLanguages);
     setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
     setCertifications(profile.certifications ?? "");
+    setInstallerQualifications(profile.installerQualifications ?? []);
     setHasLiabilityInsurance(profile.hasLiabilityInsurance);
     // 0,0 = comune non ancora geocodificato (stessa convenzione già
     // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
@@ -607,6 +611,7 @@ export default function DashboardProfiloPage() {
     spokenLanguages,
     yearsOfExperience,
     certifications,
+    installerQualifications,
     hasLiabilityInsurance,
   });
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
@@ -759,6 +764,7 @@ export default function DashboardProfiloPage() {
         spokenLanguages,
         yearsOfExperience: yearsOfExperience.trim() ? Number(yearsOfExperience.trim()) : undefined,
         certifications: certifications.trim() || undefined,
+        installerQualifications: validInstallerQualifications(installerQualifications, categorySlugs),
         hasLiabilityInsurance,
         services: cleanedServices.map((service) => ({
           name: service.name,
@@ -1504,6 +1510,8 @@ export default function DashboardProfiloPage() {
               style={{ ...inputStyle, maxWidth: 160, ...(invalid("anni") ? { borderColor: brand.urgenza } : {}) }}
             />
           </YStack>
+
+          <InstallerQualificationsPicker categorySlugs={categorySlugs} value={installerQualifications} onChange={setInstallerQualifications} />
 
           <YStack gap="2">
             <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>

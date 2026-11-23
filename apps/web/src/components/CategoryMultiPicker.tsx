@@ -1,6 +1,6 @@
 "use client";
 
-import { CATEGORY_COMPANIONS, MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { CATEGORY_COMPANIONS, COMBINED_TRADES, MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { keyActivate } from "@/lib/keyActivate";
@@ -36,6 +36,14 @@ export function CategoryMultiPicker({
     ? undefined
     : value.map((slug) => CATEGORY_COMPANIONS[slug]).find((entry) => entry !== undefined && !value.includes(entry.suggest));
   const companionLabel = companion ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === companion.suggest)?.label : undefined;
+  // Mestiere fatto di due categorie, finché non sono scelte tutte e due e c'è
+  // posto; sparisce quando compare il riquadro del mestiere vicino.
+  const combined = companion
+    ? undefined
+    : COMBINED_TRADES.map((trade) => ({ ...trade, missing: trade.categories.filter((slug) => !value.includes(slug)) })).find(
+        (trade) => trade.missing.length > 0 && value.length + trade.missing.length <= MAX_PROFESSIONAL_CATEGORIES,
+      );
+  const labelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label ?? slug;
 
   function toggle(slug: ProfessionalCategorySlug) {
     if (value.includes(slug)) {
@@ -55,6 +63,27 @@ export function CategoryMultiPicker({
           {value.length} su {MAX_PROFESSIONAL_CATEGORIES}
         </Text>
       </XStack>
+
+      {combined ? (
+        // docs/changelog/2026-11-23-termoidraulico.md
+        <XStack alignItems="center" gap="2" flexWrap="wrap">
+          <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
+            {combined.question} Scegli {combined.categories.map((slug) => `«${labelOf(slug)}»`).join(" e ")}.
+          </Text>
+          <Text
+            fontSize={13}
+            fontWeight="700"
+            color={brand.cianografiaScuro}
+            textDecorationLine="underline"
+            cursor="pointer"
+            role="button"
+            onPress={() => onChange([...value, ...combined.missing])}
+            onKeyDown={keyActivate(() => onChange([...value, ...combined.missing]))}
+          >
+            {combined.missing.length === combined.categories.length ? "Scegli tutti e due" : `Aggiungi «${labelOf(combined.missing[0]!)}»`}
+          </Text>
+        </XStack>
+      ) : null}
 
       <CategoryTiles
         value={value}
