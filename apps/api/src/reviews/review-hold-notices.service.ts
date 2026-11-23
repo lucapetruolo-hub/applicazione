@@ -5,7 +5,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60_000;
-/** Dopo quanti giorni in controllo si avvisano di nuovo gli admin e si scrive al cliente. */
+/** Dopo quanti giorni in controllo si avvisano di nuovo gli admin. */
 export const REVIEW_HELD_NOTICE_AFTER_DAYS = 7;
 
 /** È ora del secondo avviso per questa recensione? Uno solo per recensione. */
@@ -29,10 +29,9 @@ export async function notifyReviewHeldAdmins(
 }
 
 /**
- * Recensioni ancora in controllo dopo 7 giorni: al cliente avevamo scritto
- * "di solito entro 2 giorni" e poi più niente. Gli diciamo che ci vuole più
- * del previsto (sito + email, "Risposte alle tue recensioni") e lo ricordiamo
- * agli admin. Una volta sola per recensione.
+ * Recensioni ancora in controllo dopo 7 giorni: lo ricordiamo agli admin, una
+ * volta sola per recensione. Al cliente non si scrive (decisione di Luca del
+ * 23/11/2026, docs/changelog/2026-11-23-recensioni-in-controllo-solo-admin.md).
  */
 @Injectable()
 export class ReviewHoldNoticesService {
@@ -46,20 +45,13 @@ export class ReviewHoldNoticesService {
     const candidates = await this.prisma.review.findMany({
       where: { heldAt: { not: null, lte: new Date(now.getTime() - REVIEW_HELD_NOTICE_AFTER_DAYS * DAY_MS) }, heldNoticeSentAt: null },
       orderBy: { heldAt: "asc" },
-      select: { id: true, heldAt: true, heldNoticeSentAt: true, booking: { select: { id: true, clientId: true, client: { select: { deletedAt: true } }, quote: { select: { guidedRequestId: true } } } } },
+      select: { id: true, heldAt: true, heldNoticeSentAt: true, booking: { select: { clientId: true } } },
     });
     for (const review of candidates) {
       if (!reviewHeldNoticeDue(review, now)) continue;
       // Segnata prima dell'avviso: se il giro si ripete (più copie dell'API), nessuno lo riceve due volte.
       const marked = await this.prisma.review.updateMany({ where: { id: review.id, heldAt: { not: null }, heldNoticeSentAt: null }, data: { heldNoticeSentAt: now } });
       if (marked.count === 0) continue;
-      if (!review.booking.client.deletedAt) {
-        await this.notificationsService.notify(review.booking.clientId, "REVIEW_STILL_HELD", {
-          reviewId: review.id,
-          bookingId: review.booking.id,
-          guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
-        });
-      }
       await notifyReviewHeldAdmins(this.prisma, this.notificationsService, { reviewId: review.id, clientId: review.booking.clientId, late: true });
     }
   }

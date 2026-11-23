@@ -209,7 +209,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const clientId = getPayloadValue(payload, "clientId");
     return clientId ? `/admin/utenti/${clientId}?scheda=recensioni` : "/admin";
   }
-  if (type === "REVIEW_REPLIED" || type === "REVIEW_STILL_HELD") {
+  if (type === "REVIEW_REPLIED") {
     const reviewId = getPayloadValue(payload, "reviewId");
     return `/le-mie-recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
   }

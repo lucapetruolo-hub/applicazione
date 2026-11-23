@@ -33,3 +33,7 @@ Niente pubblicazione automatica dopo 7 giorni: decide sempre una persona
 **Verifica**: `review-hold-notices.test.ts` (7 giorni, una volta sola, due
 copie dell'API, account chiuso); prove dell'API, typecheck e lint di API e
 sito. Il confronto tra migrazioni e schema lo fa la CI (qui non c'è un database).
+
+**Aggiornamento del 23/11/2026**: il messaggio al cliente dopo 7 giorni è stato
+tolto su decisione di Luca (docs/changelog/2026-11-23-recensioni-in-controllo-solo-admin.md).
+Restano gli avvisi agli admin.

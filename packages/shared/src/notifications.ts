@@ -204,8 +204,6 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "NEW_REVIEW",
       // Al cliente: il professionista ha risposto alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
       "REVIEW_REPLIED",
-      // Al cliente: la sua recensione è in controllo da 7 giorni (docs/changelog/2026-11-20-recensioni-in-controllo-avvisi.md).
-      "REVIEW_STILL_HELD",
       // Al professionista: recensione da 1-2 stelle senza risposta da 3 giorni (stessa voce del changelog).
       "REVIEW_REPLY_REMINDER",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
@@ -520,7 +518,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.recensioni",
     topic: "lavori",
-    types: ["NEW_REVIEW", "REVIEW_REPLIED", "REVIEW_STILL_HELD", "REVIEW_REPLY_REMINDER"],
+    types: ["NEW_REVIEW", "REVIEW_REPLIED", "REVIEW_REPLY_REMINDER"],
     professional: { label: "Nuove recensioni" },
     client: { label: "Risposte alle tue recensioni" },
   },
