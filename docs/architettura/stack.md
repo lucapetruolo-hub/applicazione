@@ -66,11 +66,11 @@ prima discuterne e aggiornare questo file.
   shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
   cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §326).
-- **Versione di Node.js** (docs/CHANGELOG.md §373-§374): una sola fonte,
-  `.nvmrc` con la versione esatta (oggi 24.22.3), letta da Render e dalla CI;
-  `engines.node` è `24.x` per Vercel, che aggiorna da sé le correzioni.
+- **Versione di Node.js** (docs/CHANGELOG.md §373-§374, Node 26 in docs/changelog/2026-11-23-node-26.md): una sola fonte,
+  `.nvmrc` con la versione esatta (oggi 26.13.1), letta da Render e dalla CI;
+  `engines.node` è `26.x` per Vercel, che aggiorna da sé le correzioni.
   Il controllo giornaliero `.github/workflows/node.yml` apre una
-  segnalazione quando esce una correzione di sicurezza di Node 24, appena
+  segnalazione quando esce una correzione di sicurezza di Node 26, appena
   una versione più nuova diventa LTS (decisione di Luca: passarci subito,
   §376) e 6 mesi prima della fine del supporto (§375). Il passaggio a una
   nuova versione principale si fa in un thread dedicato.

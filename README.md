@@ -7,8 +7,8 @@ leggerlo prima di contribuire.
 
 ## Requisiti
 
-- Node.js 24 (versione esatta in `.nvmrc`)
-- pnpm ≥ 10 (`corepack enable` oppure `npm i -g pnpm`)
+- Node.js 26 (versione esatta in `.nvmrc`)
+- pnpm ≥ 10 (`npm i -g pnpm@10.33.0`: da Node 25 corepack non è più incluso)
 - PostgreSQL con estensione PostGIS (per `apps/api` in locale)
 
 ## Setup

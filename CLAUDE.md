@@ -87,8 +87,8 @@ prima discuterne e aggiornare questo file (e `docs/architettura/stack.md`).
 - `packages/shared`, `packages/api-client` e `packages/database` hanno un build
   reale (tsc → `dist/`): l'API esegue `node dist/main.js`; `turbo dev` dipende
   da `^build`. Il sito invece usa i sorgenti di `packages/shared`.
-- **Node.js**: una sola fonte, `.nvmrc` (oggi 24.22.3); `engines.node` è
-  `24.x`; controllo giornaliero `.github/workflows/node.yml`. Il passaggio a una
+- **Node.js**: una sola fonte, `.nvmrc` (oggi 26.13.1); `engines.node` è
+  `26.x`; controllo giornaliero `.github/workflows/node.yml`. Il passaggio a una
   nuova versione principale si fa in un thread dedicato.
 - **Dipendenze**: Dependabot una PR al mese con gli aggiornamenti piccoli;
   quelli grandi, React, React Native ed Expo si aggiornano a mano in un thread
