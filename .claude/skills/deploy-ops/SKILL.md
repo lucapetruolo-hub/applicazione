@@ -23,9 +23,11 @@ migrazioni restano anche in `CLAUDE.md`.
   persone lo incontrano.
 
 - **Deploy `apps/api` su Render**: il Blueprint `render.yaml` dichiara
-  `buildCommand` e `startCommand` (`pnpm --filter @professionisti/api build`
-  / `start`; se Render non avesse pnpm, la build lo installa con npm e
-  l'avvio usa `npm run start`, docs/changelog/2026-11-23-node-26.md). Lo script `build` di `apps/api/package.json` costruisce
+  `buildCommand` (`pnpm --filter @professionisti/api build`; se Render non
+  avesse pnpm, la build lo installa con npm, docs/changelog/2026-11-23-node-26.md)
+  e `startCommand` (migrazioni poi `exec node dist/main.js`, senza pnpm in
+  mezzo, perché il SIGTERM di Render arrivi all'API:
+  docs/changelog/2026-11-23-chiusura-api-su-render.md). Lo script `build` di `apps/api/package.json` costruisce
   esplicitamente prima `@professionisti/database` e `@professionisti/shared`
   (altrimenti TypeScript non trova quei moduli). Lo script `start` eseguiva
   `prisma db push --accept-data-loss` ad ogni avvio prima di far partire il
