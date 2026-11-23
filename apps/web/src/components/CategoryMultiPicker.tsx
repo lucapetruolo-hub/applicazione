@@ -36,8 +36,9 @@ export function CategoryMultiPicker({
     ? undefined
     : value.map((slug) => CATEGORY_COMPANIONS[slug]).find((entry) => entry !== undefined && !value.includes(entry.suggest));
   const companionLabel = companion ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === companion.suggest)?.label : undefined;
-  // Mestiere fatto di due categorie, finché non sono scelte tutte e due e c'è
-  // posto; sparisce quando compare il riquadro del mestiere vicino.
+  // Mestiere fatto di due categorie, sotto le schede (richiesta di Luca), finché
+  // non sono scelte tutte e due e c'è posto; sparisce quando compare il riquadro
+  // del mestiere vicino.
   const combined = companion
     ? undefined
     : COMBINED_TRADES.map((trade) => ({ ...trade, missing: trade.categories.filter((slug) => !value.includes(slug)) })).find(
@@ -64,6 +65,16 @@ export function CategoryMultiPicker({
         </Text>
       </XStack>
 
+      <CategoryTiles
+        value={value}
+        onToggle={toggle}
+        max={MAX_PROFESSIONAL_CATEGORIES}
+        city={city}
+        showPrimary
+        ariaLabel="Che lavori fai?"
+        orderBy="professionals"
+      />
+
       {combined ? (
         // docs/changelog/2026-11-23-termoidraulico.md
         <XStack alignItems="center" gap="2" flexWrap="wrap">
@@ -84,16 +95,6 @@ export function CategoryMultiPicker({
           </Text>
         </XStack>
       ) : null}
-
-      <CategoryTiles
-        value={value}
-        onToggle={toggle}
-        max={MAX_PROFESSIONAL_CATEGORIES}
-        city={city}
-        showPrimary
-        ariaLabel="Che lavori fai?"
-        orderBy="professionals"
-      />
 
       {companion && companionLabel ? (
         // Mestiere vicino da aggiungere (docs/changelog/2026-11-04-avviso-caldaie.md).

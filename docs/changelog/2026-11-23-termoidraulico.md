@@ -38,3 +38,21 @@ test dell'API su seo/professionals/admin/profile-invites, typecheck di API e
 sito, `pnpm --filter @professionisti/web lint`; prova a mano sul sito in locale
 con foto da telefono e computer (anteprime/termoidraulico/ nei file del
 progetto); 308 della vecchia pagina provato.
+
+## Secondo giro (23/11/2026, sera)
+
+**Richiesta** (Luca): migliorie 1 e 3 della lista dopo la PR #466, e la riga
+"Fai il termoidraulico o l'impiantista?" in fondo alle schede.
+
+**Decisione**:
+- Menu Servizi: Climatizzazione dice "Caldaie, condizionatori e pompe di
+  calore" (prima solo "Installazione e manutenzione caldaie").
+- Con la lettera A spuntata, "Certificazione impianto" è la prima prestazione
+  suggerita all'elettricista (`SERVICES_BY_QUALIFICATION`,
+  `qualificationServicesFor` in `installerQualifications.ts`).
+- La riga del termoidraulico sta sotto le schede dei mestieri, sopra il
+  riquadro del mestiere vicino.
+- Scartata da Luca: numero del patentino F-gas con link al registro.
+
+**Verifica**: test di `packages/shared`, typecheck e lint del sito, foto da
+telefono e computer.

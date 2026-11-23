@@ -32,6 +32,23 @@ const LETTERS_BY_CATEGORY: Partial<Record<ProfessionalCategorySlug, readonly Ins
   idraulico: ["d", "e"],
 };
 
+/**
+ * Prestazioni da suggerire per prime a chi spunta un'abilitazione (richiesta
+ * di Luca, docs/changelog/2026-11-23-termoidraulico.md): con la lettera A
+ * l'elettricista può rilasciare la dichiarazione di conformità.
+ */
+export const SERVICES_BY_QUALIFICATION: Partial<Record<InstallerQualification, { category: ProfessionalCategorySlug; services: readonly string[] }>> = {
+  a: { category: "elettricista", services: ["Certificazione impianto"] },
+};
+
+/** Prestazioni suggerite dalle abilitazioni spuntate per un mestiere. */
+export function qualificationServicesFor(letters: readonly string[], categorySlug: ProfessionalCategorySlug): string[] {
+  return letters.flatMap((letter) => {
+    const entry = SERVICES_BY_QUALIFICATION[letter as InstallerQualification];
+    return entry && entry.category === categorySlug ? [...entry.services] : [];
+  });
+}
+
 /** Abilitazioni da proporre per i mestieri scelti, in ordine di lettera. */
 export function installerQualificationsFor(categorySlugs: readonly ProfessionalCategorySlug[]): (typeof INSTALLER_QUALIFICATIONS)[number][] {
   const allowed = new Set(categorySlugs.flatMap((slug) => LETTERS_BY_CATEGORY[slug] ?? []));

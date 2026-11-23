@@ -25,7 +25,7 @@ export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, strin
   giardiniere: "Manutenzione e progettazione giardini",
   traslochi: "Locali e lunga distanza",
   fabbro: "Serrature, cancelli, aperture porte",
-  climatizzazione: "Installazione e manutenzione caldaie",
+  climatizzazione: "Caldaie, condizionatori e pompe di calore",
   muratore: "Ristrutturazioni e opere murarie",
   falegname: "Mobili su misura, infissi",
   tuttofare: "Piccole riparazioni e montaggi",

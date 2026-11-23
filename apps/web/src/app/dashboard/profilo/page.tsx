@@ -31,7 +31,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath, validInstallerQualifications, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, validInstallerQualifications, qualificationServicesFor, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -918,7 +918,8 @@ export default function DashboardProfiloPage() {
   // "Consulenza online" va col mestiere principale.
   function suggestedFor(slug: ProfessionalCategorySlug): string[] {
     return [
-      ...new Set([...(searchedServices[slug] ?? []), ...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? []), ...(remoteAvailable && slug === categorySlugs[0] ? ["Consulenza online"] : [])]),
+      // Prima le prestazioni delle abilitazioni spuntate (lettera A → "Certificazione impianto").
+      ...new Set([...qualificationServicesFor(installerQualifications, slug), ...(searchedServices[slug] ?? []), ...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? []), ...(remoteAvailable && slug === categorySlugs[0] ? ["Consulenza online"] : [])]),
     ];
   }
   // Mestiere di una prestazione: quello salvato; per le prestazioni di prima
