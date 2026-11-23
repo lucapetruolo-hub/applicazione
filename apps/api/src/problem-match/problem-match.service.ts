@@ -256,10 +256,17 @@ export function cleanReason(reason: string): string | null {
   return BROKEN_REASON.test(trimmed) ? null : trimmed;
 }
 
+/** Più di ogni testo che il sito accetta (descrizione, nota, pratica di Admin). */
+const ANONYMIZE_MAX_CHARS = 20_000;
+
 /** Toglie email, numeri di telefono, indirizzi e link prima di mandare il testo fuori dal sito. */
-export function anonymizeProblemText(text: string): string {
+export function anonymizeProblemText(input: string): string {
+  // Un testo lunghissimo non deve far lavorare a vuoto le ricerche qui sotto
+  // (docs/changelog/2026-11-23-sicurezza-ramo-principale.md): oltre il tetto si taglia.
+  const text = input.length <= ANONYMIZE_MAX_CHARS ? input : input.slice(0, ANONYMIZE_MAX_CHARS);
   return text
-    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "[email]")
+    // `(?<!...)`: l'email si cerca solo dall'inizio della parola, una volta sola per parola.
+    .replace(/(?<![\w.+-])[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "[email]")
     .replace(/https?:\/\/\S+|www\.\S+/gi, "[link]")
     .replace(/(\+39[\s.-]?)?\d[\d\s.-]{6,}\d/g, "[numero]")
     .replace(/\b(via|viale|piazza|piazzale|corso|largo|vicolo|strada|contrada|località)\s+[^,.;\n]{1,40}?\s*\d+[a-z]?\b/gi, "[indirizzo]")

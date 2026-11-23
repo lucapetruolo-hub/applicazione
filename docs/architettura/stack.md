@@ -67,7 +67,7 @@ prima discuterne e aggiornare questo file.
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
   cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §326).
 - **Versione di Node.js** (docs/CHANGELOG.md §373-§374): una sola fonte,
-  `.nvmrc` con la versione esatta (oggi 24.22.1), letta da Render e dalla CI;
+  `.nvmrc` con la versione esatta (oggi 24.22.3), letta da Render e dalla CI;
   `engines.node` è `24.x` per Vercel, che aggiorna da sé le correzioni.
   Il controllo giornaliero `.github/workflows/node.yml` apre una
   segnalazione quando esce una correzione di sicurezza di Node 24, appena
