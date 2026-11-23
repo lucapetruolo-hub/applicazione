@@ -79,7 +79,7 @@ export function CategoryMultiPicker({
         // docs/changelog/2026-11-23-termoidraulico.md
         <XStack alignItems="center" gap="2" flexWrap="wrap">
           <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
-            {combined.question} Scegli {combined.categories.map((slug) => `«${labelOf(slug)}»`).join(" e ")}.
+            {highlighted(combined.question, combined.highlight)} Scegli {combined.categories.map((slug) => `«${labelOf(slug)}»`).join(" e ")}.
           </Text>
           <Text
             fontSize={13}
@@ -180,6 +180,22 @@ export function CategoryMultiPicker({
         </YStack>
       ) : null}
     </YStack>
+  );
+}
+
+/** La domanda con le parole del mestiere in grassetto ("Fai il **termoidraulico**..."). */
+function highlighted(text: string, words: readonly string[]) {
+  if (words.length === 0) return text;
+  // Parole semplici scritte da noi in COMBINED_TRADES: niente caratteri speciali da proteggere.
+  const pattern = new RegExp(`(${words.join("|")})`, "g");
+  return text.split(pattern).map((part, index) =>
+    words.includes(part) ? (
+      <Text key={index} fontSize={13} fontWeight="700" color={brand.grafite}>
+        {part}
+      </Text>
+    ) : (
+      part
+    ),
   );
 }
 

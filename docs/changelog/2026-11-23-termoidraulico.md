@@ -50,7 +50,7 @@ progetto); 308 della vecchia pagina provato.
 - Con la lettera A spuntata, "Certificazione impianto" è la prima prestazione
   suggerita all'elettricista (`SERVICES_BY_QUALIFICATION`,
   `qualificationServicesFor` in `installerQualifications.ts`).
-- La riga del termoidraulico sta sotto le schede dei mestieri, sopra il
+- La riga del termoidraulico sta sotto le schede dei mestieri (con "termoidraulico" e "impiantista" in grassetto, `highlight` in `COMBINED_TRADES`), sopra il
   riquadro del mestiere vicino.
 - Scartata da Luca: numero del patentino F-gas con link al registro.
 
