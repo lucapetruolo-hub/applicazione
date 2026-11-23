@@ -98,6 +98,7 @@ export class RealtimeController {
       filter(Boolean),
       take(1),
     );
-    return merge(events$, heartbeat$).pipe(takeUntil(closed$));
+    // Chiude anche quando l'API si spegne (riavvio di Render): vedi `RealtimeService.closing$`.
+    return merge(events$, heartbeat$).pipe(takeUntil(merge(closed$, this.realtimeService.closing$)));
   }
 }
