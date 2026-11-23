@@ -681,6 +681,9 @@ export function notificationItemChannelOn(prefs: NotificationPreferences, key: s
 
 /** Preferenze con un canale di un singolo avviso acceso o spento. */
 export function withNotificationItemChannel(prefs: NotificationPreferences, key: string, channel: ItemChannel, on: boolean): NotificationPreferences {
+  // Solo gli avvisi che esistono e che si possono spegnere: un nome arrivato da fuori non
+  // diventa mai una chiave delle preferenze (docs/changelog/2026-11-23-sicurezza-ramo-principale.md).
+  if (!NOTIFICATION_ITEM_KEYS.has(key)) return prefs;
   const next: NotificationPreferences = JSON.parse(JSON.stringify(prefs));
   const entry = { inApp: notificationItemChannelOn(prefs, key, "inApp"), email: notificationItemChannelOn(prefs, key, "email"), [channel]: on };
   const items = { ...(next.items ?? {}) };

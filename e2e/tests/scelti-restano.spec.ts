@@ -111,8 +111,12 @@ test("al sesto tocco su «Scegli» compare l'avviso del massimo", async ({ page 
   for (const name of names.slice(0, 5)) await page.getByRole("button", { name: `Scegli ${name}` }).click();
   const bar = page.getByRole("region", { name: "Professionisti scelti" });
   await expect(bar).toContainText("5 scelti su 5");
-  // Spento ma toccabile: Playwright non clicca un aria-disabled senza force.
-  await page.getByRole("button", { name: `Scegli ${names[5]}` }).click({ force: true });
+  // Spento ma toccabile: Playwright non clicca un aria-disabled senza force. Con force però non
+  // controlla che sopra il pulsante non ci sia altro: da computer il tocco finiva sulla barra in
+  // alto. Prima si porta il pulsante a metà schermo, lontano dalla barra in alto e da quella in basso.
+  const sixth = page.getByRole("button", { name: `Scegli ${names[5]}` });
+  await sixth.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await sixth.click({ force: true });
   await expect(bar.getByRole("status")).toHaveText("Puoi sceglierne al massimo 5.");
   await expect(bar).toContainText("5 scelti su 5");
 });
