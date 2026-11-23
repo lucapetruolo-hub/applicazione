@@ -35,7 +35,26 @@ alla creazione del conto e non si cambiano dopo. Il 28/10 la stessa
 richiesta dava `account_express_dashboard_with_stripe_loss_liable`
 (`analisi/stripe-prova/standard-o-express.md`).
 
-**Stato**: prova non ancora fatta. La chiave di prova di questo ambiente
-(`STRIPE_READONLY_TEST_KEY`, sandbox di Luca) non può creare conti
-("Accounts Write" mancante). Serve il permesso sulla chiave, poi la prova si
-rifà con la stessa richiesta di `professional-fiscal.service.ts`.
+**Esito (23/11, 11:20)**: la prova **riesce**. Le chiavi limitate non
+possono creare conti v2 (e Stripe ora rifiuta la creazione con le API v1),
+quindi Luca ha lanciato la richiesta dalla Shell di Workbench della sua
+sandbox, con `Stripe-Version: 2026-11-18.endive`: conto `acct_1UeuM6Q2mL6iBMcB`
+creato, `dashboard: express`. Riletto dalla scheda v1: `controller.fees.payer
+= application`, `controller.losses.payments = stripe`,
+`stripe_dashboard.type = express`. Cioè: Express come oggi, la nostra
+trattenuta come oggi, i saldi negativi non recuperabili a carico di Stripe
+("Managed Risk").
+
+Condizioni di Stripe per il Managed Risk, tutte già vere da noi tranne una:
+addebito diretto (sì, §268), capacità `card_payments` (sì), iscrizione sulla
+pagina di Stripe (sì, link v2), Dashboard Express per rispondere a Stripe
+(sì), **Radar acceso per i conti collegati** (da controllare in Dashboard).
+Con il listino standard di Stripe non costa nulla in più. Stripe in cambio può
+rallentare i bonifici, tenere una riserva o chiudere un conto rischioso.
+
+Per usarlo nel sito serve `stripe` 23.2.0 (la prima che parla l'API
+`2026-11-18.endive`, uscita il 19/11) e `losses_collector: "stripe"` alla
+creazione del conto in `professional-fiscal.service.ts`. Vale solo per i conti
+nuovi: le responsabilità non si cambiano dopo (al lancio, con le chiavi vere,
+i conti sono comunque tutti nuovi). Se togliere anche il tetto di 2.000 € lo
+decide Luca.
