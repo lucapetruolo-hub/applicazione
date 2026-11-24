@@ -1598,6 +1598,7 @@ export function GuidedRequestForm({
               count={chosenIds.length}
               categorySlug={selectedCategory?.slug ?? categorySlug}
               paused={chosenPaused}
+              offlineIds={chosenOfflineText ? chosenOffline.map((pro) => pro.id) : []}
               onRemove={(removed) =>
                 sendOnlyTo(
                   chosenPros.filter((pro) => pro.id !== removed.id),
@@ -2873,12 +2874,15 @@ function ChosenProsHeading({
   count,
   categorySlug,
   paused,
+  offlineIds,
   onRemove,
 }: {
   pros: ProfessionalDetail[];
   count: number;
   categorySlug: string;
   paused: ProfessionalDetail[];
+  /** Con "Online" scelto: chi non lavora online, segnato in rosso nella lista (docs/changelog/2026-11-24-online-scelti-e-profilo.md). */
+  offlineIds: string[];
   onRemove: (pro: ProfessionalDetail) => void;
 }) {
   return (
@@ -2896,13 +2900,20 @@ function ChosenProsHeading({
         <Text fontSize={13} color={brand.grafite70}>
           Stai inviando la richiesta ai {count} professionisti che hai scelto
         </Text>
-        {pros.map((pro) => (
+        {pros.map((pro) => {
+          const offline = offlineIds.includes(pro.id);
+          return (
           <XStack key={pro.id} alignItems="center" gap="3">
             <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug || categorySlug} size={40} />
             <YStack flex={1} minWidth={0}>
-              <Text fontFamily="heading" fontWeight="800" fontSize="4" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="800" fontSize="4" color={offline ? brand.urgenza : brand.grafite}>
                 {pro.businessName}
               </Text>
+              {offline ? (
+                <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
+                  Non lavora online
+                </Text>
+              ) : null}
               <Text fontSize={13} color={brand.grafite70}>
                 {[
                   pro.categoryLabel,
@@ -2914,7 +2925,8 @@ function ChosenProsHeading({
             </YStack>
             <RemoveChosenButton name={pro.businessName} onPress={() => onRemove(pro)} />
           </XStack>
-        ))}
+          );
+        })}
       </YStack>
       {paused.length > 0 ? (
         <Text color={brand.urgenza} fontWeight="700">
