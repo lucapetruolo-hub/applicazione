@@ -170,7 +170,7 @@ export class BillingService implements OnModuleInit {
    *   l'abbonamento sospeso invece di chiuderlo;
    * - quota di passaggio pagata ma livello non cambiato (E3-02): si finisce.
    */
-  @ScheduledJob(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR, { catchUpWithinMs: 2 * 60 * 60_000 })
   async runSubscriptionSafetyChecks(now = new Date()): Promise<void> {
     const stripe = this.stripe;
     if (!stripe) return;
@@ -517,7 +517,7 @@ export class BillingService implements OnModuleInit {
    * giorni e fa la fattura a quelli che non l'hanno (la chiave del
    * documento evita i doppioni). Prima della data di partenza non fa nulla.
    */
-  @ScheduledJob("15 6 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("15 6 * * *", { timeZone: "Europe/Rome", catchUpWithinMs: 24 * 60 * 60_000 })
   async issueMissedInvoices(now = new Date()): Promise<number> {
     if (!this.stripe) return 0;
     const since = Math.floor((now.getTime() - MISSED_INVOICE_WINDOW_MS) / 1000);
@@ -1045,7 +1045,7 @@ export class BillingService implements OnModuleInit {
    * mesi gratis in attesa Base parte con quei mesi di prova da adesso (e il
    * periodo dei lavori riparte da 0), altrimenti al rinnovo paga Base.
    */
-  @ScheduledJob(CronExpression.EVERY_10_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_10_MINUTES, { catchUpWithinMs: 60 * 60_000 })
   async runReturnToBase(now = new Date()): Promise<void> {
     if (!this.stripe) return;
     const rows = await this.prisma.subscription.findMany({

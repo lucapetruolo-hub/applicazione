@@ -259,7 +259,7 @@ export class CourtesyCopyService {
    * le ricevute anche i lavori terminati senza ricevuta o con la ricevuta
    * mai scaricata (§387): nel riepilogo mancherebbero o il cliente non l'ha.
    */
-  @ScheduledJob("0 9 15 12 *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 15 12 *", { timeZone: "Europe/Rome", catchUpWithinMs: 5 * 24 * 60 * 60_000 })
   async remindDocumentsToFix(now: Date = new Date()): Promise<number> {
     const year = Number(romeMonthOf(now).slice(0, 4));
     const range = { gte: romeMonthRange(`${year}-01`).start, lt: romeMonthRange(`${year}-12`).end };

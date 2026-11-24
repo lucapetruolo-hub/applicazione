@@ -58,6 +58,20 @@ const FIELDS: {
   },
 ];
 
+/**
+ * Quadratura del mese (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md):
+ * emesse, arrivate al fisco, da sistemare. Null se nel mese non ci sono fatture.
+ */
+function monthChainLine(rows: PlatformInvoiceAdminRow[], month: string): string | null {
+  const inMonth = rows.filter((row) => new Date(row.issuedAt).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" }).slice(0, 7) === month);
+  if (inMonth.length === 0) return null;
+  const arrived = inMonth.filter((row) => row.sdiStatus === "DELIVERED");
+  const drawer = arrived.filter((row) => row.sdiUndelivered).length;
+  const open = inMonth.length - arrived.length;
+  const word = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return `Fatture di ${accountingMonthLabel(month)}: ${word(inMonth.length, "emessa", "emesse")}, ${word(arrived.length, "arrivata", "arrivate")} al fisco${drawer > 0 ? ` (${drawer} solo nel cassetto fiscale del professionista)` : ""}${open > 0 ? `, ${open} da sistemare` : ", tutto a posto"}.`;
+}
+
 function lastMonth(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -297,6 +311,11 @@ export function AdminInvoicesSection({ token, view }: { token: string; view: "in
         Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese. Con &quot;Scarica le fatture del mese&quot; hai un solo file per il commercialista. Dentro c&apos;è ogni fattura del mese, anche in PDF, con un riepilogo per il foglio di calcolo.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
+      {invoices && monthChainLine(invoices, month) ? (
+        <Text fontSize={14} color={brand.grafite}>
+          {monthChainLine(invoices, month)}
+        </Text>
+      ) : null}
 
       {invoices === null ? null : invoices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna fattura emessa finora.</Text>
@@ -326,8 +345,9 @@ export function AdminInvoicesSection({ token, view }: { token: string; view: "in
                     {formatEurCents(row.totalEurCents)}
                   </td>
                   <td>
-                    {SDI_LABEL[row.sdiStatus]}
+                    {row.sdiUndelivered ? "Nel cassetto fiscale" : SDI_LABEL[row.sdiStatus]}
                     {row.sdiMessage ? ` · ${row.sdiMessage}` : ""}
+                    {row.sdiResendBy ? ` · da rimandare entro il ${new Date(`${row.sdiResendBy}T12:00:00Z`).toLocaleDateString("it-IT")}` : ""}
                   </td>
                   <td>
                     <XStack gap="2" flexWrap="wrap">

@@ -257,6 +257,8 @@ export type PlatformInvoiceSummary = {
   periodMonth: string | null;
   totalEurCents: number;
   sdiStatus: InvoiceSdiStatusValue;
+  /** Mancata consegna: emessa, ma l'originale è solo nel cassetto fiscale del professionista. */
+  sdiUndelivered?: boolean;
 };
 
 export type PlatformInvoiceView = PlatformInvoiceSummary & {
@@ -610,6 +612,8 @@ export type PlatformInvoiceAdminRow = PlatformInvoiceSummary & {
   sdiMessage: string | null;
   /** XML pronto: senza dati completi del professionista non c'è, e la fattura va sistemata. */
   hasXml: boolean;
+  /** Scartata: giorno entro cui rimandarla (AAAA-MM-GG, 5 giorni dallo scarto), altrimenti null. */
+  sdiResendBy?: string | null;
 };
 
 // --- Ricevuta per prestazione occasionale --------------------------------------

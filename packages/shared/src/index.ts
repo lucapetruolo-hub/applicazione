@@ -2,6 +2,7 @@
 import "./zod";
 
 export * from "./availability";
+export * from "./fiscalDeadlines";
 export * from "./categories";
 export * from "./installerQualifications";
 export * from "./cities";

@@ -331,7 +331,17 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     quelli veri della società, token Openapi di produzione, `OPENAPI_SANDBOX`
     tolto, "Fatture da" = giorno del lancio, e se serve email e spunta del
     commercialista nel riquadro "Commercialista della società"
-    (docs/changelog/2026-11-24-fatture-del-mese-zip.md); (c) email di Stripe ai clienti: restano accese sia le ricevute dei
+    (docs/changelog/2026-11-24-fatture-del-mese-zip.md). **Attività a orario
+    dopo il passaggio ai piani a pagamento** (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md):
+    il primo mese controllare in `cron_runs` che `InvoicesService.runMonthly`
+    (1° alle 7), `CompanyAccountantService.sendMonthly` (5 alle 9) e
+    `InvoicesService.checkMonthSdiChain` (16 alle 9) siano partiti
+    all'orario e non solo recuperati al risveglio, e che il passo "Attività a
+    orario" del workflow Uptime sia verde. **Conservazione**: scaricare dalla
+    console Openapi il documento conservato della prima fattura vera (o farsi
+    confermare per iscritto dal loro supporto che l'invio con
+    `/invoices_legal_storage` la conserva 10 anni) e chiudere la domanda C38
+    col commercialista (seconda copia nel servizio gratuito dell'Agenzia); (c) email di Stripe ai clienti: restano accese sia le ricevute dei
     pagamenti sia le fatture finalizzate (decisione di Luca del 2/11: il
     commercialista fa un doppio controllo). Il PDF "fattura" di Stripe ha un
     numero diverso dalla nostra ABB: dal 24/11 porta in fondo "Copia di

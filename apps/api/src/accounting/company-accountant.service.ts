@@ -54,7 +54,7 @@ export class CompanyAccountantService {
     return this.view();
   }
 
-  @ScheduledJob("0 9 5 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 5 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 10 * 24 * 60 * 60_000 })
   async sendMonthly(now: Date = new Date()): Promise<AccountantZipResult> {
     const month = previousMonth(romeMonthOf(now));
     const result = await this.sendFor(month, now);

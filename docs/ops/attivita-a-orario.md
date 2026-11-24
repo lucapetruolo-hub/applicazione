@@ -51,8 +51,31 @@ data fissa:
 | `Dac7Service.sendYearEndReminders` | 1° novembre, 9:00 | Promemoria DAC7 di fine anno | Chiedere a un thread |
 | `Dac7Service.remindAnnualDeadline` | 10, 20, 27, 30 gennaio, 9:00 | Un promemoria della scadenza DAC7 in meno | Gli altri giorni restano |
 | `CourtesyCopyService.remindDocumentsToFix` | 15 dicembre, 9:00 | Promemoria dei documenti da sistemare | Chiedere a un thread |
+| `InvoicesService.checkMonthSdiChain` | 16 del mese, 9:00 | Quadratura emesse/arrivate al fisco del mese prima non fatta | Riga "Fatture di …" in Admin → Fisco e fatture |
+| `InvoicesService.remindRejectedSdi` | ogni giorno, 8:15 | Secondo avviso sugli scarti ancora da rimandare | Colonna "da rimandare entro il …" in Fisco e fatture |
 
 Per questo i deploy importanti si fanno **fuori** dalle 7-9 del 1° del mese.
+
+### Recupero all'avvio e controllo "uomo morto" (dal 24/11/2026)
+
+Sul piano Free di Render l'API si spegne dopo 15 minuti senza visite, e un giro
+saltato non lascia nessun errore (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md).
+Per questo:
+
+- le attività con `catchUpWithinMs` in `@ScheduledJob` (fatture del mese, esiti
+  dal fisco, zip ed estratti ai commercialisti, quadrature, reti di sicurezza
+  dell'abbonamento) **ripartono da sole al risveglio** se il loro ultimo giro
+  previsto manca in `cron_runs` (`ScheduledCatchUpService`). Il giro recuperato
+  scrive la riga con l'orario previsto, quindi non si ripete e con due API lo
+  fa una sola. I promemoria a orario fisso non si recuperano;
+- `GET /health/cron` risponde 503 se una di quelle attività non è partita, è
+  finita con un errore (per 48 ore) o si è fermata a metà. Lo chiama il passo
+  "Attività a orario" di `.github/workflows/uptime.yml`, da fuori: GitHub manda
+  l'email. Nella risposta `fiscal` dice quale scadenza di legge è a rischio
+  (`FISCAL_DEADLINES` in `packages/shared/src/fiscalDeadlines.ts`).
+
+Il controllo della notte (`SiteHealthService.nightlyCheck`) resta, ma è dentro
+l'API e dorme con lei: sul Free conta il controllo di GitHub.
 
 ## Tutte le attività
 

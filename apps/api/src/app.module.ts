@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, DiscoveryModule, Reflector } from "@nestjs/core";
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ClientIpThrottlerGuard } from "./common/client-ip";
@@ -7,6 +7,7 @@ import { TemporaryUploadCleanupInterceptor } from "./common/media-upload";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CronRunsService } from "./health/cron-runs.service";
 import { HealthController } from "./health/health.controller";
+import { ScheduledCatchUpService } from "./health/scheduled-catch-up.service";
 import { CategoriesModule } from "./categories/categories.module";
 import { PhoneNumbersModule } from "./phone-numbers/phone-numbers.module";
 import { PrismaModule } from "./prisma/prisma.module";
@@ -81,6 +82,8 @@ import { RequestBoardModule } from "./request-board/request-board.module";
     // esecuzione), non un problema alla scala attuale (CLAUDE.md §7, singola
     // città).
     ScheduleModule.forRoot(),
+    // Recupero all'avvio delle attività saltate (ScheduledCatchUpService).
+    DiscoveryModule,
     PrismaModule,
     CloudinaryModule,
     GeocodingModule,
@@ -162,6 +165,7 @@ import { RequestBoardModule } from "./request-board/request-board.module";
     // risponde come il filtro di default di Nest.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
     CronRunsService,
+    ScheduledCatchUpService,
   ],
 })
 export class AppModule {}

@@ -6,8 +6,9 @@
 # Dall'08/11/2026 (docs/changelog/2026-11-08-infrastruttura-lancio.md) chiede
 # /health/db, che risponde solo se anche il database risponde: il 05/11 il
 # database era scaduto e /health restava verde mentre ogni pagina dava errore.
-# L'API su Render Starter è sempre accesa: il ping non serve più a tenerla
-# sveglia.
+# Sul piano Free di Render (fino a gennaio 2027) l'API si spegne dopo 15
+# minuti senza visite: questo controllo la sveglia, e al risveglio l'API
+# recupera le attività a orario saltate (passo "Attività a orario").
 #
 # Configurazione: GitHub → Settings → Secrets and variables → Actions →
 # Variables: API_HEALTH_URL (es. https://<nome>.onrender.com/health) e
@@ -45,6 +46,23 @@ jobs:
         # --retry-all-errors: anche un 503 (database lento per un attimo) si
         # riprova; un database davvero giù resta rosso a ogni tentativo.
         run: curl --fail --silent --show-error --max-time 90 --retry 5 --retry-all-errors --retry-delay 15 --retry-max-time 120 "${API_HEALTH_URL%/health}/health/db"
+      # Attività a orario (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md):
+      # fatture del mese, esiti dal fisco, zip al commercialista. Il passo
+      # sopra ha appena svegliato l'API, che all'avvio recupera i giri saltati;
+      # /health/cron aspetta quel recupero e risponde 503 se un'attività non è
+      # partita, è finita con un errore o si è fermata a metà. Il controllo
+      # della notte dentro l'API dorme con lei: questo è fuori.
+      - name: Attività a orario
+        if: ${{ vars.API_HEALTH_URL != '' }}
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+        run: |
+          api="${API_HEALTH_URL%/health}"
+          code=$(curl --silent --show-error --max-time 90 --output /tmp/cron.json --write-out '%{http_code}' "$api/health/cron")
+          cat /tmp/cron.json; echo
+          # 404: l'API non ha ancora questo controllo (deploy in corso), non è un'attività ferma.
+          if [ "$code" = "404" ]; then exit 0; fi
+          if [ "$code" != "200" ]; then echo "::error::Attività a orario ferme o in errore: vedi sopra e docs/ops/attivita-a-orario.md"; exit 1; fi
       - name: Sito web
         if: ${{ vars.SITE_URL != '' }}
         run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 5 --retry-delay 15 --retry-max-time 120 "${{ vars.SITE_URL }}"

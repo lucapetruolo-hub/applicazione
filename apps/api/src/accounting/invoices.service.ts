@@ -54,7 +54,7 @@ import {
   type IssuerSnapshot,
   type RecipientSnapshot,
 } from "./invoice-documents";
-import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
+import { sdiProviderFromEnv, sdiRejectionHint, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
 import { COUNTED_USER } from "../site-counts/counted";
 import { ScheduledJob } from "../common/scheduled-job";
@@ -69,6 +69,19 @@ const SDI_OUTCOME_DAYS = 30;
 /** Nella prova d'invio, attesa tra una lettura dell'esito simulato e l'altra. */
 const SDI_TEST_WAIT_MS = 1500;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Una fattura scartata è come non emessa: va rimandata entro 5 giorni dalla
+ * notifica di scarto, con lo stesso numero e la stessa data (circolare 13/E
+ * del 2018, docs/changelog/2026-11-24-scadenze-fiscali-attivita.md).
+ */
+export const SDI_RESEND_DAYS = 5;
+/** Dopo così tanti giorni dallo scarto, se non è ancora rimandata, secondo avviso (giorno 4). */
+const SDI_REJECT_REMIND_DAYS = 3;
+
+/** Giorno entro cui rimandare una fattura scartata. */
+export function sdiResendBy(rejectedAt: Date): Date {
+  return new Date(rejectedAt.getTime() + SDI_RESEND_DAYS * DAY_MS);
+}
 /**
  * Professionisti che non ricevono fatture automatiche (collaudo dell'08/11/2026):
  * gli account di prova e i dati di esempio (E5-05: mai un numero della serie
@@ -124,6 +137,7 @@ function summaryOf(row: Invoice): PlatformInvoiceSummary {
     periodMonth: row.periodMonth,
     totalEurCents: row.amountEurCents,
     sdiStatus: row.sdiStatus as InvoiceSdiStatusValue,
+    ...(row.sdiUndeliveredAt ? { sdiUndelivered: true } : {}),
   };
 }
 
@@ -600,7 +614,7 @@ export class InvoicesService {
   // --- SdI ------------------------------------------------------------------
 
   /** Ogni ora: riprova gli invii non riusciti (entro i 12 giorni) e legge gli esiti. */
-  @ScheduledJob("20 * * * *")
+  @ScheduledJob("20 * * * *", { catchUpWithinMs: 2 * 60 * 60_000 })
   async syncSdi(now: Date = new Date()): Promise<void> {
     if (!this.sdi) return;
     const pending = await this.prisma.invoice.findMany({
@@ -621,10 +635,19 @@ export class InvoicesService {
       try {
         const note = await this.sdi.outcome(invoice.sdiId);
         if (!note) continue;
-        await this.prisma.invoice.update({ where: { id: invoice.id }, data: { sdiStatus: note.status, sdiMessage: note.status === "REJECTED" ? (note.message ?? "Scartata dallo SdI") : null } });
-        if (note.status === "REJECTED") {
+        const rejected = note.status === "REJECTED";
+        await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            sdiStatus: note.status,
+            sdiMessage: rejected ? (note.message ?? "Scartata dallo SdI") : null,
+            ...(rejected ? { sdiRejectedAt: now, sdiRejectRemindedAt: null } : {}),
+            ...(note.undelivered ? { sdiUndeliveredAt: now } : {}),
+          },
+        });
+        if (rejected) {
           const number = invoiceNumberLabel(invoice.series, invoice.year, invoice.number);
-          await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [`La fattura ${number} è stata scartata dallo SdI: ${note.message ?? "motivo non indicato"}. Correggi e rimandala da Finanza.`] });
+          await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: sdiRejectedAlerts(number, note.message ?? null, sdiResendBy(now)) });
         }
       } catch (err) {
         this.logger.warn(`Esito SdI non letto: ${err instanceof Error ? err.message : String(err)}`);
@@ -633,11 +656,63 @@ export class InvoicesService {
   }
 
   /**
+   * Secondo avviso sugli scarti (giorno 4 dei 5 per rimandarla): ogni mattina,
+   * le fatture scartate da più di 3 giorni e non ancora rimandate. Una volta
+   * sola per scarto (`sdiRejectRemindedAt`).
+   */
+  @ScheduledJob("15 8 * * *", { timeZone: "Europe/Rome", catchUpWithinMs: DAY_MS })
+  async remindRejectedSdi(now: Date = new Date()): Promise<number> {
+    const due = await this.prisma.invoice.findMany({
+      where: { sdiStatus: "REJECTED", sdiRejectedAt: { lte: new Date(now.getTime() - SDI_REJECT_REMIND_DAYS * DAY_MS) }, sdiRejectRemindedAt: null },
+      select: { id: true, series: true, year: true, number: true, sdiMessage: true, sdiRejectedAt: true },
+      orderBy: { sdiRejectedAt: "asc" },
+      take: 20,
+    });
+    if (due.length === 0) return 0;
+    const alerts = due.flatMap((inv) => {
+      const by = sdiResendBy(inv.sdiRejectedAt ?? now);
+      const late = by.getTime() < now.getTime();
+      return [`Fattura ${invoiceNumberLabel(inv.series, inv.year, inv.number)} scartata e non ancora rimandata: ${late ? `il termine del ${romeDayLabel(by)} è passato, rimandala subito e parlane col commercialista` : `va rimandata entro il ${romeDayLabel(by)}`}. Motivo: ${inv.sdiMessage ?? "non indicato"}.`];
+    });
+    await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [...alerts, "In Fisco e fatture correggi e usa \"Rimanda\": numero e data restano gli stessi."] });
+    await this.prisma.invoice.updateMany({ where: { id: { in: due.map((inv) => inv.id) } }, data: { sdiRejectRemindedAt: now } });
+    return due.length;
+  }
+
+  /**
+   * Il 16 del mese, giorno dell'IVA: quadratura delle fatture del mese prima
+   * (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md). Tante emesse,
+   * tante con la ricevuta dello SdI: se non tornano, avviso alla Finanza con
+   * i numeri. Solo con l'invio allo SdI acceso.
+   */
+  @ScheduledJob("0 9 16 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 10 * DAY_MS })
+  async checkMonthSdiChain(now: Date = new Date()): Promise<MonthSdiChain | null> {
+    if (!this.sdi) return null;
+    const month = previousMonth(romeMonthOf(now));
+    const { start, end } = romeMonthRange(month);
+    const rows = await this.prisma.invoice.findMany({
+      where: { type: "MANOVIA_TO_PROFESSIONAL", status: "ISSUED", issuedAt: { gte: start, lt: end } },
+      select: { series: true, year: true, number: true, sdiStatus: true, sdiUndeliveredAt: true },
+    });
+    const chain = monthSdiChain(rows);
+    if (chain.issued === 0 || chain.open.length === 0) return chain;
+    await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+      kind: "sdi",
+      month,
+      alerts: [
+        `Fatture di ${accountingMonthLabel(month)}: ${chain.issued} emesse, ${chain.delivered} arrivate al fisco, ${chain.open.length} ancora da sistemare (${chain.open.slice(0, 10).join(", ")}${chain.open.length > 10 ? ", …" : ""}).`,
+        "Oggi c'è l'IVA del mese: controlla in Fisco e fatture e avvisa il commercialista se qualcuna non è ancora arrivata.",
+      ],
+    });
+    return chain;
+  }
+
+  /**
    * Promemoria del lunedì alla Finanza sulle fatture ferme allo SdI
    * (docs/changelog/2026-11-02-admin-protezioni.md). Solo con l'invio allo SdI
    * acceso: senza, l'XML si scarica e si manda a mano.
    */
-  @ScheduledJob("0 8 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 * * 1", { timeZone: "Europe/Rome", catchUpWithinMs: 3 * 24 * 60 * 60_000 })
   async remindStuckSdi(now: Date = new Date()): Promise<number> {
     if (!this.sdi) return 0;
     const stuck = await this.prisma.invoice.findMany({ where: stuckSdiWhere(now), select: { series: true, year: true, number: true, sdiStatus: true }, orderBy: { issuedAt: "asc" }, take: 20 });
@@ -722,7 +797,7 @@ export class InvoicesService {
   // --- Giro del mese ---------------------------------------------------------
 
   /** Il 1° del mese alle 7: fatture delle trattenute del mese prima e riepilogo ai professionisti. */
-  @ScheduledJob("0 7 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 7 1 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 14 * 24 * 60 * 60_000 })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
     const run = await this.runMonthlyFeeInvoices(month);
@@ -740,7 +815,7 @@ export class InvoicesService {
    * 21 c. 4 DPR 633/72). Il 10, se ne manca ancora qualcuna, avvisa la
    * Finanza. Non crea doppioni: la chiave del documento è per mese.
    */
-  @ScheduledJob("30 7 2-15 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 7 2-15 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 24 * 60 * 60_000 })
   async recoverMonthly(now: Date = new Date()): Promise<number> {
     const month = previousMonth(romeMonthOf(now));
     const run = await this.runMonthlyFeeInvoices(month);
@@ -947,6 +1022,7 @@ export class InvoicesService {
         recipientName: recipient ? recipientName(recipient) : "",
         sdiMessage: row.sdiMessage,
         hasXml: !!row.xml,
+        sdiResendBy: row.sdiStatus === "REJECTED" && row.sdiRejectedAt ? romeDayIso(sdiResendBy(row.sdiRejectedAt)) : null,
       };
     });
   }
@@ -1086,4 +1162,27 @@ export class InvoicesService {
     const recipient = readRecipient(updated.recipient);
     return { ...summaryOf(updated), professionalProfileId: updated.professionalProfileId, recipientName: recipient ? recipientName(recipient) : "", sdiMessage: updated.sdiMessage, hasXml: !!updated.xml };
   }
+}
+
+/** Avviso di scarto: motivo, cosa fare e il termine dei 5 giorni. */
+export function sdiRejectedAlerts(number: string, message: string | null, resendBy: Date): string[] {
+  const hint = sdiRejectionHint(message);
+  return [
+    `La fattura ${number} è stata scartata dallo SdI: ${message ?? "motivo non indicato"}.`,
+    ...(hint ? [hint] : []),
+    `Per il fisco ora è come non emessa: va rimandata entro il ${romeDayLabel(resendBy)}, con lo stesso numero e la stessa data. Correggi e usa "Rimanda" in Fisco e fatture.`,
+  ];
+}
+
+export type MonthSdiChain = { issued: number; delivered: number; undelivered: number; open: string[] };
+
+/** Quadratura del mese: emesse, arrivate al fisco (con o senza consegna), da sistemare. */
+export function monthSdiChain(rows: { series: string | null; year: number | null; number: number | null; sdiStatus: string; sdiUndeliveredAt: Date | null }[]): MonthSdiChain {
+  const delivered = rows.filter((row) => row.sdiStatus === "DELIVERED");
+  return {
+    issued: rows.length,
+    delivered: delivered.length,
+    undelivered: delivered.filter((row) => row.sdiUndeliveredAt).length,
+    open: rows.filter((row) => row.sdiStatus !== "DELIVERED").map((row) => invoiceNumberLabel(row.series, row.year, row.number)),
+  };
 }
