@@ -1327,8 +1327,27 @@
   flex-basis: 100%;
   padding-top: 4px;
 }
+.ag-wt-per-slot-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .ag-wt-per-slot select {
   width: 72px;
+}
+/* A domicilio e Online insieme: titolo sopra e due numeri affiancati (a capo da telefono stretto). */
+.ag-wt-per-slot.is-split {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ag-wt-per-slot-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.ag-wt-per-slot.is-split .ag-wt-per-slot-field > span {
+  color: var(--ag-ink);
+  font-weight: 600;
 }
 .ag-wt-special {
   display: flex;
