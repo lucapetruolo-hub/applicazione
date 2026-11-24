@@ -13,8 +13,9 @@ function build(settings: { accountantEmail: string | null; accountantZipAt: Date
   };
   const email = { send: vi.fn().mockResolvedValue(opts.emailOk ?? true) };
   const zip = opts.zip instanceof Error ? vi.fn().mockRejectedValue(opts.zip) : vi.fn().mockResolvedValue(opts.zip ?? { fileName: "fatture-2026-10.zip", zip: Buffer.from("PK"), count: 3, missingXml: 0 });
-  const service = new CompanyAccountantService(prisma as never, email as never, { adminMonthZip: zip } as never);
-  return { service, prisma, email, zip };
+  const notifyFinanceAdmins = vi.fn();
+  const service = new CompanyAccountantService(prisma as never, email as never, { adminMonthZip: zip, notifyFinanceAdmins } as never);
+  return { service, prisma, email, zip, notifyFinanceAdmins };
 }
 
 const on = { accountantEmail: "studio@example.com", accountantZipAt: new Date("2026-11-01"), accountantZipMonth: "2026-09" };
@@ -46,6 +47,24 @@ describe("CompanyAccountantService", () => {
     const failed = build(on, { emailOk: false });
     expect(await failed.service.sendFor("2026-10")).toBe("failed");
     expect(failed.prisma.platformInvoiceSettings.updateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it("se il 5 l'invio non riesce avvisa gli admin della Finanza", async () => {
+    const { service, notifyFinanceAdmins } = build(on, { emailOk: false });
+    expect(await service.sendMonthly(new Date("2026-11-05T08:00:00Z"))).toBe("failed");
+    expect(notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_FEE_RECONCILIATION", expect.objectContaining({ kind: "accountant-zip", month: "2026-10" }));
+    const ok = build(on);
+    await ok.service.sendMonthly(new Date("2026-11-05T08:00:00Z"));
+    expect(ok.notifyFinanceAdmins).not.toHaveBeenCalled();
+  });
+
+  it("\"Mandalo adesso\" parte anche senza spunta e per un mese già mandato", async () => {
+    const { service, prisma, email } = build({ ...on, accountantZipAt: null, accountantZipMonth: "2026-10" }, { claim: 0 });
+    expect(await service.sendFor("2026-10", new Date(), { manual: true })).toBe("sent");
+    expect(email.send).toHaveBeenCalledTimes(1);
+    expect(await build({ ...on, accountantEmail: null }).service.sendFor("2026-10", new Date(), { manual: true })).toBe("off");
+    // Nessun "segno" prima di mandare: solo l'ultimo mese aggiornato dopo.
+    expect(prisma.platformInvoiceSettings.updateMany).toHaveBeenCalledTimes(1);
   });
 
   it("la spunta tiene la data in cui è stata messa la prima volta", async () => {

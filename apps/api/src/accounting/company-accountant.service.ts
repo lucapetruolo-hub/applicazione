@@ -56,23 +56,44 @@ export class CompanyAccountantService {
 
   @ScheduledJob("0 9 5 * *", { timeZone: "Europe/Rome" })
   async sendMonthly(now: Date = new Date()): Promise<AccountantZipResult> {
-    return this.sendFor(previousMonth(romeMonthOf(now)), now);
+    const month = previousMonth(romeMonthOf(now));
+    const result = await this.sendFor(month, now);
+    // Se non parte, lo dicono agli admin della Finanza: lo zip va girato a mano.
+    if (result === "failed" || result === "too-big") {
+      const why = result === "too-big" ? "lo zip è troppo grande per un'email" : "l'invio non è riuscito";
+      await this.invoicesService.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+        kind: "accountant-zip",
+        month,
+        alerts: [
+          `Le fatture di ${accountingMonthLabel(month)} non sono arrivate al commercialista: ${why}.`,
+          "In Finanza scarica le fatture del mese e mandagliele tu, oppure riprova con \"Mandalo adesso\".",
+        ],
+      });
+    }
+    return result;
   }
 
-  async sendFor(month: string, now: Date = new Date()): Promise<AccountantZipResult> {
+  /**
+   * Con `manual` (pulsante "Mandalo adesso" di Admin → Finanza) parte anche
+   * senza spunta e anche per un mese già mandato: lo chiede un admin.
+   */
+  async sendFor(month: string, now: Date = new Date(), options: { manual?: boolean } = {}): Promise<AccountantZipResult> {
     const row = await this.prisma.platformInvoiceSettings.findUnique({
       where: { id: "default" },
       select: { accountantEmail: true, accountantZipAt: true, accountantZipMonth: true },
     });
-    if (!row?.accountantZipAt || !row.accountantEmail) return "off";
-    // Segna il mese prima di mandare: con due copie dell'API ne parte una sola.
-    const claimed = await this.prisma.platformInvoiceSettings.updateMany({
-      where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
-      data: { accountantZipMonth: month },
-    });
-    if (claimed.count === 0) return "already";
-    const release = () =>
-      this.prisma.platformInvoiceSettings.updateMany({ where: { id: "default", accountantZipMonth: month }, data: { accountantZipMonth: row.accountantZipMonth } });
+    if (!row?.accountantEmail || (!options.manual && !row.accountantZipAt)) return "off";
+    let release: () => Promise<unknown> = async () => undefined;
+    if (!options.manual) {
+      // Segna il mese prima di mandare: con due copie dell'API ne parte una sola.
+      const claimed = await this.prisma.platformInvoiceSettings.updateMany({
+        where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
+        data: { accountantZipMonth: month },
+      });
+      if (claimed.count === 0) return "already";
+      release = () =>
+        this.prisma.platformInvoiceSettings.updateMany({ where: { id: "default", accountantZipMonth: month }, data: { accountantZipMonth: row.accountantZipMonth } });
+    }
 
     let zip: Awaited<ReturnType<InvoicesService["adminMonthZip"]>>;
     try {
@@ -100,6 +121,13 @@ export class CompanyAccountantService {
       await release();
       this.logger.error(`Zip delle fatture di ${month} non mandato al commercialista.`);
       return "failed";
+    }
+    if (options.manual) {
+      // L'ultimo mese mandato resta il più recente.
+      await this.prisma.platformInvoiceSettings.updateMany({
+        where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
+        data: { accountantZipMonth: month },
+      });
     }
     return "sent";
   }

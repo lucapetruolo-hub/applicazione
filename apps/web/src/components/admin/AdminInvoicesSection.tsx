@@ -276,7 +276,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese. Con &quot;Scarica le fatture del mese&quot; hai un solo file per il commercialista. Dentro c&apos;è ogni fattura del mese, anche in PDF, con un riepilogo per il foglio di calcolo.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
-      {settings ? <CompanyAccountantBox token={token} initial={settings.accountant} /> : null}
+      {settings ? <CompanyAccountantBox token={token} initial={settings.accountant} month={month} /> : null}
 
       {invoices === null ? null : invoices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna fattura emessa finora.</Text>
@@ -430,13 +430,23 @@ function monthRerunMessage(issued: number, notified: number, statements: number)
  * arriva lo zip delle fatture del mese prima (decisione di Luca del 24/11/2026,
  * docs/changelog/2026-11-24-fatture-del-mese-zip.md).
  */
-function CompanyAccountantBox({ token, initial }: { token: string; initial: PlatformInvoiceSettingsView["accountant"] }) {
+const SEND_RESULT: Record<string, string> = {
+  sent: "mandate, gli arrivano tra poco.",
+  off: "prima scrivi e salva l'email del commercialista.",
+  empty: "nel mese non ci sono fatture, non è partito niente.",
+  "too-big": "lo zip è troppo grande per un'email. Scaricalo e mandalo tu.",
+  failed: "l'invio non è riuscito. Riprova tra poco.",
+  already: "già mandate.",
+};
+
+function CompanyAccountantBox({ token, initial, month }: { token: string; initial: PlatformInvoiceSettingsView["accountant"]; month: string }) {
   const [saved, setSaved] = useState(initial);
   const [email, setEmail] = useState(initial.email ?? "");
   const [enabled, setEnabled] = useState(initial.enabled);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
+  const [sendNote, setSendNote] = useState<{ text: string; error: boolean } | null>(null);
   const dirty = email.trim().toLowerCase() !== (saved.email ?? "") || enabled !== saved.enabled;
 
   async function save() {
@@ -455,6 +465,20 @@ function CompanyAccountantBox({ token, initial }: { token: string; initial: Plat
       setDone(true);
     } catch (e) {
       setError(errorMessage(e));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function sendNow() {
+    setPending(true);
+    setSendNote(null);
+    try {
+      const { result, accountant } = await apiClient.adminSendCompanyAccountantZip(token, month);
+      setSaved(accountant);
+      setSendNote({ text: `Fatture di ${month}: ${SEND_RESULT[result] ?? result}`, error: result !== "sent" });
+    } catch (e) {
+      setSendNote({ text: errorMessage(e), error: true });
     } finally {
       setPending(false);
     }
@@ -494,12 +518,23 @@ function CompanyAccountantBox({ token, initial }: { token: string; initial: Plat
         <Button variant="secondary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
           Salva il commercialista
         </Button>
+        <Button variant="secondary" alignSelf="flex-start" disabled={!saved.email || dirty || pending} opacity={!saved.email || dirty || pending ? 0.6 : 1} onPress={() => void sendNow()}>
+          Mandalo adesso
+        </Button>
         {done && !dirty ? (
           <Text color={brand.cianografiaScuro} role="status">
             {saved.enabled ? "Fatto: gli arriva il 5 di ogni mese." : "Salvato."}
           </Text>
         ) : null}
       </XStack>
+      <Text fontSize={13} color={brand.grafite70}>
+        &quot;Mandalo adesso&quot; manda subito le fatture del mese scritto più in alto ({month}).
+      </Text>
+      {sendNote ? (
+        <Text role="status" color={sendNote.error ? brand.urgenza : brand.cianografiaScuro}>
+          {sendNote.text}
+        </Text>
+      ) : null}
     </YStack>
   );
 }

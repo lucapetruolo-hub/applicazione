@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
-import { accountantSettingsSchema, platformInvoiceSettingsSchema, type AccountantSettingsInput, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
+import { accountantSettingsSchema, isAccountingMonth, platformInvoiceSettingsSchema, type AccountantSettingsInput, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -45,6 +45,21 @@ export class AdminAccountingController {
       changedByUserId: req.user.userId,
     });
     return after;
+  }
+
+  /** "Mandalo adesso": lo zip di un mese al commercialista della società, subito. */
+  @Post("accountant/send/:month")
+  async sendAccountantZip(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    if (!isAccountingMonth(month)) throw new BadRequestException("Mese non valido: scrivilo come AAAA-MM.");
+    const result = await this.companyAccountantService.sendFor(month, new Date(), { manual: true });
+    await this.auditLogService.record({
+      entityType: "InvoiceMonth",
+      entityId: month,
+      fieldName: "accountantZipSent",
+      newValue: result,
+      changedByUserId: req.user.userId,
+    });
+    return { result, accountant: await this.companyAccountantService.view() };
   }
 
   @Put("settings")

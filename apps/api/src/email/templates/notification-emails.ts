@@ -1870,11 +1870,15 @@ const BUILDERS: Record<string, Builder> = {
     // Fatture del mese ancora mancanti il 10 e professionisti all'estero (collaudo dell'08/11/2026, E5-02/E5-04).
     const unbilled = payload.kind === "unbilled";
     const abroad = payload.kind === "abroad";
-    const plain = sdi || stuck || unbilled || abroad;
+    // Zip del 5 non arrivato al commercialista della società (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+    const accountantZip = payload.kind === "accountant-zip";
+    const plain = sdi || stuck || unbilled || abroad || accountantZip;
     return {
       kind: "notification",
       tone: "urgent",
-      subject: stuck
+      subject: accountantZip
+        ? "Fatture non arrivate al commercialista"
+        : stuck
         ? "Fatture ferme allo SdI"
         : sdi
           ? "Fattura scartata dallo SdI"
@@ -1883,7 +1887,7 @@ const BUILDERS: Record<string, Builder> = {
             : abroad
               ? "Fattura da fare a mano"
               : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
-      title: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura da correggere" : unbilled ? "Fatture del mese da emettere" : abroad ? "Residenza fiscale all'estero" : "Trattenute che non tornano",
+      title: accountantZip ? "Fatture da mandare al commercialista" : stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura da correggere" : unbilled ? "Fatture del mese da emettere" : abroad ? "Residenza fiscale all'estero" : "Trattenute che non tornano",
       paragraphs: plain ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
       cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
     };

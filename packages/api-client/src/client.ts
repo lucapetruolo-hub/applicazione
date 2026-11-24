@@ -2268,6 +2268,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminUpdateCompanyAccountant: (token: string, input: AccountantSettingsInput) =>
       request<PlatformInvoiceSettingsView["accountant"]>("/admin/invoices/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
+    adminSendCompanyAccountantZip: (token: string, month: string) =>
+      request<{ result: "off" | "already" | "empty" | "too-big" | "failed" | "sent"; accountant: PlatformInvoiceSettingsView["accountant"] }>(
+        `/admin/invoices/accountant/send/${encodeURIComponent(month)}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+      ),
+
     adminInvoices: (token: string, month?: string) =>
       request<PlatformInvoiceAdminRow[]>(`/admin/invoices${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

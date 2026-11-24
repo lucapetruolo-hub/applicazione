@@ -43,6 +43,15 @@ prima di mandare e si rimette se l'invio non riesce); mese senza fatture =
 niente email; zip oltre 25 MB = niente email ed errore nei log (Resend accetta
 al massimo 40 MB). Sotto la spunta si vede l'ultimo mese mandato.
 
+**Altre due migliorie approvate da Luca** (stesso giorno): se il 5 l'invio non
+riesce (o lo zip è troppo grande) gli admin della Finanza ricevono l'avviso
+`ADMIN_FEE_RECONCILIATION` con `kind: "accountant-zip"` (tipo già esistente,
+nessun argomento nuovo); pulsante **"Mandalo adesso"** nel riquadro
+(`POST /admin/invoices/accountant/send/:month`, nel registro azioni) che manda
+subito le fatture del mese scritto nel campo Mese, anche senza spunta e anche
+se quel mese era già partito, perché lo chiede un admin. Finché Resend non ha
+il dominio, l'email parte solo verso l'indirizzo di Luca.
+
 **Motivo**: il commercialista può comunque prendere le fatture dal cassetto
 fiscale dell'Agenzia delle Entrate; lo zip serve se preferisce un file solo
 o se una fattura non è ancora passata dallo SdI (domanda C13 nel file delle

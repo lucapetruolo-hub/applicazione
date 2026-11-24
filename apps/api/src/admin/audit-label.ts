@@ -213,6 +213,10 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
   if (fieldName === "invoicesIssued") return `Fatture delle trattenute emesse a mano: ${raw ?? "0"}`;
   if (fieldName === "monthRerun") return `Giro del mese rifatto a mano: ${raw ?? ""}`;
   if (fieldName === "companyAccountant") return `Commercialista della società: ${raw ?? ""}`;
+  if (fieldName === "accountantZipSent") {
+    const outcome: Record<string, string> = { sent: "partite", off: "manca l'email", empty: "nessuna fattura nel mese", "too-big": "zip troppo grande", failed: "invio non riuscito" };
+    return `Fatture del mese mandate a mano al commercialista: ${outcome[raw ?? ""] ?? raw ?? ""}`;
+  }
   if (fieldName === "monthZipDownloaded") return `Fatture del mese scaricate in zip: ${raw ?? ""}`;
   if (fieldName === "sdiResent") return `Fattura ${raw ?? ""} rimandata allo SdI`;
   if (fieldName === "onlineLimitRemovedAt") return value === "REMOVED" ? "Tolto il tetto ai pagamenti online" : "Rimesso il tetto ai pagamenti online";
