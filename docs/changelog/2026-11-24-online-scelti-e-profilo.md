@@ -14,7 +14,7 @@ orari tutti vuoti.
   scelto che non lavora online, sotto il tasto una riga rossa "Bianchi
   Impianti non lavora online: toglilo con la X o scegli \"A domicilio\"." e
   "Avanti" si ferma con lo stesso messaggio. Nella lista dei scelti in alto
-  il suo nome diventa rosso con sotto "Non lavora online" (richiesta di Luca). Se nessuno dei scelti lavora
+  la sua riga ha un fondo rosso leggero con sotto il nome "Non lavora online" (richiesta di Luca). Se nessuno dei scelti lavora
   online, "Online" si spegne come per il professionista singolo e un link con
   `modalita=ONLINE` torna ad "A domicilio".
 - Server (`guided-requests.service.ts`): una richiesta online con un scelto

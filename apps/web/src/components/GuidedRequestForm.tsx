@@ -2903,14 +2903,25 @@ function ChosenProsHeading({
         {pros.map((pro) => {
           const offline = offlineIds.includes(pro.id);
           return (
-          <XStack key={pro.id} alignItems="center" gap="3">
+          <XStack
+            key={pro.id}
+            alignItems="center"
+            gap="3"
+            // Riga su fondo rosso leggero, alla stessa altezza delle altre (richiesta di Luca).
+            backgroundColor={offline ? brand.urgenzaVelo : "transparent"}
+            borderRadius={10}
+            paddingHorizontal={offline ? 8 : 0}
+            paddingVertical={offline ? 6 : 0}
+            marginHorizontal={offline ? -8 : 0}
+            marginVertical={offline ? -6 : 0}
+          >
             <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug || categorySlug} size={40} />
             <YStack flex={1} minWidth={0}>
-              <Text fontFamily="heading" fontWeight="800" fontSize="4" color={offline ? brand.urgenza : brand.grafite}>
+              <Text fontFamily="heading" fontWeight="800" fontSize="4" color={brand.grafite}>
                 {pro.businessName}
               </Text>
               {offline ? (
-                <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
+                <Text fontSize={13} fontWeight="600" color={brand.grafite}>
                   Non lavora online
                 </Text>
               ) : null}
