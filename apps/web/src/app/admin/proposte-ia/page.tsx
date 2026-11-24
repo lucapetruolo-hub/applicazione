@@ -37,6 +37,7 @@ export default function AdminProposteIaPage() {
         description="In ogni caso l'IA propone una decisione. Tu la approvi o la cambi. Qui vedi quante volte hai deciso come lei, sulle ultime 100 decisioni di ogni tipo."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {data?.active ? <LastRun lastRun={data.lastRun} /> : null}
       {data && !data.active ? (
         <Text fontWeight="700" color={brand.urgenza}>
           L&apos;IA è spenta: manca la sua chiave sul server. I casi si decidono a mano come sempre.
@@ -101,6 +102,34 @@ export default function AdminProposteIaPage() {
             </table>
           </div>
         </YStack>
+      ) : null}
+    </YStack>
+  );
+}
+
+/**
+ * Ora dell'ultimo giro delle proposte (docs/changelog/2026-11-24-proposte-ia-sempre.md):
+ * con il piano gratuito di Render l'API si spegne senza visite, e il giro
+ * riparte quando apri l'Admin.
+ */
+function LastRun({ lastRun }: { lastRun: CaseAdviceOverview["lastRun"] }) {
+  if (!lastRun) {
+    return (
+      <Text fontSize="3" color={brand.grafite70}>
+        Ultimo giro delle proposte: ancora nessuno. Parte adesso, mentre sei in Admin.
+      </Text>
+    );
+  }
+  return (
+    <YStack gap="1">
+      <Text fontSize="3" color={brand.grafite70}>
+        Ultimo giro delle proposte: {formatAdminDate(lastRun.startedAt, true)}
+        {lastRun.finishedAt ? "." : ", in corso."} L&apos;IA ripassa ogni 10 minuti e quando apri l&apos;Admin.
+      </Text>
+      {lastRun.error ? (
+        <Text fontSize="3" color={brand.urgenza} role="alert">
+          Non è andato a buon fine: {lastRun.error}
+        </Text>
       ) : null}
     </YStack>
   );

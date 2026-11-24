@@ -13,7 +13,7 @@ import {
   type CaseAdvice,
   type JobIssueRefundPercent,
 } from "@professionisti/shared";
-import { CaseAdviceBox } from "@/components/admin/CaseAdviceBox";
+import { AskCaseAdvice, CaseAdviceBox } from "@/components/admin/CaseAdviceBox";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "@/components/admin/adminUi";
@@ -146,7 +146,11 @@ export function DecisionForm({ row, token, onDone, advice }: { row: AdminJobIssu
       <Text fontWeight="700" color={brand.grafite}>
         Decisione
       </Text>
-      {advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onDone} onApprove={() => applyAdvice(advice, true)} onModify={() => applyAdvice(advice, false)} /> : null}
+      {advice ? (
+        <CaseAdviceBox advice={advice} token={token} onApproved={onDone} onApprove={() => applyAdvice(advice, true)} onModify={() => applyAdvice(advice, false)} />
+      ) : row.issue.reviewPhase === "TO_DECIDE" ? (
+        <AskCaseAdvice kind="JOB_ISSUE" caseId={row.issue.id} token={token} onReady={onDone} />
+      ) : null}
       <Text fontSize={13} color={brand.grafite70}>
         Esiti standard: sceglilo e ritocca il testo se serve.
       </Text>
@@ -301,7 +305,9 @@ export function AppealForm({ row, token, onDone, advice }: { row: AdminJobIssue;
           }}
           onModify={() => setNote(advice.note ?? "")}
         />
-      ) : null}
+      ) : (
+        <AskCaseAdvice kind="JOB_ISSUE_APPEAL" caseId={row.issue.id} token={token} onReady={onDone} />
+      )}
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value.slice(0, 1000))}

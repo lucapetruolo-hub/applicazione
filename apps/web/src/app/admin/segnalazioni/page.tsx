@@ -22,7 +22,7 @@ import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { WaitBarSignal } from "@/components/WaitBar";
-import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import { AskCaseAdvice, CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import type { CaseAdvice } from "@professionisti/shared";
 
 type View = "da-gestire" | "ricorsi" | "archivio";
@@ -139,6 +139,8 @@ type Mode = "idle" | "resolve" | "dismiss" | "revert" | "reject-appeal";
 
 function ReportCard({ report, token, onChanged, advice }: { report: AdminContentReport; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [mode, setMode] = useState<Mode>("idle");
+  // Stessa regola della pagina: proposta sui casi da gestire e sulle richieste di rivedere una decisione.
+  const adviceKind = report.status === "OPEN" ? "CONTENT_REPORT" : report.appealedAt && !report.appealRejectedAt && !report.revertedAt ? "REPORT_APPEAL" : null;
   const [action, setAction] = useState<ModerationActionValue | null>(null);
   const [ground, setGround] = useState("");
   const [note, setNote] = useState("");
@@ -348,7 +350,11 @@ function ReportCard({ report, token, onChanged, advice }: { report: AdminContent
         </Text>
       ) : null}
 
-      {mode === "idle" && advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} onModify={() => modifyAdvice(advice)} /> : null}
+      {mode !== "idle" ? null : advice ? (
+        <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} onModify={() => modifyAdvice(advice)} />
+      ) : adviceKind ? (
+        <AskCaseAdvice kind={adviceKind} caseId={report.id} token={token} onReady={onChanged} />
+      ) : null}
 
       {mode === "idle" ? (
         <XStack gap="2" flexWrap="wrap" paddingTop="1">

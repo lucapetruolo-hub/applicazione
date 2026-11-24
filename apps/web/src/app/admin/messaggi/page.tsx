@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
-import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import { AskCaseAdvice, CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import type { CaseAdvice } from "@professionisti/shared";
 
 const ROLE_LABEL: Record<AdminContactMessage["role"], string> = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", OTHER: "Altro", REPORT_ILLEGAL: "Segnalazione di contenuto illegale" };
@@ -108,6 +108,7 @@ export default function AdminMessaggiPage() {
               advice={message.resolved ? null : advice.get("CONTACT_MESSAGE", message.id)}
               onResolved={() => resolved(message)}
               onChanged={reload}
+              onAdviceReady={advice.reload}
             />)}
         </YStack>
       )}
@@ -121,12 +122,14 @@ function MessageCard({
   advice,
   onResolved,
   onChanged,
+  onAdviceReady,
 }: {
   message: AdminContactMessage;
   token: string;
   advice: CaseAdvice | null;
   onResolved: () => void;
   onChanged: () => void;
+  onAdviceReady: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +192,11 @@ function MessageCard({
           Rispondi in una riga, senza il perché. Usa una delle due frasi pronte.
         </Text>
       ) : null}
-      {advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} replyTo={message.email} /> : null}
+      {advice ? (
+        <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} replyTo={message.email} />
+      ) : !message.resolved ? (
+        <AskCaseAdvice kind="CONTACT_MESSAGE" caseId={message.id} token={token} onReady={onAdviceReady} />
+      ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="2" flexWrap="wrap">
         <a href={mailto} style={{ textDecoration: "none" }}>

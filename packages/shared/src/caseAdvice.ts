@@ -135,4 +135,9 @@ export type CaseAdviceOverview = {
   kinds: CaseAdviceKindStats[];
   /** Proposte per i casi ancora aperti. */
   open: CaseAdvice[];
+  /**
+   * Ultimo giro delle proposte (a orario o partito aprendo Admin), con
+   * l'errore se è finito male (docs/changelog/2026-11-24-proposte-ia-sempre.md).
+   */
+  lastRun: { startedAt: string; finishedAt: string | null; error: string | null } | null;
 };

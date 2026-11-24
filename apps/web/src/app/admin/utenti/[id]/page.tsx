@@ -36,7 +36,7 @@ import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { SuspiciousDismissModal } from "@/components/admin/SuspiciousDismissModal";
 import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
-import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import { AskCaseAdvice, CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
 const KIND_ICON: Record<string, string> = { account: "👤", request: "📝", booking: "📅", review: "⭐", report: "🚩", admin: "🛡️" };
@@ -672,6 +672,12 @@ function ReviewsTable({
                           setHiding(r);
                         }}
                       />
+                    </td>
+                  </tr>
+                ) : r.heldAt && canModerate ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <AskCaseAdvice kind="HELD_REVIEW" caseId={r.id} token={token} onReady={advice.reload} />
                     </td>
                   </tr>
                 ) : null}
