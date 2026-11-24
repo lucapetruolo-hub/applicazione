@@ -17,6 +17,7 @@ export * from "./adminRoleSchemas";
 export * from "./plans";
 export * from "./coverPresets";
 export * from "./personalLink";
+export * from "./jobPlace";
 export * from "./leadAudience";
 export * from "./professionals";
 export * from "./searchAgenda";

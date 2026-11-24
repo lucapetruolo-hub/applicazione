@@ -59,8 +59,8 @@ const AGENDA_BUTTON = {
 };
 const EXAMPLE_DAY = "giovedì 5 novembre";
 const EXAMPLE_JOBS = [
-  ["08:30", "Perdita sotto il lavandino · Latina"],
-  ["11:00", "Sostituzione rubinetto · Sabaudia"],
+  ["08:30", "Perdita sotto il lavandino · a domicilio a Latina"],
+  ["11:00", "Sostituzione rubinetto · a domicilio a Sabaudia"],
   ["15:00", "Controllo caldaia · online"],
 ] as const;
 const DAY_END =
@@ -256,13 +256,31 @@ export type ProfessionalDayJob = {
   where: string | null;
 };
 
-/** Le due variabili di un lavoro: l'ora ("08:30") e "Perdita sotto il lavandino · Latina". */
+const HOME_PREFIX = "a domicilio a ";
+
+/**
+ * Dove si fa un lavoro del riepilogo: "a domicilio a Latina", "online" o, per
+ * le prenotazioni senza tipo, solo il comune
+ * (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+ */
+export function whatsappJobWhere(
+  serviceMode: string | null | undefined,
+  city: string | null | undefined,
+): string | null {
+  if (serviceMode === "ONLINE") return "online";
+  const town = city?.trim() || null;
+  if (serviceMode === "HOME") return town ? `${HOME_PREFIX}${town}` : "a domicilio";
+  return town;
+}
+
+/** Le due variabili di un lavoro: l'ora ("08:30") e "Perdita sotto il lavandino · a domicilio a Latina". */
 export function professionalDayJobParams(
   job: ProfessionalDayJob,
 ): [string, string] {
   const detail = [
     job.what?.trim() ? whatsappParam(job.what, 40) : null,
-    job.where?.trim() ? whatsappName(job.where) : null,
+    // Il comune resta entro la misura dei nomi anche dopo "a domicilio a ".
+    job.where?.trim() ? whatsappParam(job.where, WHATSAPP_NAME_MAX + HOME_PREFIX.length) : null,
   ]
     .filter(Boolean)
     .join(" · ");

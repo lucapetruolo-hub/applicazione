@@ -49,6 +49,7 @@ import {
   type WhatsAppTemplateDefinition,
   urlButtonIndex,
   whatsappDayTime,
+  whatsappJobWhere,
   whatsappName,
   whatsappTime,
 } from "./whatsapp-templates";
@@ -613,10 +614,13 @@ export class WhatsAppService {
               label && !label.includes("[")
                 ? label
                 : (request?.category?.label ?? null),
-            where:
-              job.serviceMode === "ONLINE"
-                ? "online"
-                : (job.city ?? request?.city ?? job.professionalProfile.city),
+            // "a domicilio a Latina" oppure "online": solo la variabile, il
+            // testo del modello per Meta non cambia
+            // (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+            where: whatsappJobWhere(
+              job.serviceMode,
+              job.city ?? request?.city ?? job.professionalProfile.city,
+            ),
           };
         }),
       );

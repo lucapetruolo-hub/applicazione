@@ -665,6 +665,9 @@ export class GuidedRequestsService {
           guidedRequestId: guidedRequest.id,
           category: waitingTrade ?? category.label,
           city: input.city ?? null,
+          // A domicilio o online, nel testo della notifica e dell'email
+          // (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+          serviceMode: input.serviceMode ?? null,
           timing: input.timing ?? null,
           isUrgent: input.isUrgent,
           respondUntil: respondUntilForEmail(input.isUrgent, requestExpiresAt),
@@ -1500,6 +1503,7 @@ export class GuidedRequestsService {
         guidedRequestId: request.id,
         category: request.category.label,
         city: request.city,
+        serviceMode: request.serviceMode ?? null,
         timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
@@ -1626,6 +1630,7 @@ export class GuidedRequestsService {
         guidedRequestId: request.id,
         category: request.waitingTrade,
         city: request.city,
+        serviceMode: request.serviceMode ?? null,
         timing: request.timing ?? null,
         isUrgent: false,
         respondUntil: respondUntilForEmail(false, request.expiresAt),
@@ -1838,6 +1843,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: request.category.label,
         city: request.city,
+        serviceMode: request.serviceMode ?? null,
         timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
@@ -1891,7 +1897,7 @@ export class GuidedRequestsService {
       await this.forwardDirectRequest(guidedRequestId);
       return;
     }
-    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; timing: string | null; expiresAt: Date | null };
+    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; serviceMode: string | null; isUrgent: boolean; timing: string | null; expiresAt: Date | null };
     let notifyTarget: NotifyTarget | null;
 
     try {
@@ -1940,6 +1946,7 @@ export class GuidedRequestsService {
             professionalProfileId: candidate.id,
             categoryLabel: request.category.label,
             city: request.city,
+            serviceMode: request.serviceMode ?? null,
             isUrgent: request.isUrgent,
             timing: request.timing,
             expiresAt: request.expiresAt,
@@ -1962,6 +1969,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: notifyTarget.categoryLabel,
         city: notifyTarget.city,
+        serviceMode: notifyTarget.serviceMode,
         timing: notifyTarget.timing ?? null,
         isUrgent: notifyTarget.isUrgent,
         respondUntil: respondUntilForEmail(notifyTarget.isUrgent, notifyTarget.expiresAt),

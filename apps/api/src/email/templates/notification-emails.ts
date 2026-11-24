@@ -19,6 +19,8 @@ import {
   asScheduleChange,
   formatClockDeadline,
   formatItalianUntil,
+  jobPlaceLabel,
+  serviceModeLabel,
   moderationActionOwnerText,
   moderationGround,
   ACCOUNT_CLOSURE_NOTICE_DAYS,
@@ -289,7 +291,12 @@ const BUILDERS: Record<string, Builder> = {
   NEW_LEAD: (payload, ctx) => {
     const category = str(payload.category) ?? ctx.category ?? "un lavoro";
     const city = str(payload.city) ?? ctx.city;
-    const where = city ? ` a ${city}` : "";
+    // A domicilio o online, già nell'oggetto (richiesta di Luca,
+    // docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md): le fasce
+    // dell'agenda sono separate. Senza il tipo (notifiche di prima) il testo di sempre.
+    const online = payload.serviceMode === "ONLINE";
+    const home = payload.serviceMode === "HOME";
+    const where = online ? " online" : `${home ? " a domicilio" : ""}${city ? ` a ${city}` : ""}`;
     const urgent = payload.isUrgent === true;
     const respondUntil = urgent ? null : str(payload.respondUntil);
     // Solo per te, scelto tra pochi o a più professionisti: il professionista
@@ -304,7 +311,7 @@ const BUILDERS: Record<string, Builder> = {
     return {
       kind: "notification",
       tone: urgent ? "urgent" : "default",
-      subject: `${urgent ? "URGENTE — " : ""}${direct ? "Richiesta per te" : "Nuova richiesta"}: ${category}${where}`,
+      subject: `${urgent ? "URGENTE — " : ""}${direct ? "Richiesta per te" : "Nuova richiesta"}: ${jobPlaceLabel(category, city, payload.serviceMode)}`,
       greeting: ctx.name,
       title: direct ? (urgent ? "Richiesta urgente per te" : "Un cliente ha scelto te") : urgent ? "Nuova richiesta urgente" : "Hai una nuova richiesta",
       paragraphs: [
@@ -316,6 +323,7 @@ const BUILDERS: Record<string, Builder> = {
         ...(forwardSoon ? [`**Se non rispondi entro ${forwardSoon}** la richiesta va anche ad altri professionisti della zona: potrai rispondere lo stesso.`] : []),
         ...(payload.audience === "shared" ? ["La richiesta è arrivata anche ad altri professionisti della zona."] : []),
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
+        ...(home ? [`**Dove:** a casa del cliente${city ? `, a ${city}` : ""}.`] : online ? ["**Dove:** online, a distanza: non devi andare dal cliente."] : []),
         // Quando serve, scelto dal cliente (docs/CHANGELOG.md §344).
         ...(payload.timing === "WEEK" ? ["**Quando:** in settimana."] : payload.timing === "CALM" ? ["**Quando:** con calma, il cliente non ha fretta."] : []),
         ...(respondUntil ? [`**Puoi rispondere fino ${formatItalianUntil(respondUntil)}.**`] : []),
@@ -436,7 +444,9 @@ const BUILDERS: Record<string, Builder> = {
     // nel riquadro, pronti da copiare nel programma delle fatture.
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     const details = [
-      ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+      ...(ctx.category ? [{ label: "Lavoro", value: ctx.city && payload.serviceMode !== "ONLINE" ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+      // A domicilio o online (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+      ...(serviceModeLabel(payload.serviceMode) ? [{ label: "Dove", value: serviceModeLabel(payload.serviceMode)! }] : []),
       ...(ctx.when ? [{ label: "Appuntamento", value: formatAppointmentSpan(ctx.when, str(payload.scheduledEndAt)) }] : []),
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(str(payload.recipientName) ? [{ label: "Nome sulla richiesta", value: str(payload.recipientName)! }] : []),
@@ -448,7 +458,8 @@ const BUILDERS: Record<string, Builder> = {
     ];
     return {
       kind: "notification",
-      subject: "Il cliente ha accettato il tuo preventivo",
+      // Mestiere e tipo già nell'oggetto (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+      subject: `Il cliente ha accettato il tuo preventivo${ctx.category && serviceModeLabel(payload.serviceMode) ? ` · ${jobPlaceLabel(ctx.category, null, payload.serviceMode)}` : ""}`,
       greeting: ctx.name,
       title: "Preventivo accettato!",
       paragraphs: [

@@ -77,7 +77,7 @@ lavori del giorno dopo, all'ora che sceglie in Notifiche (18, 19, 20 o 21).
 Quattro modelli perché Meta non accetta variabili vuote né a capo dentro
 una variabile: uno per 1, 2 e 3 lavori, uno per 4 o più (i primi tre e "e
 altri N"). Ogni riga: ora in grassetto, la prima riga della descrizione
-senza contatti (o il mestiere) e il comune o "online", mai nome o via del
+senza contatti (o il mestiere) e "a domicilio a <comune>" o "online", mai nome o via del
 cliente. Dice "domani": parte solo la sera prima e dopo mezzanotte no.
 
 - Tipo nel codice: `BOOKING_REMINDER_PROFESSIONAL` (`PROFESSIONAL_DAY_TEMPLATES`)
@@ -118,7 +118,7 @@ cliente. Dice "domani": parte solo la sera prima e dopo mezzanotte no.
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
-- Esempio delle variabili: il giorno = "giovedì 5 novembre"; per ogni lavoro l'ora = "08:30" e il resto = "Perdita sotto il lavandino · Latina"; nel quarto modello {{1}} = "5" e {{9}} = "altri 2 lavori"
+- Esempio delle variabili: il giorno = "giovedì 5 novembre"; per ogni lavoro l'ora = "08:30" e il resto = "Perdita sotto il lavandino · a domicilio a Latina"; nel quarto modello {{1}} = "5" e {{9}} = "altri 2 lavori"
 - Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri l'agenda", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/dashboard/agenda`
 - Pulsante 2, risposta rapida: "Non ricevere più"

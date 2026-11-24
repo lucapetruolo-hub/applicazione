@@ -423,11 +423,12 @@ export class RequestBoardService {
         if (result.status !== "added") continue;
         added += 1;
         // Avviso solo sul sito (decisione di Luca): la richiesta che aveva tenuto da parte è nel suo elenco.
-        const request = await this.prisma.guidedRequest.findUnique({ where: { id: claim.guidedRequestId }, select: { boardPlace: true } });
+        const request = await this.prisma.guidedRequest.findUnique({ where: { id: claim.guidedRequestId }, select: { boardPlace: true, serviceMode: true } });
         await this.notifications.notify(claim.userId, "BOARD_CLAIM_ARRIVED", {
           guidedRequestId: claim.guidedRequestId,
           category: result.tradeLabel ?? null,
           city: request?.boardPlace ?? null,
+          serviceMode: request?.serviceMode ?? null,
         });
       } catch (error) {
         this.logger.warn(`"Rispondi" in attesa non riuscito: riprova al prossimo giro. ${error instanceof Error ? error.message : ""}`);
@@ -491,6 +492,7 @@ export class RequestBoardService {
           boardTrade: first.card.trade,
           category: first.card.tradeLabel,
           city: first.card.place,
+          serviceMode: first.card.serviceMode ?? null,
           count: matches.length,
         });
         notified += 1;
