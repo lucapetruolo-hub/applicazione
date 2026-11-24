@@ -248,7 +248,9 @@ export function ProfessionalDetailContent({
   // esplicita dell'utente: "una volta che si clicca sul profilo, fai
   // visualizzare l'agenda già nella sezione online"), altrimenti "A
   // domicilio" come sempre. Resta comunque modificabile con i due tab.
-  const initialAgendaMode: "HOME" | "ONLINE" = query.modalita === "ONLINE" ? "ONLINE" : "HOME";
+  // Chi non lavora online ha solo gli orari a domicilio: niente scheda "Online"
+  // (docs/changelog/2026-11-24-online-scelti-e-profilo.md).
+  const initialAgendaMode: "HOME" | "ONLINE" = query.modalita === "ONLINE" && professional.remoteAvailable ? "ONLINE" : "HOME";
   const [agendaMode, setAgendaMode] = useState<"HOME" | "ONLINE">(initialAgendaMode);
 
   const agendaPreview = useMemo(() => {
@@ -771,6 +773,8 @@ export function ProfessionalDetailContent({
                     riga, subito sopra i giorni (docs/changelog/2026-11-04-prezzi-e-foto-profilo.md);
                     fino a 390px pulsanti e frecce un po' più stretti. */}
                 <div className={`is_View ${styles.modeRow}`}>
+                  {professional.remoteAvailable ? (
+                  <>
                   <span className={`is_Text font_body ${styles.modeLabel}`}>Orari per:</span>
                   <div className={`is_View ${styles.segmented}`}>
                     {(["HOME", "ONLINE"] as const).map((mode) => {
@@ -792,6 +796,10 @@ export function ProfessionalDetailContent({
                       );
                     })}
                   </div>
+                  </>
+                  ) : (
+                    <span className={`is_Text font_body ${styles.modeLabel}`}>Orari a domicilio</span>
+                  )}
                   {totalAgendaDays > agendaVisibleDays ? (
                     <div className={`is_View ${styles.arrows}`}>
                       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
