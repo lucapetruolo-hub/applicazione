@@ -193,7 +193,7 @@ delle funzioni in `docs/STATO.md`; le operazioni in `docs/ops/`.
    parte, per nessuno dei due (controllo sul server,
    docs/changelog/2026-11-02-admin-protezioni.md). Lo stesso vale dopo: un
    lavoro annullato non mostra più telefono, email e indirizzo al
-   professionista, tornano solo se si riapre (decisione di Luca del 24/11/2026,
+   professionista e in chat non passano più, tornano solo se si riapre (decisione di Luca del 24/11/2026,
    docs/changelog/2026-11-24-annullato-senza-contatti.md).
 10. **Regola "zero emoji nell'interfaccia" (§10, Fase 2) abrogata** —
     decisione esplicita dell'utente, in risposta al rilievo F8.1 del

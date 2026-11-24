@@ -14,9 +14,15 @@ non presentato (`NO_SHOW`) o terminato li tiene.
 **Motivo**: CLAUDE.md §5 punto 9, i contatti del cliente valgono solo finché
 c'è un impegno reciproco confermato; annullato il lavoro l'impegno non c'è
 più. La rubrica Clienti già teneva fuori chi ha solo lavori annullati
-(`buildClientBook`). Per parlarsi resta la chat. Il controllo dei contatti
-scritti in chat guarda solo se il preventivo è stato accettato: dopo un
-annullamento non li ferma (proposta separata, non fatta qui).
+(`buildClientBook`). Per parlarsi resta la chat.
+
+**Anche in chat** (sì di Luca alle 14:34): il controllo dei contatti scritti
+in chat (`assertNoContactsBeforeAcceptance` in
+`apps/api/src/timeline/timeline.service.ts`) ora vale anche dopo un
+annullamento: telefono, email, link e "WhatsApp" passano solo se c'è un lavoro
+non annullato. Il messaggio dice "Il lavoro è stato annullato e i contatti non
+si scambiano più: togli … per inviare il messaggio." Prova in
+`apps/api/src/timeline/timeline-contacts.test.ts`.
 
 **Verifica**: `e2e/tests/chi-ha-annullato.spec.ts` controlla che sulla scheda
 annullata non ci siano "Chiama", l'indirizzo e l'email.
