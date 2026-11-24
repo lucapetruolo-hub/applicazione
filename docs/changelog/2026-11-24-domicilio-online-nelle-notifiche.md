@@ -65,3 +65,16 @@ telefono, sito acceso in locale con il database) e delle email in
 (79 passate); typecheck e lint del sito; foto prima/dopo di Oggi, della scheda
 online e della campanella con le icone (computer e telefono) in
 `anteprime/domicilio-online-notifiche/`.
+
+## Terzo giro (24/11, "sì" di Luca)
+
+- **"Da rispondere ora" in Oggi**: icona casa o videocamera prima del mestiere,
+  come nella campanella.
+- **Scheda della richiesta online**: "Telefono ed email saranno visibili qui ad
+  accettazione del preventivo." (online non c'è un indirizzo).
+- "Ricevuta" con la data nell'elenco di Richieste e lavori a scheda chiusa:
+  c'era già (in alto a destra dal computer, sotto il nome da telefono), nessun
+  cambio.
+
+**Verifica**: typecheck e lint del sito; foto in
+`anteprime/domicilio-online-notifiche/` (`oggi3-*`, `scheda3-*`).
