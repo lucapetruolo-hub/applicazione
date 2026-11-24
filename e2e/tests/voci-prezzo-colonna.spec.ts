@@ -52,3 +52,20 @@ test("ogni voce del prezzo sta su una riga sua, con l'importo a destra", async (
     await quote.getByText("Prezzo", { exact: true }).locator("xpath=../..").screenshot({ path: `${process.env.FOTO_VOCI_PREZZO}-${testInfo.project.name}.png` });
   }
 });
+
+test("con una voce sola si legge il nome sotto il prezzo, senza ripetere l'importo", async ({ browser }, testInfo) => {
+  // docs/changelog/2026-11-24-voce-unica-nel-preventivo.md
+  const client = await createClient(prisma);
+  const pro = await createProfessional(prisma, "Marco Rossi Idraulica");
+  const { request, quotes } = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(3, "10:00") });
+  const items = await prisma.quoteItem.findMany({ where: { quoteId: quotes[0].id } });
+  expect(items).toHaveLength(1);
+
+  const page = await pageAsClient(browser, client.id, testInfo.project.name.startsWith("telefono") ? PHONE : COMPUTER);
+  await page.goto(`/le-mie-richieste?open=${request.id}`);
+  const quote = page.locator(`#request-${request.id} #quote-${quotes[0].id}`);
+  const price = quote.getByText("Prezzo", { exact: true }).locator("xpath=../..");
+  await expect(price.getByText(items[0].name, { exact: true })).toBeVisible();
+  // L'importo una volta sola: quello del totale.
+  await expect(price.getByText("€")).toHaveCount(1);
+});

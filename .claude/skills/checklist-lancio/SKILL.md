@@ -730,6 +730,11 @@ Città, pagine vuote fuori da Google.
       `/mnt/project-files/collaudo/2026-11-19-giro-novita/foglio-da-spuntare.md`
       (20 righe: data proposta dal professionista, lavoro finito in anticipo,
       "Ti stanno aspettando", bacheca, acconto sul minimo).
+    - ~~**Pagamento con la carta di prova**~~: fatto da Luca il 24/11/2026 sul
+      sito vero con Stripe di prova. Carta 4242: acconto 20,00 € pagato una
+      volta sola, lavoro "Fissato", saldo a lavoro finito. Carta 4000 0000
+      0000 0002: rifiutata, lavoro non fissato. Da rifare solo con la carta
+      vera in Live (ultima riga di questo punto).
     - **iPhone vero**: scelta della data nella richiesta e nel preventivo
       (#410), campi dell'ora e agenda, fotocamera e "Massimo 1 minuto" del
       video (il video in 4G è già provato il 18/11).
@@ -758,6 +763,20 @@ Città, pagine vuote fuori da Google.
       (punto 15), segnalazione DSA con le tre email (punto 41), pagamento con
       una carta vera sul conto Live di Stripe, confronto delle pagine da
       telefono e computer (punto 38).
+
+47. **Iscrizione al ROC dell'AGCOM** (aggiunto il 24/11/2026,
+    docs/changelog/2026-11-24-checklist-roc-e-polizza.md): le piattaforme di
+    intermediazione online che offrono servizi in Italia devono iscriversi al
+    Registro degli operatori di comunicazione (legge 178/2020, delibera AGCOM
+    200/21/CONS, regolamento UE 2019/1150). Da fare con la SRL. Tempi,
+    contributo annuale e Informativa economica di sistema li conferma
+    l'avvocato: domanda L19 in
+    `/mnt/project-files/analisi/domande-commercialista-avvocato.md`.
+48. **Polizza della società** (aggiunto il 24/11/2026): responsabilità civile
+    e danni informatici (perdita o furto di dati), visto che teniamo documenti
+    d'identità, dati fiscali e passano pagamenti. Chiedere un preventivo quando
+    nasce la SRL; massimali da decidere con l'avvocato (domanda L20, stesso
+    file).
 
 ## Da fare dopo il lancio
 

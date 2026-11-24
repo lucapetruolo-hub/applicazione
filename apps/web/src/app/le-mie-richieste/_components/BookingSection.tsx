@@ -704,26 +704,28 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
   const now = useMinuteClock();
   if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
   return (
-    <YStack gap="1" paddingHorizontal="1" paddingTop="1">
-    <XStack alignItems="center" gap="4" flexWrap="wrap">
-      <Text fontSize={16} color={brand.grafite70}>
+    <YStack gap="2" paddingHorizontal="1" paddingTop="1">
+    {/* Pulsanti come nella scheda del professionista, non più link sottolineati
+        (Luca, docs/changelog/2026-11-24-serve-cambiare-pulsanti.md). Annullare per ultimo e in rosso. */}
+    <XStack alignItems="center" gap="2" flexWrap="wrap">
+      <Text fontSize={16} color={brand.grafite70} marginRight="1">
         Serve cambiare?
       </Text>
       {/* "Non posso più" → un'altra data invece di perdere l'appuntamento (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
       {onReschedule && booking.status === "CONFIRMED" ? (
-        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" role="button" onPress={onReschedule}>
+        <CardButton compact onPress={onReschedule}>
           Proponi un&apos;altra data
-        </Text>
+        </CardButton>
       ) : null}
       {onMessage ? (
-        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" role="button" onPress={onMessage}>
+        <CardButton compact onPress={onMessage}>
           Scrivi un messaggio
-        </Text>
+        </CardButton>
       ) : null}
-      <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" role="button" onPress={onCancel}>
+      <CardButton compact tone="danger" onPress={onCancel}>
         {/* Visita di un lavoro ricorrente: si salta solo questa (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
         {booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
-      </Text>
+      </CardButton>
     </XStack>
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già dentro il
           preavviso si dice cosa succede, non "avvisa prima" (collaudo A-06). Frasi da una
