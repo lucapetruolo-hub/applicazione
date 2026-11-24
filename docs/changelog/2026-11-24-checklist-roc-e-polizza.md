@@ -9,6 +9,9 @@ per le piattaforme di intermediazione online; 48, polizza di responsabilità
 civile e danni informatici della società. Le domande per l'avvocato sono la
 L19 e la L20 in `/mnt/project-files/analisi/domande-commercialista-avvocato.md`.
 
+Nel punto 46 è segnata come fatta la prova a mano del pagamento con la carta
+di prova (Luca, 24/11: 4242 riuscita, 4000 0000 0000 0002 rifiutata).
+
 **Motivo**: rileggendo i 46 punti e il file delle domande da più punti di
 vista (legale delle piattaforme, assicurativo), questi due obblighi fuori dal
 sito non erano scritti da nessuna parte. Tempi e soglie del ROC non sono

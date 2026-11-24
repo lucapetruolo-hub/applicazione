@@ -730,6 +730,11 @@ Città, pagine vuote fuori da Google.
       `/mnt/project-files/collaudo/2026-11-19-giro-novita/foglio-da-spuntare.md`
       (20 righe: data proposta dal professionista, lavoro finito in anticipo,
       "Ti stanno aspettando", bacheca, acconto sul minimo).
+    - ~~**Pagamento con la carta di prova**~~: fatto da Luca il 24/11/2026 sul
+      sito vero con Stripe di prova. Carta 4242: acconto 20,00 € pagato una
+      volta sola, lavoro "Fissato", saldo a lavoro finito. Carta 4000 0000
+      0000 0002: rifiutata, lavoro non fissato. Da rifare solo con la carta
+      vera in Live (ultima riga di questo punto).
     - **iPhone vero**: scelta della data nella richiesta e nel preventivo
       (#410), campi dell'ora e agenda, fotocamera e "Massimo 1 minuto" del
       video (il video in 4G è già provato il 18/11).
