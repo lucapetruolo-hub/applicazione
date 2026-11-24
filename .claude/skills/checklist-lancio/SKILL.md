@@ -25,7 +25,7 @@ produzione):
    quando sono tutti compilati (`companyDataReady`, collaudo del 29/10/2026,
    M-01; docs/changelog/2026-10-30-termini-privacy-obblighi.md).
 2. Togliere da Termini, Privacy e Cookie le frasi "Bozza da far verificare a
-   un legale" dopo la revisione dell'avvocato (domande 72-80 e le bozze
+   un legale" dopo la revisione dell'avvocato (domande A2, A7-A9, A16, A18, A26 e A35, prima 72-80, e le bozze
    della PR del gruppo 7: recesso, regole per i professionisti, tempi di
    conservazione).
 3. L'email di `/accessibilita` e `/note-legali` è `BRAND.supportEmail`
@@ -191,7 +191,7 @@ produzione):
    (`STRIPE_DISPUTE_FEE_EUR_CENTS`), i testi non la citano in cifra (E3-12,
    docs/changelog/2026-11-08-legale-nel-codice.md). Nel pannello di Didit
    impostare la conservazione delle immagini del workflow e scriverne i
-   giorni nella Privacy, punto 8 (domanda L7 per l'avvocato). E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   giorni nella Privacy, punto 8 (domanda A16 per l'avvocato, prima L7). E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`). **Piano di Cloudinary**: il
    gratuito vale circa 25 crediti al mese (circa 25 GB tra spazio e banda);
    con i video delle richieste (480p, al massimo 1 minuto, circa 5-8 MB l'uno)
@@ -417,7 +417,7 @@ prima del lancio"):
     variabili su Render (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
     `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), webhook
     registrato, prova con un numero vero. Accettare i termini e i Data
-    Processing Terms di Meta (domanda 69 per l'avvocato). "Come funziona"
+    Processing Terms di Meta (domanda A24 per l'avvocato, prima 69). "Come funziona"
     in home dice già "email e WhatsApp" (Luca, 09/11/2026, PR #260): se al
     lancio il canale non è acceso, togliere "e WhatsApp" dalla frase
     (`QuoteExampleSection.tsx`) e, dal 19/11/2026
@@ -426,7 +426,7 @@ prima del lancio"):
     "Il cliente riceve un promemoria dell'appuntamento?"
     (`packages/shared/src/faq.ts`). Appena acceso, aggiungere in `/sicurezza`
     che il codice WhatsApp si scrive solo sul sito (riproporlo a Luca).
-    Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
+    Da riprendere quando l'avvocato risponde alla domanda A25, prima 70 (Luca,
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
     dell'agenda (non iscritti al sito), mandato per conto del professionista.
     Oggi quei clienti non ricevono nulla.
@@ -698,7 +698,7 @@ Città, pagine vuote fuori da Google.
     nella foto, decisione di Luca del 13/11; analisi/ricerca-foto-versione-profonda.md).
     Banco: `apps/api/scripts/banco-foto.mjs`, foto e chiave in
     analisi/ricerca-foto/foto-grezze/ (la chiave la confermano due giudici).
-    Prima: domanda 68 per l'avvocato estesa alle foto, tempi di conservazione
+    Prima: domanda A18 per l'avvocato (prima 68), già estesa alle foto, tempi di conservazione
     dei dati di Anthropic controllati sui termini commerciali, valutazione
     d'impatto privacy breve; foto del banco cancellate a fine prova.
 
@@ -774,13 +774,22 @@ Città, pagine vuote fuori da Google.
     Registro degli operatori di comunicazione (legge 178/2020, delibera AGCOM
     200/21/CONS, regolamento UE 2019/1150). Da fare con la SRL. Tempi,
     contributo annuale e Informativa economica di sistema li conferma
-    l'avvocato: domanda L19 in
+    l'avvocato: domanda E9 (prima L19) in
     `/mnt/project-files/analisi/domande-commercialista-avvocato.md`.
 48. **Polizza della società** (aggiunto il 24/11/2026): responsabilità civile
     e danni informatici (perdita o furto di dati), visto che teniamo documenti
-    d'identità, dati fiscali e passano pagamenti. Chiedere un preventivo quando
-    nasce la SRL; massimali da decidere con l'avvocato (domanda L20, stesso
+    d'identità, dati fiscali e passano pagamenti. Per legge non è obbligatoria, ma è prudente:
+    chiedere un preventivo a un broker quando nasce la SRL, prima del lancio;
+    massimali da decidere con l'avvocato (domanda E10, prima L20, stesso
     file).
+49. **Commissione di 20 € delle contestazioni senza documento** (aggiunto il
+    24/11/2026): se una contestazione in banca si perde per colpa del
+    professionista, Stripe fa pagare a noi 20 € più i costi e noi li
+    riprendiamo da lui, oggi senza nessuna fattura. Prima del lancio serve la
+    risposta del commercialista alla domanda C10 (fattura con IVA dentro la
+    COM del mese o rimborso fuori campo IVA, art. 15), poi si aggiunge il
+    documento nel codice (`apps/api/src/job-payments/online-money.service.ts`,
+    `releaseDisputeFeeEurCents`, e `apps/api/src/accounting/invoices.service.ts`).
 
 ## Da fare dopo il lancio
 
