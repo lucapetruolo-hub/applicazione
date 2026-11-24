@@ -759,6 +759,20 @@ Città, pagine vuote fuori da Google.
       una carta vera sul conto Live di Stripe, confronto delle pagine da
       telefono e computer (punto 38).
 
+47. **Iscrizione al ROC dell'AGCOM** (aggiunto il 24/11/2026,
+    docs/changelog/2026-11-24-checklist-roc-e-polizza.md): le piattaforme di
+    intermediazione online che offrono servizi in Italia devono iscriversi al
+    Registro degli operatori di comunicazione (legge 178/2020, delibera AGCOM
+    200/21/CONS, regolamento UE 2019/1150). Da fare con la SRL. Tempi,
+    contributo annuale e Informativa economica di sistema li conferma
+    l'avvocato: domanda L19 in
+    `/mnt/project-files/analisi/domande-commercialista-avvocato.md`.
+48. **Polizza della società** (aggiunto il 24/11/2026): responsabilità civile
+    e danni informatici (perdita o furto di dati), visto che teniamo documenti
+    d'identità, dati fiscali e passano pagamenti. Chiedere un preventivo quando
+    nasce la SRL; massimali da decidere con l'avvocato (domanda L20, stesso
+    file).
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
