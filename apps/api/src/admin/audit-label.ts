@@ -212,6 +212,7 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
   if (fieldName === "dac7SellersNotified") return `DAC7: avviso rimandato a ${raw ?? "0"} professionisti`;
   if (fieldName === "invoicesIssued") return `Fatture delle trattenute emesse a mano: ${raw ?? "0"}`;
   if (fieldName === "monthRerun") return `Giro del mese rifatto a mano: ${raw ?? ""}`;
+  if (fieldName === "monthZipDownloaded") return `Fatture del mese scaricate in zip: ${raw ?? ""}`;
   if (fieldName === "sdiResent") return `Fattura ${raw ?? ""} rimandata allo SdI`;
   if (fieldName === "onlineLimitRemovedAt") return value === "REMOVED" ? "Tolto il tetto ai pagamenti online" : "Rimesso il tetto ai pagamenti online";
   if (fieldName === "profileInvite") {

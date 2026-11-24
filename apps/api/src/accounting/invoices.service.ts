@@ -55,6 +55,9 @@ import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
 import { COUNTED_USER } from "../site-counts/counted";
 import { ScheduledJob } from "../common/scheduled-job";
+import { buildZip, type ZipEntry } from "../common/zip";
+import { renderDocumentPdf } from "./document-pdf";
+import { invoicePdfModel } from "./document-pdf-models";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -909,6 +912,38 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) throw new NotFoundException("Fattura non trovata.");
     return this.xmlOf(invoice);
+  }
+
+  /**
+   * Tutte le fatture e note di credito di un mese (per data del documento) in
+   * un file zip, XML e PDF, da girare al commercialista
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Una fattura col file
+   * XML non ancora pronto entra solo in PDF, e il file "da-sistemare.txt"
+   * dice quali sono e perché.
+   */
+  async adminMonthZip(month: string, now: Date = new Date()): Promise<{ fileName: string; zip: Buffer; count: number; missingXml: number }> {
+    if (!isAccountingMonth(month)) throw new BadRequestException("Mese non valido: scrivilo come AAAA-MM.");
+    const { start, end } = romeMonthRange(month);
+    const rows = await this.prisma.invoice.findMany({
+      where: { type: "MANOVIA_TO_PROFESSIONAL", status: "ISSUED", issuedAt: { gte: start, lt: end } },
+      orderBy: [{ series: "asc" }, { number: "asc" }],
+    });
+    if (rows.length === 0) throw new NotFoundException("Nessuna fattura in quel mese.");
+    const entries: ZipEntry[] = [];
+    const missing: string[] = [];
+    for (const row of rows) {
+      const label = invoiceNumberLabel(row.series, row.year, row.number);
+      const base = label.replace(/\//g, "-");
+      const xml = readFiscal(row.xml);
+      if (xml) entries.push({ name: `xml/${base}.xml`, data: Buffer.from(xml, "utf8") });
+      else missing.push(`${label}: ${row.sdiMessage ?? "file della fattura elettronica non ancora pronto"}`);
+      entries.push({ name: `pdf/${base}.pdf`, data: await renderDocumentPdf(invoicePdfModel(await this.invoiceView(row))) });
+    }
+    if (missing.length > 0) {
+      const note = [`Fatture di ${month} senza il file XML (non ancora inviate allo SdI), qui solo in PDF:`, "", ...missing, ""].join("\r\n");
+      entries.push({ name: "da-sistemare.txt", data: Buffer.from(note, "utf8") });
+    }
+    return { fileName: `fatture-${month}.zip`, zip: buildZip(entries, now), count: rows.length, missingXml: missing.length };
   }
 
   async adminView(invoiceId: string): Promise<PlatformInvoiceView> {

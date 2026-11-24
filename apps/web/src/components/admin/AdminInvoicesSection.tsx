@@ -15,7 +15,7 @@ import {
 } from "@professionisti/shared";
 import { Button, Field, H2, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { TechNote, downloadTextFile, errorMessage } from "./adminUi";
+import { TechNote, downloadBlobFile, downloadTextFile, errorMessage } from "./adminUi";
 import { AdminConfirmModal } from "./AdminConfirmModal";
 
 const SDI_LABEL: Record<InvoiceSdiStatusValue, string> = {
@@ -167,6 +167,21 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     }
   }
 
+  // Lo zip del mese da girare al commercialista (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+  async function downloadMonthZip() {
+    setPending(true);
+    setError(null);
+    setMessage(null);
+    try {
+      downloadBlobFile(`fatture-${month}.zip`, await apiClient.adminInvoicesMonthZip(token, month));
+      setMessage(`Fatture di ${month} scaricate: dentro ci sono i file delle fatture elettroniche e i loro PDF.`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function resend(id: string) {
     const row = await apiClient.adminResendInvoice(token, id);
     setInvoices((current) => current?.map((r) => (r.id === id ? row : r)) ?? null);
@@ -236,7 +251,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
 
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
-          <Field label="Mese (AAAA-MM)" aria-label="Mese del giro da rifare" value={month} onChangeText={setMonth} />
+          <Field label="Mese (AAAA-MM)" aria-label="Mese" value={month} onChangeText={setMonth} />
         </YStack>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => setConfirm({ kind: "run" })}>
           Rifai il giro del mese
@@ -244,9 +259,12 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void checkReconciliation()}>
           Controlla che i conti tornino
         </Button>
+        <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void downloadMonthZip()}>
+          Scarica le fatture del mese
+        </Button>
       </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese. Con &quot;Scarica le fatture del mese&quot; hai un solo file per il commercialista. Dentro c&apos;è ogni fattura del mese, anche in PDF.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 

@@ -2271,6 +2271,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminInvoice: (token: string, id: string) =>
       request<PlatformInvoiceView>(`/admin/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    /** Fatture del mese (XML e PDF) in un file zip per il commercialista (docs/changelog/2026-11-24-fatture-del-mese-zip.md). */
+    adminInvoicesMonthZip: (token: string, month: string) => downloadFile(`/admin/invoices/month/${encodeURIComponent(month)}/zip`, token),
     adminInvoiceXml: (token: string, id: string) =>
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

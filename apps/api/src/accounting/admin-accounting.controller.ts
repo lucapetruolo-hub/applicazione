@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
 import { platformInvoiceSettingsSchema, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -45,6 +45,24 @@ export class AdminAccountingController {
   @Get()
   list(@Query("month") month?: string) {
     return this.invoicesService.adminList(month);
+  }
+
+  /**
+   * Le fatture del mese in uno zip (XML e PDF) da dare al commercialista
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Nel registro azioni:
+   * dentro ci sono i dati fiscali dei professionisti.
+   */
+  @Get("month/:month/zip")
+  async monthZip(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    const { fileName, zip, count, missingXml } = await this.invoicesService.adminMonthZip(month);
+    await this.auditLogService.record({
+      entityType: "InvoiceMonth",
+      entityId: month,
+      fieldName: "monthZipDownloaded",
+      newValue: `${count} fatture${missingXml > 0 ? `, ${missingXml} senza XML` : ""}`,
+      changedByUserId: req.user.userId,
+    });
+    return new StreamableFile(zip, { type: "application/zip", disposition: `attachment; filename="${fileName}"`, length: zip.length });
   }
 
   @Get(":id")
