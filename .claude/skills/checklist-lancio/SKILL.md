@@ -323,7 +323,15 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     docs/changelog/2026-11-08-fatture-e-fisco-collaudo.md); (b) `OPENAPI_TOKEN_SDI` su Render con
     `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§379:
     registra la società, manda una fattura da 1 €, simula e legge l'esito)
-    e solo con tutti i passi verdi togliere la sandbox; (c) email di Stripe ai clienti: restano accese sia le ricevute dei
+    e solo con tutti i passi verdi togliere la sandbox. **Prova FATTA il
+    24/11/2026** da Luca, tutti i passi verdi (registrazione, invio, esito
+    "Consegnata"), con dati di prova: "Prova SRL", partita IVA inventata
+    69232320585 (la 12345678903 nella sandbox di Openapi è già presa) e
+    "Fatture da" 2027-12-31. Al lancio: sostituire tutti i dati di prova con
+    quelli veri della società, token Openapi di produzione, `OPENAPI_SANDBOX`
+    tolto, "Fatture da" = giorno del lancio, e se serve email e spunta del
+    commercialista nel riquadro "Commercialista della società"
+    (docs/changelog/2026-11-24-fatture-del-mese-zip.md); (c) email di Stripe ai clienti: restano accese sia le ricevute dei
     pagamenti sia le fatture finalizzate (decisione di Luca del 2/11: il
     commercialista fa un doppio controllo). Il PDF "fattura" di Stripe ha un
     numero diverso dalla nostra ABB: dal 24/11 porta in fondo "Copia di
