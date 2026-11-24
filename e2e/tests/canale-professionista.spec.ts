@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@professionisti/database";
 
 /**
  * Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md):
@@ -42,12 +43,21 @@ test("il professionista trova il suo link, il cliente che lo apre arriva al prof
   const storedProfileId = () => client.evaluate(() => Object.keys(sessionStorage).find((key) => key.startsWith("link-personale:"))?.slice("link-personale:".length) ?? null);
   await expect.poll(storedProfileId).not.toBeNull();
   const profileId = await storedProfileId();
+  // La richiesta di prova è online: il professionista deve lavorare online,
+  // altrimenti il modulo torna ad "A domicilio"
+  // (docs/changelog/2026-11-24-data-richiesta-senza-orari.md).
+  // Rimesso com'era subito dopo, per le prove che seguono.
+  const prisma = new PrismaClient();
+  const before = await prisma.professionalProfile.findUniqueOrThrow({ where: { id: profileId! }, select: { remoteAvailable: true } });
+  await prisma.professionalProfile.update({ where: { id: profileId! }, data: { remoteAvailable: true } });
 
   await client.goto(`/preventivo?categoria=idraulico&professionista=${profileId}&nomeProfessionista=Marco%20Rossi%20Idraulica&modalita=ONLINE&descrizione=${encodeURIComponent("Perde il rubinetto della cucina da due giorni.")}`);
   await client.getByRole("group", { name: "Quando ti serve?" }).getByRole("radio", { name: "In settimana" }).check();
   await client.getByText("Avanti", { exact: true }).click();
   await client.getByText("Avanti", { exact: true }).click();
   await expect(client.getByRole("switch", { name: "Inoltra se non risponde" })).toHaveAttribute("aria-checked", "false");
+  await prisma.professionalProfile.update({ where: { id: profileId! }, data: { remoteAvailable: before.remoteAvailable } });
+  await prisma.$disconnect();
 
   // Un collega che apre l'invito vede chi lo ha invitato.
   await client.goto(`/per-professionisti?invito=${code}`);

@@ -358,6 +358,8 @@ export function GuidedRequestForm({
   // generica, vedi flattenPickableSlots sopra).
   const [pickableSlots, setPickableSlots] = useState<PickableAgendaSlot[]>([]);
   const [fullSlots, setFullSlots] = useState<PickableAgendaSlot[]>([]);
+  // Agenda scaricata per la modalità scelta: solo dopo si dice che non ci sono orari, senza lampeggiare.
+  const [agendaLoadedFor, setAgendaLoadedFor] = useState<"HOME" | "ONLINE" | null>(null);
   // Inizializzato dalla fascia già bloccata in URL (click su una pillola
   // dell'agenda pubblica), se presente — resta comunque modificabile.
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
@@ -408,6 +410,7 @@ export function GuidedRequestForm({
         const slots = flattenPickableSlots(agenda, serviceMode);
         setPickableSlots(slots);
         setFullSlots(flattenFullSlots(agenda, serviceMode));
+        setAgendaLoadedFor(serviceMode);
         // L'orario del link non è più libero: "Nessuna preferenza" e una riga che lo dice (collaudo I-07).
         if (preferredDate && preferredTimeSlot && serviceMode === initialServiceMode) {
           const linkValue = `${preferredDate}|${preferredTimeSlot}`;
@@ -521,6 +524,11 @@ export function GuidedRequestForm({
       .then((detail) => {
         if (stale) return;
         setProfessional(detail);
+        // Non lavora online (vedi onlineOff sotto): si torna ad "A domicilio".
+        if (!detail.remoteAvailable) {
+          setServiceMode("HOME");
+          if (initialServiceMode === "ONLINE") setSelectedSlotValue("");
+        }
         // Con più categorie (docs/CHANGELOG.md §217) resta quella del link
         // se è una delle sue, altrimenti la principale.
         setCategorySlugs(([current]) => [
@@ -540,6 +548,10 @@ export function GuidedRequestForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
+  // Il professionista scelto non lavora online: "Online" resta visibile ma
+  // spento, e un link con modalita=ONLINE torna ad "A domicilio"
+  // (docs/changelog/2026-11-24-data-richiesta-senza-orari.md).
+  const onlineOff = Boolean(professionalProfileId && professional && !professional.remoteAvailable);
   useEffect(() => {
     if (!chosenParam) return;
     let stale = false;
@@ -1626,6 +1638,7 @@ export function GuidedRequestForm({
               ] as const
             ).map((option) => {
               const active = serviceMode === option.value;
+              const off = option.value === "ONLINE" && onlineOff;
               return (
                 <XStack
                   key={option.value}
@@ -1635,8 +1648,10 @@ export function GuidedRequestForm({
                   paddingVertical="2"
                   borderRadius="10"
                   backgroundColor={active ? brand.cianografiaPieno : "transparent"}
-                  cursor="pointer"
+                  cursor={off ? "not-allowed" : "pointer"}
+                  opacity={off ? 0.45 : 1}
                   onPress={() => {
+                                    if (off) return;
                                     setServiceMode(option.value);
                                     // Un orario scelto per una modalità può non valere per
                                     // l'altra (fasce home/online indipendenti) — richiesta
@@ -1648,7 +1663,8 @@ export function GuidedRequestForm({
                                   }}
                   role="button"
                   aria-pressed={active}
-                  aria-label={option.label}
+                  aria-disabled={off || undefined}
+                  aria-label={off ? `${option.label}, non disponibile` : option.label}
                 >
                   <Icon name={option.icon} size={15} color={active ? "white" : brand.grafite70} />
                   <Text color={active ? "white" : brand.grafite70} fontWeight="600">
@@ -1658,6 +1674,11 @@ export function GuidedRequestForm({
               );
             })}
           </XStack>
+          {onlineOff ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              {`${shownProfessionalName ?? "Il professionista"} non lavora online: il lavoro si fa a domicilio.`}
+            </Text>
+          ) : null}
         </YStack>
 
         <YStack gap="2">
@@ -2049,6 +2070,16 @@ export function GuidedRequestForm({
                 <WeekSlotPicker slots={displaySlots} fullSlots={fullSlots} selectedKey={selectedSlotValue} keyOf={pickableSlotValue} onSelect={setSelectedSlotValue} label="Data e orario dell'appuntamento" />
               </div>
             )}
+          </YStack>
+        ) : professionalProfileId && agendaLoadedFor === serviceMode ? (
+          /* Nessun orario libero in questa modalità: la casella non sparisce
+             in silenzio, una riga dice perché e come si fissa la data
+             (docs/changelog/2026-11-24-data-richiesta-senza-orari.md). */
+          <YStack gap="2">
+            <FieldLabel>Data e orario dell&apos;appuntamento</FieldLabel>
+            <Text fontSize={13} color={brand.grafite70}>
+              {`${shownProfessionalName ?? "Il professionista"} non ha orari ${serviceMode === "ONLINE" ? "online" : "a domicilio"} liberi in agenda: dicci quando ti serve e ti proporrà una data in base alla sua disponibilità.`}
+            </Text>
           </YStack>
         ) : null}
 

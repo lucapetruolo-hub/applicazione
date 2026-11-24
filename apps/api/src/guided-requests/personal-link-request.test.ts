@@ -27,6 +27,7 @@ function buildService({ earlierSiteLead = false } = {}) {
     extraCategories: [],
     isDemo: true,
     fiscalProfile: null,
+    remoteAvailable: true,
   };
   const prisma = {
     category: { findUnique: vi.fn().mockResolvedValue(category) },

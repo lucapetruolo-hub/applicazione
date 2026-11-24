@@ -453,6 +453,7 @@ export class GuidedRequestsService {
       requestsBlockedUntil: Date | null;
       awayUntil: Date | null;
       businessName: string;
+      remoteAvailable: boolean;
       category: NonNullable<typeof category>;
       extraCategories: { id: string }[];
       isDemo: boolean;
@@ -471,6 +472,7 @@ export class GuidedRequestsService {
           requestsBlockedUntil: true,
           awayUntil: true,
           businessName: true,
+          remoteAvailable: true,
           category: true,
           extraCategories: { select: { id: true } },
           ...PUBLIC_VISIBILITY_SELECT,
@@ -486,6 +488,12 @@ export class GuidedRequestsService {
       // Account in pausa, o bloccato per segnalazioni accolte (§167).
       if (targetProfile.pausedAt || professionalRestrictions(targetProfile, new Date()).blocked) {
         throw new ConflictException(NOT_ACCEPTING_REQUESTS);
+      }
+      // Online solo a chi lavora online: il modulo spegne il tasto, qui si
+      // ferma un link vecchio o una chiamata diretta
+      // (docs/changelog/2026-11-24-data-richiesta-senza-orari.md).
+      if (input.serviceMode === "ONLINE" && !targetProfile.remoteAvailable) {
+        throw new BadRequestException(`${targetProfile.businessName} non lavora online: scegli "A domicilio".`);
       }
       // La categoria di una richiesta diretta deve essere una delle sue
       // (docs/CHANGELOG.md §217): il modulo non la fa più scegliere, ma un
