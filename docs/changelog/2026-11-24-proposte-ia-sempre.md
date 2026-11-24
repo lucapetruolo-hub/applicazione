@@ -44,7 +44,7 @@ dell'IA, che dal 13/11 deve esserci in ogni caso
   (`runScheduled`): due API non lo fanno insieme, e in Impostazioni →
   Proposte dell'IA si legge "Ultimo giro delle proposte: …" con l'errore se è
   finito male (sì di Luca, 24/11).
-- Non tocca `common/scheduled-job.ts` né `cron_runs`: il recupero generico
+- Non cambia `common/scheduled-job.ts`: il recupero generico
   delle attività saltate col piano gratuito lo fa il lavoro sulle fatture
   elettroniche.
 
