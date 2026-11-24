@@ -2441,113 +2441,120 @@ export class ProfessionalsService {
       return { channel: "EMAIL", status: "SENT", at: emailAt.toISOString() };
     };
 
-    return bookings.map((booking) => ({
-      id: booking.id,
-      // Richiesta guidata di origine, per il bottone "Vai alla cronologia
-      // della richiesta" (richiesta esplicita dell'utente) — null per le
-      // prenotazioni dirette da agenda pubblica (bookAgendaSlot), che non
-      // hanno una Quote/GuidedRequest collegata.
-      guidedRequestId: booking.quote?.guidedRequestId ?? null,
-      scheduledAt: booking.scheduledAt.toISOString(),
-      // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
-      // la fascia oraria, non solo l'inizio) — null se non nota.
-      scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
-      arrivalTime: booking.arrivalTime,
-      // Con il testo letto dal cliente (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
-      depositKeptOnLateCancel: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
-      createdAt: booking.createdAt.toISOString(),
-      updatedAt: booking.updatedAt.toISOString(),
-      status: booking.status,
-      // Nome e cognome: prima esponeva solo booking.client.name (nome di
-      // battesimo), non sufficiente per un professionista che deve
-      // presentarsi al lavoro sapendo con chi ha a che fare — richiesta
-      // esplicita dell'utente ("nome e cognome").
-      // Account senza nome: quello scritto nella richiesta (docs/changelog/2026-11-05-prova-utente-nuovo.md).
-      clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null,
-      clientImageUrl: booking.client.deletedAt ? null : booking.client.imageUrl,
-      clientPhone: booking.client.phone,
-      // Mai l'email anonimizzata sintetica — stesso motivo di getMyLeads sopra.
-      clientEmail: booking.client.deletedAt ? null : booking.client.email,
-      clientAccountDeleted: booking.client.deletedAt !== null,
-      address: booking.quote?.guidedRequest?.address ?? null,
-      // Indirizzo di lavoro strutturato, raccolto nella schermata di
-      // accettazione preventivo (richiesta esplicita dell'utente) — null
-      // per le prenotazioni dirette da agenda pubblica (bookAgendaSlot,
-      // che non passano da quella schermata) o per prenotazioni create
-      // prima di questa funzionalità. Quando presente sostituisce, in UI,
-      // il campo `address` libero sopra.
-      recipientName: booking.recipientName,
-      recipientSurname: booking.recipientSurname,
-      recipientPhone: booking.recipientPhone,
-      street: booking.street,
-      houseNumber: booking.houseNumber,
-      addressExtra: booking.addressExtra,
-      postalCode: booking.postalCode,
-      city: booking.city,
-      province: booking.province,
-      items: (booking.quote?.items ?? []).map((item) => ({
-        id: item.id,
-        name: item.name,
-        priceMinEurCents: item.priceMinEurCents,
-        priceMaxEurCents: item.priceMaxEurCents,
-      })),
-      finalAmountEurCents: booking.finalAmountEurCents,
-      finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
-      cancellationNote: booking.cancellationNote,
-      // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
-      // all'etichetta "Annullata".
-      canceledBy: booking.canceledBy,
-      // Quando (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md), null per i lavori annullati prima.
-      canceledAt: booking.canceledAt?.toISOString() ?? null,
-      // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
-      reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
-      // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
-      canceledLate: booking.canceledLate,
-      // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      clientConfirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
-      clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
-      clientReminder: clientReminder(booking),
-      // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
-      professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
-      description: booking.quote?.guidedRequest?.description ?? null,
-      photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
-      // Categoria e modalità (a domicilio/online) del lavoro — richiesta
-      // esplicita dell'utente per il redesign "Lavori accettati" (titolo
-      // card + badge). Copiati dalla GuidedRequest originale, `null` per le
-      // prenotazioni dirette da agenda pubblica (bookAgendaSlot, dormiente
-      // da CLAUDE.md §20) che non hanno una GuidedRequest collegata —
-      // `Booking.serviceMode` esiste già come copia denormalizzata
-      // (CLAUDE.md §23) ma non era ancora esposto qui.
-      categorySlug: booking.quote?.guidedRequest?.category?.slug ?? null,
-      categoryLabel: booking.quote?.guidedRequest?.category?.label ?? null,
-      serviceMode: booking.serviceMode,
-      professionalNote: booking.quote?.guidedRequestId
-        ? (leadNoteByGuidedRequestId.get(booking.quote.guidedRequestId) ?? booking.professionalNote)
-        : booking.professionalNote,
-      // Il cliente ha segnalato che non ti sei presentato e ha chiesto un
-      // rimborso — richiesta esplicita dell'utente, mai un cambio di
-      // `status` automatico (il professionista può ancora contestarlo).
-      refundRequested: booking.refundRequested,
-      // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
-      // professionista stesso — richiesta esplicita dell'utente.
-      meetingLink: booking.meetingLink,
-      onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
-      clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
-      earlyCompletionAskedAt: booking.earlyCompletionAskedAt?.toISOString() ?? null,
-      professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
-      clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
-      // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
-      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late) }),
-      // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
-      payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
-      // Fattura chiesta dal cliente (docs/CHANGELOG.md §378): c'è la Booking, quindi il preventivo è accettato.
-      invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
-      // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
-      courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
-      clientDocumentKind,
-      recurring: recurringVisitInfo(booking),
-    }));
+    return bookings.map((booking) => {
+      // Lavoro annullato: niente più telefono, email e indirizzo del cliente
+      // (§5 punto 9 di CLAUDE.md: i contatti valgono finché c'è un impegno
+      // confermato; decisione di Luca del 24/11/2026,
+      // docs/changelog/2026-11-24-annullato-senza-contatti.md). Tornano se si riapre.
+      const hidden = booking.status === "CANCELED";
+      return {
+        id: booking.id,
+        // Richiesta guidata di origine, per il bottone "Vai alla cronologia
+        // della richiesta" (richiesta esplicita dell'utente) — null per le
+        // prenotazioni dirette da agenda pubblica (bookAgendaSlot), che non
+        // hanno una Quote/GuidedRequest collegata.
+        guidedRequestId: booking.quote?.guidedRequestId ?? null,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
+        // la fascia oraria, non solo l'inizio) — null se non nota.
+        scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+        arrivalTime: booking.arrivalTime,
+        // Con il testo letto dal cliente (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+        depositKeptOnLateCancel: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
+        createdAt: booking.createdAt.toISOString(),
+        updatedAt: booking.updatedAt.toISOString(),
+        status: booking.status,
+        // Nome e cognome: prima esponeva solo booking.client.name (nome di
+        // battesimo), non sufficiente per un professionista che deve
+        // presentarsi al lavoro sapendo con chi ha a che fare — richiesta
+        // esplicita dell'utente ("nome e cognome").
+        // Account senza nome: quello scritto nella richiesta (docs/changelog/2026-11-05-prova-utente-nuovo.md).
+        clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null,
+        clientImageUrl: booking.client.deletedAt ? null : booking.client.imageUrl,
+        clientPhone: hidden ? null : booking.client.phone,
+        // Mai l'email anonimizzata sintetica — stesso motivo di getMyLeads sopra.
+        clientEmail: hidden || booking.client.deletedAt ? null : booking.client.email,
+        clientAccountDeleted: booking.client.deletedAt !== null,
+        address: hidden ? null : (booking.quote?.guidedRequest?.address ?? null),
+        // Indirizzo di lavoro strutturato, raccolto nella schermata di
+        // accettazione preventivo (richiesta esplicita dell'utente) — null
+        // per le prenotazioni dirette da agenda pubblica (bookAgendaSlot,
+        // che non passano da quella schermata) o per prenotazioni create
+        // prima di questa funzionalità. Quando presente sostituisce, in UI,
+        // il campo `address` libero sopra.
+        recipientName: booking.recipientName,
+        recipientSurname: booking.recipientSurname,
+        recipientPhone: hidden ? null : booking.recipientPhone,
+        street: hidden ? null : booking.street,
+        houseNumber: hidden ? null : booking.houseNumber,
+        addressExtra: hidden ? null : booking.addressExtra,
+        postalCode: booking.postalCode,
+        city: booking.city,
+        province: booking.province,
+        items: (booking.quote?.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          priceMinEurCents: item.priceMinEurCents,
+          priceMaxEurCents: item.priceMaxEurCents,
+        })),
+        finalAmountEurCents: booking.finalAmountEurCents,
+        finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
+        cancellationNote: booking.cancellationNote,
+        // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
+        // all'etichetta "Annullata".
+        canceledBy: booking.canceledBy,
+        // Quando (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md), null per i lavori annullati prima.
+        canceledAt: booking.canceledAt?.toISOString() ?? null,
+        // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
+        reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
+        // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
+        canceledLate: booking.canceledLate,
+        // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+        clientConfirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
+        clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
+        clientReminder: clientReminder(booking),
+        // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+        dateChange: bookingDateChange(booking, booking.ownQuote ?? (booking.recurringJobId ? booking.quote : null)),
+        professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
+        description: booking.quote?.guidedRequest?.description ?? null,
+        photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
+        // Categoria e modalità (a domicilio/online) del lavoro — richiesta
+        // esplicita dell'utente per il redesign "Lavori accettati" (titolo
+        // card + badge). Copiati dalla GuidedRequest originale, `null` per le
+        // prenotazioni dirette da agenda pubblica (bookAgendaSlot, dormiente
+        // da CLAUDE.md §20) che non hanno una GuidedRequest collegata —
+        // `Booking.serviceMode` esiste già come copia denormalizzata
+        // (CLAUDE.md §23) ma non era ancora esposto qui.
+        categorySlug: booking.quote?.guidedRequest?.category?.slug ?? null,
+        categoryLabel: booking.quote?.guidedRequest?.category?.label ?? null,
+        serviceMode: booking.serviceMode,
+        professionalNote: booking.quote?.guidedRequestId
+          ? (leadNoteByGuidedRequestId.get(booking.quote.guidedRequestId) ?? booking.professionalNote)
+          : booking.professionalNote,
+        // Il cliente ha segnalato che non ti sei presentato e ha chiesto un
+        // rimborso — richiesta esplicita dell'utente, mai un cambio di
+        // `status` automatico (il professionista può ancora contestarlo).
+        refundRequested: booking.refundRequested,
+        // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
+        // professionista stesso — richiesta esplicita dell'utente.
+        meetingLink: booking.meetingLink,
+        onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
+        clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+        earlyCompletionAskedAt: booking.earlyCompletionAskedAt?.toISOString() ?? null,
+        professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
+        clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
+        // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
+        issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late) }),
+        // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
+        payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
+        // Fattura chiesta dal cliente (docs/CHANGELOG.md §378): c'è la Booking, quindi il preventivo è accettato.
+        invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
+        // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
+        courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
+        clientDocumentKind,
+        recurring: recurringVisitInfo(booking),
+      };
+    });
   }
 
   /**

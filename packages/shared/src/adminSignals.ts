@@ -147,7 +147,9 @@ const CHAT_CONTACT_WHAT: Record<ChatContactKind, string> = {
 };
 
 /** Perché il messaggio non parte, in una riga (sito e server dicono la stessa cosa). */
-export function chatContactBlockedMessage(kind: ChatContactKind): string {
+export function chatContactBlockedMessage(kind: ChatContactKind, canceled = false): string {
+  // Lavoro annullato: i contatti non valgono più (docs/changelog/2026-11-24-annullato-senza-contatti.md).
+  if (canceled) return `Il lavoro è stato annullato e i contatti non si scambiano più: togli ${CHAT_CONTACT_WHAT[kind]} per inviare il messaggio.`;
   return `I contatti si scambiano dopo l'accettazione del preventivo: togli ${CHAT_CONTACT_WHAT[kind]} per inviare il messaggio.`;
 }
 

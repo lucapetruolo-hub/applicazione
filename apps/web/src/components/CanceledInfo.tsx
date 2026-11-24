@@ -19,7 +19,7 @@ const GUTTER = 16;
 export function CanceledInfo({ info, children }: { info: CanceledInfoLines | null; children: ReactNode }) {
   const [hover, setHover] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number; arrow: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; arrow: number; visible: boolean } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLSpanElement>(null);
   const id = useId();
@@ -34,7 +34,13 @@ export function CanceledInfo({ info, children }: { info: CanceledInfoLines | nul
       if (!trigger) return;
       const left = Math.max(GUTTER, Math.min(trigger.left, window.innerWidth - width - GUTTER));
       const arrow = Math.max(12, Math.min(trigger.left + 22 - left, width - 24));
-      setPos({ top: trigger.bottom + 8, left, arrow });
+      // Etichetta coperta (sotto la barra in alto) o fuori dallo schermo mentre
+      // si scorre: il riquadro si nasconde e ricompare quando torna in vista.
+      const x = Math.min(Math.max(trigger.left + trigger.width / 2, 0), window.innerWidth - 1);
+      const y = trigger.top + trigger.height / 2;
+      const atPoint = y >= 0 && y < window.innerHeight ? document.elementFromPoint(x, y) : null;
+      const visible = atPoint !== null && (triggerRef.current?.contains(atPoint) ?? false);
+      setPos({ top: trigger.bottom + 8, left, arrow, visible });
     };
     // Al fotogramma dopo: il riquadro è già disegnato e se ne conosce la larghezza.
     const frame = requestAnimationFrame(place);
@@ -108,7 +114,7 @@ export function CanceledInfo({ info, children }: { info: CanceledInfoLines | nul
               role="status"
               className={styles.pop}
               data-testid="canceled-info-pop"
-              style={{ top: open && pos ? pos.top : -9999, left: open && pos ? pos.left : -9999, ["--arrow" as string]: `${pos?.arrow ?? 22}px` }}
+              style={{ top: open && pos ? pos.top : -9999, left: open && pos ? pos.left : -9999, visibility: pos?.visible === false ? "hidden" : undefined, ["--arrow" as string]: `${pos?.arrow ?? 22}px` }}
               onPointerEnter={onEnter}
               onPointerLeave={onLeave}
               onClick={(event) => event.stopPropagation()}

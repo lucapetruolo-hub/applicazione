@@ -5,6 +5,7 @@ import { REQUEST_TIMING_LABEL } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { formatBookingAddress } from "@professionisti/shared";
 import { CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
+import { Info } from "lucide-react";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -65,7 +66,7 @@ export function clientRequestSearchText(request: ClientGuidedRequest, stage: Req
 }
 
 /** Stessa pillola colorata di /dashboard/richieste, testo lato cliente (`CLIENT_STAGE_LABEL`). */
-export function ClientStagePill({ stage }: { stage: RequestStage }) {
+export function ClientStagePill({ stage, moreInfo }: { stage: RequestStage; moreInfo?: boolean }) {
   const s = STAGE_STYLE[stage];
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
@@ -73,6 +74,8 @@ export function ClientStagePill({ stage }: { stage: RequestStage }) {
       <Text fontFamily="body" fontSize={16} fontWeight="700" color={s.fg}>
         {CLIENT_STAGE_LABEL[stage]}
       </Text>
+      {/* Si tocca per sapere chi ha annullato e quando (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+      {moreInfo ? <Info size={15} strokeWidth={2} color={s.fg} aria-hidden /> : null}
     </XStack>
   );
 }

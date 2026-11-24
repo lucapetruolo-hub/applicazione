@@ -113,8 +113,11 @@ export class TimelineService {
   private async assertNoContactsBeforeAcceptance(guidedRequestId: string, professionalProfileId: string, message: string): Promise<void> {
     const kind = chatContactKind(message);
     if (!kind) return;
-    const booking = await this.prisma.booking.findFirst({ where: { professionalProfileId, guidedRequestId }, select: { id: true } });
-    if (!booking) throw new BadRequestException(chatContactBlockedMessage(kind));
+    // Un lavoro annullato non vale come impegno: i contatti si fermano di nuovo
+    // finché non si riapre (Luca, 24/11/2026, docs/changelog/2026-11-24-annullato-senza-contatti.md).
+    const bookings = await this.prisma.booking.findMany({ where: { professionalProfileId, guidedRequestId }, select: { status: true } });
+    if (bookings.some((booking) => booking.status !== "CANCELED")) return;
+    throw new BadRequestException(chatContactBlockedMessage(kind, bookings.length > 0));
   }
 
   /**
