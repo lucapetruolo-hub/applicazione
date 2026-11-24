@@ -903,7 +903,11 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
         ) : null}
         {/* A domicilio o online; online senza città, che prima lasciava "Idraulico ·"
             (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */}
-        <strong>{leadTitle(lead.guidedRequest)}</strong>
+        <strong className="today-row-title">
+          {/* Casa o videocamera come nella campanella ("sì" di Luca del 24/11). */}
+          {lead.guidedRequest.serviceMode ? <Icon name={lead.guidedRequest.serviceMode === "ONLINE" ? "video" : "house"} size={16} color={brand.grafite70} aria-hidden /> : null}
+          {leadTitle(lead.guidedRequest)}
+        </strong>
         <span className="today-row-sub">{truncate(lead.guidedRequest.description, 110)}</span>
         {/* Quando è arrivata e per quando serve ("sì" di Luca del 24/11). */}
         <span className="today-row-when">{[leadReceived(lead.createdAt), leadWanted(lead.guidedRequest)].filter(Boolean).join(" · ")}</span>

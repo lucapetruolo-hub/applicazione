@@ -1389,7 +1389,8 @@ export function RequestCard({
                   ) : null}
                   {!booking ? (
                     <Text fontSize={13} color={brand.grafite70} fontStyle="italic">
-                      Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo.
+                      {/* Online non c'è un indirizzo (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */}
+                      {isOnline ? "Telefono ed email saranno visibili qui ad accettazione del preventivo." : "Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo."}
                     </Text>
                   ) : null}
                   {/* Tasto Chat in fondo ai "Dettagli cliente" (richiesta

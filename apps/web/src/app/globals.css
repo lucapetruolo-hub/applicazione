@@ -2325,6 +2325,12 @@ html.site-menu-open .profile-cta-bar {
   color: #5e5a54;
   font-size: 16px;
 }
+/* Icona casa o videocamera prima del mestiere (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */
+.today-row-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 /* Quando è arrivata la richiesta e per quando serve (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */
 .today-row-when {
   color: #5e5a54;
