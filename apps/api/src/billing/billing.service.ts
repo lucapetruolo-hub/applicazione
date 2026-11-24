@@ -102,6 +102,14 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   return typeof ref === "string" ? ref : ref.id;
 }
 
+/**
+ * Scritta in fondo ai PDF "Fattura" di Stripe (docs/changelog/2026-11-24-copia-di-cortesia-stripe.md):
+ * la fattura valida è la nostra elettronica (ABB) inviata allo SdI, il PDF di
+ * Stripe resta un promemoria del pagamento e non va registrato due volte.
+ */
+export const STRIPE_INVOICE_FOOTER =
+  "Copia di cortesia, non valida ai fini fiscali. La fattura elettronica valida è quella inviata allo SdI: la trovi sul sito in Fisco e pagamenti, Fatture e documenti.";
+
 @Injectable()
 export class BillingService implements OnModuleInit {
   private readonly logger = new Logger(BillingService.name);
@@ -271,11 +279,15 @@ export class BillingService implements OnModuleInit {
           email: profile.user.email ?? undefined,
           name: profile.businessName,
           preferred_locales: ["it"],
+          invoice_settings: { footer: STRIPE_INVOICE_FOOTER },
           metadata: { professionalProfileId: profile.id },
         },
         { idempotencyKey: `professional-customer-${profile.id}` },
       );
       customerId = customer.id;
+    } else {
+      // Cliente ripreso da un abbonamento vecchio: anche i suoi PDF di Stripe hanno la scritta.
+      await stripe.customers.update(customerId, { invoice_settings: { footer: STRIPE_INVOICE_FOOTER } });
     }
     // Update condizionato: con due richieste insieme vince la prima e l'altra rilegge.
     const saved = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, stripeCustomerId: null }, data: { stripeCustomerId: customerId } });
@@ -872,6 +884,7 @@ export class BillingService implements OnModuleInit {
         pending_invoice_items_behavior: "exclude",
         default_tax_rates: taxRates,
         description: label,
+        footer: STRIPE_INVOICE_FOOTER,
         metadata: { kind: "tier_upgrade_fee", professionalProfileId, stripeSubscriptionId, plan },
       });
       await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: invoice.id } });
