@@ -551,7 +551,22 @@ export function GuidedRequestForm({
   // Il professionista scelto non lavora online: "Online" resta visibile ma
   // spento, e un link con modalita=ONLINE torna ad "A domicilio"
   // (docs/changelog/2026-11-24-data-richiesta-senza-orari.md).
-  const onlineOff = Boolean(professionalProfileId && professional && !professional.remoteAvailable);
+  // Stessa regola con più professionisti scelti: chi non lavora online si
+  // segna, e se nessuno lo fa "Online" si spegne
+  // (docs/changelog/2026-11-24-online-scelti-e-profilo.md).
+  const chosenOffline = chosenMode ? chosenPros.filter((pro) => !pro.remoteAvailable) : [];
+  const allChosenOffline = chosenMode && chosenPros.length > 0 && chosenOffline.length === chosenPros.length;
+  const onlineOff = Boolean(professionalProfileId && professional && !professional.remoteAvailable) || allChosenOffline;
+  const onlineOffText = allChosenOffline
+    ? `${chosenPros.length === 1 ? "Il professionista che hai scelto non lavora" : "Nessuno dei professionisti che hai scelto lavora"} online: il lavoro si fa a domicilio.`
+    : `${shownProfessionalName ?? "Il professionista"} non lavora online: il lavoro si fa a domicilio.`;
+  // Online con alcuni scelti che non lavorano online: si dice chi, e non si va avanti finché non si sceglie.
+  const chosenOfflineText =
+    serviceMode === "ONLINE" && chosenOffline.length > 0 && !allChosenOffline
+      ? `${new Intl.ListFormat("it-IT", { type: "conjunction" }).format(chosenOffline.map((pro) => pro.businessName))} ${
+          chosenOffline.length === 1 ? "non lavora online: toglilo con la X o scegli \"A domicilio\"." : "non lavorano online: toglili con la X o scegli \"A domicilio\"."
+        }`
+      : null;
   useEffect(() => {
     if (!chosenParam) return;
     let stale = false;
@@ -565,6 +580,11 @@ export function GuidedRequestForm({
         if (stale) return;
         const found = results.filter((detail): detail is ProfessionalDetail => Boolean(detail) && detail !== "gone");
         setChosenPros(found);
+        // Nessuno dei scelti lavora online (vedi allChosenOffline sotto): si torna ad "A domicilio".
+        if (found.length > 0 && found.every((pro) => !pro.remoteAvailable)) {
+          setServiceMode("HOME");
+          if (initialServiceMode === "ONLINE") setSelectedSlotValue("");
+        }
         const gone = results.filter((detail) => detail === "gone").length;
         // Chi non è più sul sito si toglie da solo (succede con "Ripeti la richiesta").
         if (gone > 0) {
@@ -1240,6 +1260,7 @@ export function GuidedRequestForm({
       if (!categorySlug && !waitingTrade) return { message: openQuestion ? "Rispondi alla domanda o scegli una categoria." : "Scegli almeno una categoria.", focus: "categorie" };
       // Con un orario scelto in agenda la risposta si ricava dal giorno (vedi goToStep).
       if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve.", focus: "quando" };
+      if (chosenOfflineText) return { message: chosenOfflineText };
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
@@ -1676,7 +1697,11 @@ export function GuidedRequestForm({
           </XStack>
           {onlineOff ? (
             <Text fontSize={13} color={brand.grafite70}>
-              {`${shownProfessionalName ?? "Il professionista"} non lavora online: il lavoro si fa a domicilio.`}
+              {onlineOffText}
+            </Text>
+          ) : chosenOfflineText ? (
+            <Text fontSize={14} fontWeight="600" color={brand.urgenza}>
+              {chosenOfflineText}
             </Text>
           ) : null}
         </YStack>

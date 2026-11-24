@@ -7,7 +7,7 @@ import { GuidedRequestsService } from "./guided-requests.service";
  * una sola richiesta che arriva solo a loro, anche dove le richieste
  * generali sono chiuse.
  */
-type Pro = { id: string; businessName: string; categoryId: string; pausedAt?: Date | null; deletedAt?: Date | null };
+type Pro = { id: string; businessName: string; categoryId: string; pausedAt?: Date | null; deletedAt?: Date | null; remoteAvailable?: boolean };
 
 function buildService(pros: Pro[]) {
   const rows = pros.map((pro) => ({
@@ -21,6 +21,8 @@ function buildService(pros: Pro[]) {
     extraCategories: [],
     isDemo: true,
     fiscalProfile: null,
+    // Le richieste di prova sono online: di serie i scelti lavorano online.
+    remoteAvailable: true,
     ...pro,
   }));
   const prisma = {
@@ -205,5 +207,27 @@ describe("scelti di due mestieri", () => {
     await expect((service as unknown as Grouping).chosenByCategory(ids.slice(0, 2), categories, ["muratore", "falegname"])).rejects.toThrow(
       "almeno un professionista per ogni mestiere",
     );
+  });
+});
+
+describe("GuidedRequestsService.create — scelti e Online", () => {
+  it("una richiesta online si ferma se uno dei scelti non lavora online, e dice chi", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1", remoteAvailable: false },
+    ]);
+    await expect(service.create("client-1", { ...input, professionalProfileIds: [ids[0]!, ids[1]!] })).rejects.toThrow(
+      'Bianchi Impianti non lavora online: toglilo dalla scelta o scegli "A domicilio".',
+    );
+    expect(prisma.guidedRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("a domicilio parte anche per chi non lavora online", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1", remoteAvailable: false },
+    ]);
+    await service.create("client-1", { ...input, serviceMode: "HOME", address: "Via Roma", houseNumber: "1", professionalProfileIds: [ids[0]!, ids[1]!] } as typeof input);
+    expect(prisma.guidedRequest.create).toHaveBeenCalledTimes(1);
   });
 });
