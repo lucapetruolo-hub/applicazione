@@ -57,6 +57,8 @@ const publicRoutes = [
   "GET /health",
   // Il database risponde? Per l'uptime (docs/changelog/2026-11-08-infrastruttura-lancio.md).
   "GET /health/db",
+  // Attività a orario partite? Per l'uptime, solo nomi e orari (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md).
+  "GET /health/cron",
   "GET /health/features",
   // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
   "GET /identity-verification/representative/:token",
