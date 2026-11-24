@@ -27,7 +27,7 @@ import {
   type ReviewHoldReason,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { ScheduledJob } from "../common/scheduled-job";
+import { ScheduledJob, prismaCronRunStore, runScheduled } from "../common/scheduled-job";
 import { anonymizeProblemText } from "../problem-match/problem-match.service";
 import { contentOwnerUserId, ownerHistory } from "./content-owner";
 
@@ -37,6 +37,8 @@ const PER_RUN = 20;
 const TIMEOUT_MS = 30_000;
 /** Dopo quanto tempo senza giri l'apertura di una pagina di Admin ne fa partire uno. */
 const KICK_AFTER_MS = 5 * 60_000;
+/** Nome del giro in `cron_runs`, lo stesso che gli dà `@ScheduledJob`. */
+export const ADVICE_RUN_NAME = "CaseAdviceService.adviseOpenCases";
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 200);
 
@@ -375,7 +377,7 @@ export class CaseAdviceService {
         else failed.push(`${c.kind}: ${result.error}`);
       }
       if (cases.length > 0) {
-        this.logger.log(`Proposte dell'IA (${why}): ${cases.length} casi senza proposta, ${saved} pronte${failed.length ? `, ${failed.length} non riuscite (${failed.slice(0, 3).join("; ")})` : ""}.`);
+        this.logger.log(`Proposte dell'IA (${why}): ${cases.length} ${cases.length === 1 ? "caso" : "casi"} senza proposta, ${saved} pronte${failed.length ? `, ${failed.length} non riuscite (${failed.slice(0, 3).join("; ")})` : ""}.`);
       }
       return saved;
     })().finally(() => {
@@ -387,10 +389,17 @@ export class CaseAdviceService {
   /**
    * All'apertura di una pagina di Admin: se da 5 minuti non è partito nessun
    * giro (API appena svegliata), ne parte uno senza far aspettare la pagina.
+   * Passa da `cron_runs` come il giro a orario: due API non lo fanno insieme
+   * e l'ora dell'ultimo giro si legge da lì.
    */
-  kickIfIdle(): void {
-    if (!CaseAdviceService.active() || this.running || Date.now() - this.lastRunAt < KICK_AFTER_MS) return;
-    void this.runAdvice("pagina di Admin").catch((error) => this.logger.warn(`Proposte dell'IA non riuscite: ${errorText(error)}`));
+  kickIfIdle(lastRunStartedAt: Date | null): void {
+    if (!CaseAdviceService.active() || this.running) return;
+    const last = Math.max(this.lastRunAt, lastRunStartedAt?.getTime() ?? 0);
+    if (Date.now() - last < KICK_AFTER_MS) return;
+    this.lastRunAt = Date.now();
+    void runScheduled(ADVICE_RUN_NAME, new Date(), () => this.runAdvice("pagina di Admin"), prismaCronRunStore).catch((error) =>
+      this.logger.warn(`Proposte dell'IA non riuscite: ${errorText(error)}`),
+    );
   }
 
   /**
@@ -746,7 +755,10 @@ export class CaseAdviceService {
   }
 
   /** Con `kinds` solo i tipi che quell'admin può vedere (ruoli: moderazione, finanza). */
-  async overview(kinds: readonly CaseAdviceKind[] = [...MEASURED_ADVICE_KINDS, "CONTACT_MESSAGE"]): Promise<CaseAdviceOverview> {
+  async overview(kinds: readonly CaseAdviceKind[] = [...MEASURED_ADVICE_KINDS, "CONTACT_MESSAGE"], options: { kick?: boolean } = {}): Promise<CaseAdviceOverview> {
+    const lastRun = await this.prisma.cronRun.findFirst({ where: { name: ADVICE_RUN_NAME }, orderBy: { startedAt: "desc" }, select: { startedAt: true, finishedAt: true, error: true } });
+    // API appena svegliata (piano gratuito di Render): il giro parte anche da qui.
+    if (options.kick) this.kickIfIdle(lastRun?.startedAt ?? null);
     await this.reconcileMoney();
     const [rows, open] = await Promise.all([
       this.prisma.adminCaseAdvice.findMany({
@@ -760,6 +772,7 @@ export class CaseAdviceService {
       active: CaseAdviceService.active(),
       kinds: MEASURED_ADVICE_KINDS.filter((kind) => kinds.includes(kind)).map((kind) => kindStats(kind, rows.filter((r) => r.kind === kind))),
       open: open.map(toCaseAdvice),
+      lastRun: lastRun ? { startedAt: lastRun.startedAt.toISOString(), finishedAt: lastRun.finishedAt?.toISOString() ?? null, error: lastRun.error } : null,
     };
   }
 }

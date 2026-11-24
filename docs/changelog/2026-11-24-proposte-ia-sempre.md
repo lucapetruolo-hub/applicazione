@@ -40,6 +40,10 @@ dell'IA, che dal 13/11 deve esserci in ogni caso
   ferma gli altri); alla fine una riga nei log: "Proposte dell'IA (giro a
   orario | pagina di Admin): N casi senza proposta, M pronte, K non riuscite
   (motivi)".
+- Il giro partito aprendo Admin passa da `cron_runs` come quello a orario
+  (`runScheduled`): due API non lo fanno insieme, e in Impostazioni →
+  Proposte dell'IA si legge "Ultimo giro delle proposte: …" con l'errore se è
+  finito male (sì di Luca, 24/11).
 - Non tocca `common/scheduled-job.ts` né `cron_runs`: il recupero generico
   delle attività saltate col piano gratuito lo fa il lavoro sulle fatture
   elettroniche.

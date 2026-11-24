@@ -392,8 +392,7 @@ export class AdminController {
   @Get("case-advice")
   async caseAdviceOverview(@Req() req: AuthenticatedRequest) {
     // API appena svegliata (piano gratuito di Render): il giro parte anche da qui, senza far aspettare la pagina.
-    this.caseAdviceService.kickIfIdle();
-    return this.caseAdviceService.overview(await this.caseAdviceService.kindsFor(req.user.userId));
+    return this.caseAdviceService.overview(await this.caseAdviceService.kindsFor(req.user.userId), { kick: true });
   }
 
   /** "Chiedi la proposta all'IA" su un caso solo (docs/changelog/2026-11-24-proposte-ia-sempre.md). */

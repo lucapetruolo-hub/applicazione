@@ -180,3 +180,13 @@ describe("giro delle proposte", () => {
     expect(await s.adviseNow("CONTENT_REPORT", "x")).toEqual({ ok: false, error: "il caso non è più da decidere, oppure il contenuto non c'è più" });
   });
 });
+
+describe("giro all'apertura di Admin", () => {
+  it("non parte se un giro è partito da meno di 5 minuti", () => {
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const s = new CaseAdviceService({} as never);
+    const run = vi.spyOn(s, "runAdvice").mockResolvedValue(0);
+    s.kickIfIdle(new Date(Date.now() - 60_000));
+    expect(run).not.toHaveBeenCalled();
+  });
+});
