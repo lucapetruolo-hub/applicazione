@@ -28,7 +28,7 @@ describe("RecurringJobsService.stop", () => {
     expect(prisma.recurringJob.updateMany).toHaveBeenCalledWith({ where: { id: "rj-1", stoppedAt: null }, data: expect.objectContaining({ stoppedBy: "CLIENT" }) });
     const cancel = prisma.booking.updateMany.mock.calls[0]![0];
     expect(cancel.where).toMatchObject({ recurringJobId: "rj-1", recurringNumber: { gt: 1 }, status: { in: ["PENDING", "CONFIRMED"] }, professionalCompletedAt: null });
-    expect(cancel.data).toEqual({ status: "CANCELED", canceledBy: "CLIENT", cancellationNote: RECURRING_STOPPED_NOTE });
+    expect(cancel.data).toEqual({ status: "CANCELED", canceledBy: "CLIENT", canceledAt: expect.any(Date), cancellationNote: RECURRING_STOPPED_NOTE });
     expect(notifications.notify).toHaveBeenCalledWith("pro-user", "RECURRING_JOB_STOPPED", expect.objectContaining({ guidedRequestId: "gr-1", stoppedBy: "CLIENT", audience: "PROFESSIONAL" }));
     expect(timeline.log).toHaveBeenCalledWith("gr-1", "pp-1", "CLIENT", expect.stringContaining("interrotto il lavoro ricorrente"));
   });

@@ -128,7 +128,7 @@ export class RecurringJobsService {
             serviceMode: first.serviceMode,
             // Ora già occupata (per esempio un lavoro preso prima che la visita entrasse in agenda): salta da sola e lo sanno tutti e due.
             status: busy ? "CANCELED" : "CONFIRMED",
-            ...(busy ? { canceledBy: "PROFESSIONAL" as const, skippedAt: new Date(), cancellationNote: RECURRING_BUSY_NOTE } : {}),
+            ...(busy ? { canceledBy: "PROFESSIONAL" as const, canceledAt: new Date(), skippedAt: new Date(), cancellationNote: RECURRING_BUSY_NOTE } : {}),
             recurringJobId: series.id,
             recurringNumber: number,
             recipientName: first.recipientName,
@@ -218,7 +218,7 @@ export class RecurringJobsService {
         scheduledAt: { gt: wallClockNow() },
         professionalCompletedAt: null,
       },
-      data: { status: "CANCELED", canceledBy: by === "CLIENT" ? "CLIENT" : "PROFESSIONAL", cancellationNote: RECURRING_STOPPED_NOTE },
+      data: { status: "CANCELED", canceledBy: by === "CLIENT" ? "CLIENT" : "PROFESSIONAL", canceledAt: new Date(), cancellationNote: RECURRING_STOPPED_NOTE },
     });
     return { stoppedAt, canceledVisits: canceled.count };
   }

@@ -76,6 +76,7 @@ const FIELD_LABELS: Record<string, string> = {
   note: "Nota",
   cancellationNote: "Motivo dell'annullamento",
   canceledBy: "Annullato da",
+  canceledAt: "Annullato il",
   meetingLink: "Link della videochiamata",
   serviceMode: "Modalità",
   preferredDate: "Data preferita",
