@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
 import type { CaseAdvice } from "@professionisti/shared";
-import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import { AskCaseAdvice, CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import {
   ONLINE_LIMIT_FREE_DAYS,
   ONLINE_LIMIT_FREE_JOBS,
@@ -274,6 +274,8 @@ function RefundCard({
           }}
           onModify={() => setDraftNote(advice.note ?? "")}
         />
+      ) : refund.status === "REQUESTED" ? (
+        <AskCaseAdvice kind="REFUND" caseId={refund.id} token={token} onReady={onAdviceDone} />
       ) : null}
       {refund.status === "REQUESTED" ? (
         <XStack gap="2">
@@ -379,6 +381,8 @@ function DisputeCard({
           }}
           onModify={() => setNote(advice.note ?? "")}
         />
+      ) : isOpen ? (
+        <AskCaseAdvice kind="DISPUTE" caseId={dispute.id} token={token} onReady={onAdviceDone} />
       ) : null}
       {isOpen ? (
         <YStack gap="2">
@@ -459,7 +463,9 @@ function UnpaidCard({ row, token, onChanged, advice }: { row: AdminUnpaidBalance
             setOpen(true);
           }}
         />
-      ) : null}
+      ) : (
+        <AskCaseAdvice kind="UNPAID_BALANCE" caseId={row.jobPaymentId} token={token} onReady={onChanged} />
+      )}
       {open ? (
         <YStack gap="2">
           <textarea aria-label="Come si è chiuso" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
@@ -631,6 +637,8 @@ function BankDisputeCard({ row, token, onChanged, advice }: { row: AdminBankDisp
           }}
           onModify={() => setOpen(true)}
         />
+      ) : !row.submitted ? (
+        <AskCaseAdvice kind="BANK_DISPUTE" caseId={row.jobPaymentId} token={token} onReady={onChanged} />
       ) : null}
       {row.submitted ? (
         <YStack gap="2">

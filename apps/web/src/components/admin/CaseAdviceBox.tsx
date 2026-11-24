@@ -165,3 +165,60 @@ export function CaseAdviceBox({
     </YStack>
   );
 }
+
+/**
+ * Quando un caso non ha ancora la proposta dell'IA
+ * (docs/changelog/2026-11-24-proposte-ia-sempre.md): invece di non mostrare
+ * niente, una riga che lo dice e il pulsante per chiederla subito. Se l'IA
+ * non risponde si legge il perché. A proposta pronta la pagina la ricarica
+ * e al suo posto compare la scheda "L'IA propone".
+ */
+export function AskCaseAdvice({ kind, caseId, token, onReady }: { kind: CaseAdviceKind; caseId: string; token: string; onReady: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function ask() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await apiClient.adminAskCaseAdvice(token, kind, caseId);
+      if (result.ok) onReady();
+      else setError(result.error);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <XStack
+      gap="2"
+      paddingVertical="2"
+      paddingHorizontal="3"
+      borderRadius={20}
+      borderWidth={1}
+      borderStyle="dashed"
+      borderColor={brand.filetto}
+      alignItems="center"
+      justifyContent="space-between"
+      flexWrap="wrap"
+      role="note"
+      aria-label="Proposta dell'IA"
+    >
+      <YStack flex={1} minWidth={200} gap="1">
+        <Text fontSize="3" color={brand.grafite70}>
+          {busy ? "L'IA sta leggendo il caso…" : "L'IA non ha ancora preparato la sua proposta."}
+        </Text>
+        {error ? (
+          <Text fontSize="3" color={brand.urgenza} role="alert">
+            Non è arrivata: {error}.
+          </Text>
+        ) : null}
+      </YStack>
+      <Button variant="secondary" size="3" disabled={busy} onPress={() => void ask()}>
+        {busy ? "Un momento…" : error ? "Riprova" : "Chiedi la proposta"}
+      </Button>
+    </XStack>
+  );
+}

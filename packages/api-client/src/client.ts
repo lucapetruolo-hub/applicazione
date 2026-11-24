@@ -135,6 +135,7 @@ import type {
   SiteNoteInput,
   SiteHealth,
   CaseAdviceOverview,
+  CaseAdvice,
   CaseAdviceKind,
   SiteDeadline,
   SiteDeadlineInput,
@@ -2766,6 +2767,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<CaseAdviceOverview>("/admin/case-advice", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminApproveCaseAdvice: (token: string, kind: CaseAdviceKind, caseId: string) =>
       request<unknown>(`/admin/case-advice/${kind}/${encodeURIComponent(caseId)}/approve`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminAskCaseAdvice: (token: string, kind: CaseAdviceKind, caseId: string) =>
+      request<{ ok: true; advice: CaseAdvice } | { ok: false; error: string }>(`/admin/case-advice/${kind}/${encodeURIComponent(caseId)}/ask`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminSiteHealth: (token: string) =>
       request<SiteHealth>("/admin/site-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminAddSiteDeadline: (token: string, input: SiteDeadlineInput) =>

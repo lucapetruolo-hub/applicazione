@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Header, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   adminRoleUpdateSchema,
   contentReportDecisionNoteSchema,
@@ -28,6 +29,7 @@ import {
   type InvitePartnerCreateInput,
   siteDeadlineSchema,
   type SiteDeadlineInput,
+  type CaseAdviceKind,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -389,7 +391,19 @@ export class AdminController {
   @RequireAdminScope("ANY")
   @Get("case-advice")
   async caseAdviceOverview(@Req() req: AuthenticatedRequest) {
+    // API appena svegliata (piano gratuito di Render): il giro parte anche da qui, senza far aspettare la pagina.
+    this.caseAdviceService.kickIfIdle();
     return this.caseAdviceService.overview(await this.caseAdviceService.kindsFor(req.user.userId));
+  }
+
+  /** "Chiedi la proposta all'IA" su un caso solo (docs/changelog/2026-11-24-proposte-ia-sempre.md). */
+  @RequireAdminScope("ANY")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("case-advice/:kind/:caseId/ask")
+  @HttpCode(200)
+  async askCaseAdvice(@Req() req: AuthenticatedRequest, @Param("kind") kind: string, @Param("caseId") caseId: string) {
+    if (!(await this.caseAdviceService.kindsFor(req.user.userId)).includes(kind as never)) throw new ForbiddenException("Questa sezione non rientra nel tuo ruolo di amministratore.");
+    return this.caseAdviceService.adviseNow(kind as CaseAdviceKind, caseId);
   }
 
   /** "Approva": decide come propone l'IA, con gli stessi servizi dei pulsanti a mano. */

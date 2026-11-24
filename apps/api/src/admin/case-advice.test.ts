@@ -133,3 +133,50 @@ describe("chi vede le proposte", () => {
     expect(kinds).not.toContain("CONTENT_REPORT");
   });
 });
+
+/** Proposte sempre visibili, anche col piano gratuito di Render (docs/changelog/2026-11-24-proposte-ia-sempre.md). */
+describe("giro delle proposte", () => {
+  const caseA: AdviceCase = { kind: "CONTENT_REPORT", caseId: "a", text: "", allowed: ["DISMISS", "HIDE_CONTENT"] };
+  const caseB: AdviceCase = { kind: "CONTACT_MESSAGE", caseId: "b", text: "", allowed: ["REPLY", "NO_REPLY"] };
+
+  function service(answers: Record<string, unknown>) {
+    const upsert = vi.fn().mockResolvedValue({});
+    const prisma = { adminCaseAdvice: { upsert, findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null) } };
+    const s = new CaseAdviceService(prisma as never);
+    vi.spyOn(s, "reconcileMoney").mockResolvedValue();
+    (s as unknown as { ask: (c: AdviceCase) => Promise<unknown> }).ask = async (c) => answers[c.caseId];
+    return { s, upsert, prisma };
+  }
+
+  it("un caso che non va non ferma gli altri e il giro dice com'è andata", async () => {
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const { s, upsert } = service({ a: { ok: false, error: "l'IA non risponde" }, b: { ok: true, answer: { decision: "NO_REPLY", reason: "pubblicità", draft: null } } });
+    vi.spyOn(s, "casesWithoutAdvice").mockResolvedValue([caseA, caseB]);
+    const log = vi.spyOn((s as unknown as { logger: { log: (m: string) => void } }).logger, "log").mockImplementation(() => undefined);
+    expect(await s.runAdvice("prova")).toBe(1);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0]?.[0]).toContain("2 casi senza proposta, 1 pronte, 1 non riuscite");
+  });
+
+  it("un giro alla volta: la seconda chiamata aspetta la prima", async () => {
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const { s } = service({});
+    const cases = vi.spyOn(s, "casesWithoutAdvice").mockResolvedValue([]);
+    await Promise.all([s.runAdvice("uno"), s.runAdvice("due")]);
+    expect(cases).toHaveBeenCalledTimes(1);
+  });
+
+  it("chiesta a mano: senza proposta dice il perché", async () => {
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const { s } = service({ a: { ok: false, error: "l'IA ha proposto \"SUSPEND_USER\", che per questo caso non si può scegliere" } });
+    vi.spyOn(s, "casesWithoutAdvice").mockResolvedValue([caseA]);
+    expect(await s.adviseNow("CONTENT_REPORT", "a")).toEqual({ ok: false, error: "l'IA ha proposto \"SUSPEND_USER\", che per questo caso non si può scegliere" });
+  });
+
+  it("chiesta a mano su un caso già deciso", async () => {
+    process.env.ANTHROPIC_API_KEY = "prova";
+    const { s } = service({});
+    vi.spyOn(s, "casesWithoutAdvice").mockResolvedValue([]);
+    expect(await s.adviseNow("CONTENT_REPORT", "x")).toEqual({ ok: false, error: "il caso non è più da decidere, oppure il contenuto non c'è più" });
+  });
+});

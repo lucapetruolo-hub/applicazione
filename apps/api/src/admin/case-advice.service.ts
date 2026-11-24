@@ -35,6 +35,23 @@ const MODEL = "claude-haiku-5-5";
 /** Casi al massimo per giro: i casi veri sono pochi, il tetto ferma una coda impazzita. */
 const PER_RUN = 20;
 const TIMEOUT_MS = 30_000;
+/** Dopo quanto tempo senza giri l'apertura di una pagina di Admin ne fa partire uno. */
+const KICK_AFTER_MS = 5 * 60_000;
+
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 200);
+
+function toCaseAdvice(a: { kind: string; caseId: string; decision: string; reason: string; ground: string | null; note: string | null; draft: string | null; createdAt: Date }): CaseAdvice {
+  return {
+    kind: a.kind as CaseAdviceKind,
+    caseId: adviceCaseId(a.caseId),
+    decision: a.decision as CaseAdviceDecision,
+    reason: a.reason,
+    ground: a.ground,
+    note: a.note,
+    draft: a.draft,
+    createdAt: a.createdAt.toISOString(),
+  };
+}
 
 /**
  * Regole del sito per l'IA, con quelle uscite dalle risposte di Luca al banco
@@ -313,6 +330,8 @@ const short = (text: string | null | undefined, max = 1500) => anonymizeProblemT
 export class CaseAdviceService {
   private readonly logger = new Logger(CaseAdviceService.name);
   private client: Anthropic | null = null;
+  private running: Promise<number> | null = null;
+  private lastRunAt = 0;
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -331,40 +350,119 @@ export class CaseAdviceService {
   /** Ogni 10 minuti: una proposta per ogni caso aperto che non ce l'ha. */
   @ScheduledJob("*/10 * * * *", { timeZone: "Europe/Rome" })
   async adviseOpenCases(): Promise<number> {
-    await this.reconcileMoney();
-    if (!CaseAdviceService.active()) return 0;
-    const cases = await this.casesWithoutAdvice();
-    let saved = 0;
-    for (const c of cases) {
-      const answer = await this.ask(c);
-      if (!answer) continue;
-      await this.prisma.adminCaseAdvice.upsert({
-        where: { kind_caseId: { kind: c.kind, caseId: c.caseId } },
-        create: { kind: c.kind, caseId: c.caseId, model: MODEL, decision: answer.decision, reason: answer.reason, ground: answer.ground ?? null, note: answer.note ?? null, draft: answer.draft ?? null },
-        update: {},
-      });
-      saved++;
-    }
-    return saved;
+    return this.runAdvice("giro a orario");
   }
 
-  /** I casi aperti senza proposta, al massimo `PER_RUN`. */
-  async casesWithoutAdvice(): Promise<AdviceCase[]> {
+  /**
+   * Il giro vero e proprio, anche fuori orario: sul piano gratuito di Render
+   * l'API si addormenta dopo 15 minuti senza visite e il giro a orario non
+   * parte (docs/changelog/2026-11-24-proposte-ia-sempre.md). Un solo giro
+   * alla volta su questa API; ogni caso è a sé, così un caso che non va non
+   * ferma gli altri, e alla fine una riga nei log dice com'è andata.
+   */
+  async runAdvice(why: string): Promise<number> {
+    if (this.running) return this.running;
+    this.running = (async () => {
+      this.lastRunAt = Date.now();
+      await this.reconcileMoney().catch((error) => this.logger.warn(`Proposte dell'IA: casi di soldi non riletti (${errorText(error)}).`));
+      if (!CaseAdviceService.active()) return 0;
+      const cases = await this.casesWithoutAdvice();
+      let saved = 0;
+      const failed: string[] = [];
+      for (const c of cases) {
+        const result = await this.adviseCase(c);
+        if (result.ok) saved++;
+        else failed.push(`${c.kind}: ${result.error}`);
+      }
+      if (cases.length > 0) {
+        this.logger.log(`Proposte dell'IA (${why}): ${cases.length} casi senza proposta, ${saved} pronte${failed.length ? `, ${failed.length} non riuscite (${failed.slice(0, 3).join("; ")})` : ""}.`);
+      }
+      return saved;
+    })().finally(() => {
+      this.running = null;
+    });
+    return this.running;
+  }
+
+  /**
+   * All'apertura di una pagina di Admin: se da 5 minuti non è partito nessun
+   * giro (API appena svegliata), ne parte uno senza far aspettare la pagina.
+   */
+  kickIfIdle(): void {
+    if (!CaseAdviceService.active() || this.running || Date.now() - this.lastRunAt < KICK_AFTER_MS) return;
+    void this.runAdvice("pagina di Admin").catch((error) => this.logger.warn(`Proposte dell'IA non riuscite: ${errorText(error)}`));
+  }
+
+  /**
+   * "Chiedi la proposta all'IA" su un caso solo: la proposta subito, oppure
+   * il motivo per cui non c'è (caso già deciso, IA spenta o che non risponde).
+   */
+  async adviseNow(kind: CaseAdviceKind, caseId: string): Promise<{ ok: true; advice: CaseAdvice } | { ok: false; error: string }> {
+    if (!CaseAdviceService.active()) return { ok: false, error: "l'IA è spenta: manca la chiave ANTHROPIC_API_KEY sul server" };
+    const existing = await this.openAdvice(kind, caseId);
+    if (existing) return { ok: true, advice: existing };
+    const c = (await this.casesWithoutAdvice({ kind, caseId }))[0];
+    if (!c) return { ok: false, error: "il caso non è più da decidere, oppure il contenuto non c'è più" };
+    const result = await this.adviseCase(c);
+    if (!result.ok) return result;
+    const advice = await this.openAdvice(kind, caseId);
+    return advice ? { ok: true, advice } : { ok: false, error: "il caso è stato deciso nel frattempo" };
+  }
+
+  private async openAdvice(kind: CaseAdviceKind, caseId: string): Promise<CaseAdvice | null> {
+    const row = await this.prisma.adminCaseAdvice.findFirst({
+      where: { kind, adminDecidedAt: null, OR: [{ caseId }, { caseId: { startsWith: `${caseId}#` } }] },
+      orderBy: { createdAt: "desc" },
+    });
+    return row ? toCaseAdvice(row) : null;
+  }
+
+  /** Chiede all'IA e salva la proposta; mai un'eccezione, sempre il motivo. */
+  private async adviseCase(c: AdviceCase): Promise<{ ok: true } | { ok: false; error: string }> {
+    try {
+      const answer = await this.ask(c);
+      if (!answer.ok) return answer;
+      await this.prisma.adminCaseAdvice.upsert({
+        where: { kind_caseId: { kind: c.kind, caseId: c.caseId } },
+        create: { kind: c.kind, caseId: c.caseId, model: MODEL, decision: answer.answer.decision, reason: answer.answer.reason, ground: answer.answer.ground ?? null, note: answer.answer.note ?? null, draft: answer.answer.draft ?? null },
+        update: {},
+      });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: `salvataggio non riuscito (${errorText(error)})` };
+    }
+  }
+
+  /**
+   * I casi aperti senza proposta, al massimo `PER_RUN`. Con `only` solo quel
+   * caso (il pulsante "Chiedi la proposta all'IA"). Un caso che dà errore
+   * mentre si prepara si salta, con una riga nei log: gli altri vanno avanti.
+   */
+  async casesWithoutAdvice(only?: { kind: CaseAdviceKind; caseId: string }): Promise<AdviceCase[]> {
     const existing = await this.prisma.adminCaseAdvice.findMany({ where: { adminDecidedAt: null }, select: { kind: true, caseId: true } });
     const has = new Set(existing.map((e) => `${e.kind}:${e.caseId}`));
     const out: AdviceCase[] = [];
     const push = (c: AdviceCase | null) => {
-      if (c && !has.has(`${c.kind}:${c.caseId}`) && out.length < PER_RUN) out.push(c);
+      if (!c || has.has(`${c.kind}:${c.caseId}`) || out.length >= PER_RUN) return;
+      if (only && (c.kind !== only.kind || adviceCaseId(c.caseId) !== only.caseId)) return;
+      out.push(c);
+    };
+    const safely = async (what: string, build: () => Promise<AdviceCase | null>) => {
+      try {
+        push(await build());
+      } catch (error) {
+        this.logger.warn(`Proposte dell'IA: ${what} saltato (${errorText(error)}).`);
+      }
     };
 
     const reports = await this.prisma.contentReport.findMany({ where: { status: "OPEN" }, orderBy: { createdAt: "asc" }, take: PER_RUN * 2 });
-    for (const r of reports) push(await this.contentReportCase(r));
+    for (const r of reports) await safely(`segnalazione ${r.id}`, () => this.contentReportCase(r));
     const appeals = await this.prisma.contentReport.findMany({
       where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null },
       orderBy: { appealedAt: "asc" },
       take: PER_RUN,
     });
-    for (const r of appeals) push(await this.appealCase(r));
+    for (const r of appeals) await safely(`richiesta di revisione ${r.id}`, () => this.appealCase(r));
     const held = await this.prisma.review.findMany({
       where: { heldAt: { not: null } },
       orderBy: { heldAt: "asc" },
@@ -389,7 +487,11 @@ export class CaseAdviceService {
         text: `Da: ${m.role === "PROFESSIONAL" ? "un professionista" : m.role === "CLIENT" ? "un cliente" : m.role === "REPORT_ILLEGAL" ? "una persona senza account che segnala un contenuto illegale (si risponde solo che lo stiamo guardando)" : "una persona"}\nMessaggio: ${short(m.content)}`,
       });
     }
-    await this.moneyCases(push, has);
+    try {
+      await this.moneyCases(push, has);
+    } catch (error) {
+      this.logger.warn(`Proposte dell'IA: casi di soldi saltati (${errorText(error)}).`);
+    }
     return out;
   }
 
@@ -557,7 +659,7 @@ export class CaseAdviceService {
     };
   }
 
-  private async ask(c: AdviceCase): Promise<Answer | null> {
+  private async ask(c: AdviceCase): Promise<{ ok: true; answer: Answer } | { ok: false; error: string }> {
     this.client ??= new Anthropic({ maxRetries: 1 });
     try {
       const response = await this.client.messages.parse(
@@ -571,10 +673,14 @@ export class CaseAdviceService {
         { timeout: TIMEOUT_MS },
       );
       const parsed = response.parsed_output as Answer | null;
-      return parsed ? cleanAnswer(c, parsed) : null;
+      // Prima queste due strade finivano senza una riga nei log: il caso restava senza proposta e nessuno sapeva perché.
+      if (!parsed) return { ok: false, error: `l'IA non ha dato una risposta leggibile (${response.stop_reason ?? "senza motivo"})` };
+      const answer = cleanAnswer(c, parsed);
+      if (!answer) return { ok: false, error: `l'IA ha proposto "${parsed.decision}", che per questo caso non si può scegliere` };
+      return { ok: true, answer };
     } catch (error) {
-      this.logger.warn(`Proposta dell'IA non riuscita (${c.kind}): ${error instanceof Error ? error.message : String(error)}`);
-      return null;
+      this.logger.warn(`Proposta dell'IA non riuscita (${c.kind}): ${errorText(error)}`);
+      return { ok: false, error: "l'IA non risponde in questo momento (rete, chiave o credito)" };
     }
   }
 
@@ -653,18 +759,7 @@ export class CaseAdviceService {
     return {
       active: CaseAdviceService.active(),
       kinds: MEASURED_ADVICE_KINDS.filter((kind) => kinds.includes(kind)).map((kind) => kindStats(kind, rows.filter((r) => r.kind === kind))),
-      open: open.map(
-        (a): CaseAdvice => ({
-          kind: a.kind as CaseAdviceKind,
-          caseId: adviceCaseId(a.caseId),
-          decision: a.decision as CaseAdviceDecision,
-          reason: a.reason,
-          ground: a.ground,
-          note: a.note,
-          draft: a.draft,
-          createdAt: a.createdAt.toISOString(),
-        }),
-      ),
+      open: open.map(toCaseAdvice),
     };
   }
 }
