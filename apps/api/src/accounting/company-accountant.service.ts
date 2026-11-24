@@ -77,12 +77,29 @@ export class CompanyAccountantService {
    * Con `manual` (pulsante "Mandalo adesso" di Admin → Finanza) parte anche
    * senza spunta e anche per un mese già mandato: lo chiede un admin.
    */
-  async sendFor(month: string, now: Date = new Date(), options: { manual?: boolean } = {}): Promise<AccountantZipResult> {
+  async sendFor(month: string, now: Date = new Date(), options: { manual?: boolean; userId?: string } = {}): Promise<AccountantZipResult> {
+    const result = await this.trySend(month, now, options);
+    // Nel Registro invii: ogni tentativo vero, e col pulsante anche "nessuna fattura".
+    if (result.outcome === "sent" || result.outcome === "failed" || result.outcome === "too-big" || (options.manual && result.outcome === "empty")) {
+      await this.prisma.fiscalSendLog.create({
+        data: { kind: "ACCOUNTANT_ZIP", month, recipient: result.recipient, result: result.outcome, detail: result.detail, createdByUserId: options.userId ?? null },
+      });
+    }
+    return result.outcome;
+  }
+
+  private async trySend(
+    month: string,
+    now: Date,
+    options: { manual?: boolean },
+  ): Promise<{ outcome: AccountantZipResult; recipient: string | null; detail: string | null }> {
     const row = await this.prisma.platformInvoiceSettings.findUnique({
       where: { id: "default" },
       select: { accountantEmail: true, accountantZipAt: true, accountantZipMonth: true },
     });
-    if (!row?.accountantEmail || (!options.manual && !row.accountantZipAt)) return "off";
+    if (!row?.accountantEmail || (!options.manual && !row.accountantZipAt)) return { outcome: "off", recipient: null, detail: null };
+    const to = row.accountantEmail;
+    const done = (outcome: AccountantZipResult, detail: string | null = null) => ({ outcome, recipient: to, detail });
     let release: () => Promise<unknown> = async () => undefined;
     if (!options.manual) {
       // Segna il mese prima di mandare: con due copie dell'API ne parte una sola.
@@ -90,7 +107,7 @@ export class CompanyAccountantService {
         where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
         data: { accountantZipMonth: month },
       });
-      if (claimed.count === 0) return "already";
+      if (claimed.count === 0) return done("already");
       release = () =>
         this.prisma.platformInvoiceSettings.updateMany({ where: { id: "default", accountantZipMonth: month }, data: { accountantZipMonth: row.accountantZipMonth } });
     }
@@ -100,18 +117,19 @@ export class CompanyAccountantService {
       zip = await this.invoicesService.adminMonthZip(month, now);
     } catch (err) {
       await release();
-      if (err instanceof NotFoundException) return "empty";
-      this.logger.error(`Zip delle fatture di ${month} per il commercialista non preparato: ${err instanceof Error ? err.message : String(err)}`);
-      return "failed";
+      if (err instanceof NotFoundException) return done("empty");
+      const why = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Zip delle fatture di ${month} per il commercialista non preparato: ${why}`);
+      return done("failed", why);
     }
     if (zip.zip.length > ACCOUNTANT_ZIP_MAX_BYTES) {
       await release();
       this.logger.error(`Zip delle fatture di ${month} troppo grande per l'email (${zip.zip.length} byte): va scaricato da Admin → Finanza.`);
-      return "too-big";
+      return done("too-big", `${Math.round(zip.zip.length / 1024 / 1024)} MB`);
     }
     const email = renderEmail(companyAccountantZipEmail(month, zip.count, zip.missingXml));
     const ok = await this.emailService.send({
-      to: row.accountantEmail,
+      to,
       subject: email.subject,
       html: email.html,
       text: email.text,
@@ -120,7 +138,7 @@ export class CompanyAccountantService {
     if (!ok) {
       await release();
       this.logger.error(`Zip delle fatture di ${month} non mandato al commercialista.`);
-      return "failed";
+      return done("failed", "Il servizio delle email non l'ha accettata.");
     }
     if (options.manual) {
       // L'ultimo mese mandato resta il più recente.
@@ -129,7 +147,7 @@ export class CompanyAccountantService {
         data: { accountantZipMonth: month },
       });
     }
-    return "sent";
+    return done("sent", `${zip.count === 1 ? "1 fattura" : `${zip.count} fatture`}${zip.missingXml > 0 ? `, ${zip.missingXml} senza XML` : ""}`);
   }
 }
 

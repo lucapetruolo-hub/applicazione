@@ -65,3 +65,21 @@ niente doppioni, mese rimesso se l'invio non riesce, testo dell'email),
 di Python. Prova a mano in locale con due fatture COM di ottobre:
 download riuscito da computer e telefono, foto in
 `anteprime/fatture-del-mese-zip/`.
+
+**Riordino di Fisco e fatture e Registro invii** (Luca, stesso giorno: "possiamo
+vedere anche su admin quella inviata, un elenco", "fare le cose in maniera
+ordinata nei vari menu"). Le schede ora sono quattro, una per compito:
+- **Fatture emesse** (`/admin/finanza`): elenco delle fatture con lo stato
+  all'Agenzia delle Entrate, il mese (giro, conti, zip) e il riepilogo finanza;
+- **Registro invii** (`/admin/finanza/invii`, nuovo): tutto quello che è
+  partito, dal più recente, con filtro Tutti / Fatture al fisco / Al
+  commercialista / Prove. Le fatture vere vengono dalle colonne SdI delle
+  fatture; prove d'invio e zip al commercialista dalla tabella nuova
+  `fiscal_send_logs` (`GET /admin/invoices/sends`);
+- **Società e commercialista** (`/admin/finanza/societa`, nuovo): dati della
+  società, invio allo SdI con la prova, commercialista della società (con il
+  suo campo mese per "Mandalo adesso") e regole di commissione: cose che si
+  impostano una volta, separate dal lavoro di ogni mese;
+- **Guadagni per il fisco** (DAC7), come prima.
+Ogni prova d'invio allo SdI e ogni zip al commercialista (riuscito o no) entra
+nel registro; "a mano" se partito da un admin.

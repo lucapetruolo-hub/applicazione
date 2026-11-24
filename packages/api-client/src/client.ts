@@ -189,6 +189,7 @@ import type {
   MonthlyStatement,
   PlatformInvoiceAdminRow,
   PlatformInvoiceSettingsInput,
+  FiscalSendRow,
   PlatformInvoiceSettingsView,
   PlatformInvoiceView,
   FeeReconciliation,
@@ -2259,6 +2260,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     quotePdf: (token: string, quoteId: string) => downloadFile(`/documents/quotes/${encodeURIComponent(quoteId)}/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---
+    adminFiscalSends: (token: string) =>
+      request<FiscalSendRow[]>("/admin/invoices/sends", { headers: { Authorization: `Bearer ${token}` } }),
+
     adminInvoiceSettings: (token: string) =>
       request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

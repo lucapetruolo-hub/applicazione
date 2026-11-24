@@ -441,6 +441,21 @@ export function statementCsv(rows: StatementCsvRow[]): string {
   return `﻿${[header.join(";"), ...body].join("\r\n")}\r\n`;
 }
 
+/** Una riga del Registro invii di Admin → Fisco e fatture (docs/changelog/2026-11-24-fatture-del-mese-zip.md). */
+export type FiscalSendRow = {
+  id: string;
+  kind: "INVOICE" | "SDI_TEST" | "ACCOUNTANT_ZIP";
+  at: string;
+  what: string;
+  recipient: string | null;
+  outcome: "ok" | "waiting" | "error";
+  outcomeLabel: string;
+  detail: string | null;
+  externalId: string | null;
+  /** Partito da un admin col pulsante (non dal giro automatico). */
+  manual: boolean;
+};
+
 /** Una riga del riepilogo delle nostre fatture del mese, nello zip per il nostro commercialista. */
 export type MonthInvoiceCsvRow = {
   number: string;

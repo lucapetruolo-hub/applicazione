@@ -20,6 +20,7 @@ import { apiClient } from "@/lib/apiClient";
 import { TechNote, downloadBlobFile, downloadTextFile, errorMessage } from "./adminUi";
 import { AdminConfirmModal } from "./AdminConfirmModal";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import Link from "@/components/IntentLink";
 
 const SDI_LABEL: Record<InvoiceSdiStatusValue, string> = {
   NOT_SENT: "Da inviare",
@@ -64,11 +65,13 @@ function lastMonth(): string {
 }
 
 /**
- * Admin → Finanza, "Le nostre fatture" (docs/CHANGELOG.md §378): i dati
- * della società che le emette, le fatture emesse con il loro stato allo SdI,
- * l'XML da scaricare e il giro del mese da rilanciare a mano.
+ * Admin → Fisco e fatture (docs/CHANGELOG.md §378). Dal riordino del
+ * 24/11/2026 (docs/changelog/2026-11-24-fatture-del-mese-zip.md) in due
+ * schede: `invoices` = "Fatture emesse" (le fatture col loro stato allo SdI,
+ * il mese: giro, conti, zip); `company` = "Società e commercialista" (i dati
+ * della società che le emette, l'invio allo SdI con la prova, il commercialista).
  */
-export function AdminInvoicesSection({ token }: { token: string }) {
+export function AdminInvoicesSection({ token, view }: { token: string; view: "invoices" | "company" }) {
   const [settings, setSettings] = useState<PlatformInvoiceSettingsView | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [invoices, setInvoices] = useState<PlatformInvoiceAdminRow[] | null>(null);
@@ -193,9 +196,10 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     setConfirm(null);
   }
 
-  return (
+  if (view === "company") {
+    return (
     <YStack gap="4">
-      <H2 size="7">Le nostre fatture</H2>
+      <H2 size="7">Dati della società</H2>
       {settings ? (
         <Text color={brand.grafite70}>
           {settings.ready ? "Dati della società completi: le fatture partono." : "Mancano i dati della società: per ora i professionisti vedono solo gli estratti."}{" "}
@@ -253,6 +257,23 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Text>
       ) : null}
 
+      {settings ? <CompanyAccountantBox token={token} initial={settings.accountant} /> : null}
+    </YStack>
+    );
+  }
+
+  return (
+    <YStack gap="4">
+      <H2 size="7">Fatture emesse</H2>
+      {settings && !settings.ready ? (
+        <Text color={brand.grafite70}>
+          Mancano i dati della società: per ora i professionisti vedono solo gli estratti. Li scrivi in{" "}
+          <Link href="/admin/finanza/societa">Società e commercialista</Link>.
+        </Text>
+      ) : null}
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {message ? <Text color={brand.cianografiaScuro}>{message}</Text> : null}
+
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
           <Field label="Mese (AAAA-MM)" aria-label="Mese" value={month} onChangeText={setMonth} />
@@ -276,7 +297,6 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese. Con &quot;Scarica le fatture del mese&quot; hai un solo file per il commercialista. Dentro c&apos;è ogni fattura del mese, anche in PDF, con un riepilogo per il foglio di calcolo.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
-      {settings ? <CompanyAccountantBox token={token} initial={settings.accountant} month={month} /> : null}
 
       {invoices === null ? null : invoices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna fattura emessa finora.</Text>
@@ -439,7 +459,8 @@ const SEND_RESULT: Record<string, string> = {
   already: "già mandate.",
 };
 
-function CompanyAccountantBox({ token, initial, month }: { token: string; initial: PlatformInvoiceSettingsView["accountant"]; month: string }) {
+function CompanyAccountantBox({ token, initial }: { token: string; initial: PlatformInvoiceSettingsView["accountant"] }) {
+  const [month, setMonth] = useState(lastMonth());
   const [saved, setSaved] = useState(initial);
   const [email, setEmail] = useState(initial.email ?? "");
   const [enabled, setEnabled] = useState(initial.enabled);
@@ -518,17 +539,22 @@ function CompanyAccountantBox({ token, initial, month }: { token: string; initia
         <Button variant="secondary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
           Salva il commercialista
         </Button>
-        <Button variant="secondary" alignSelf="flex-start" disabled={!saved.email || dirty || pending} opacity={!saved.email || dirty || pending ? 0.6 : 1} onPress={() => void sendNow()}>
-          Mandalo adesso
-        </Button>
         {done && !dirty ? (
           <Text color={brand.cianografiaScuro} role="status">
             {saved.enabled ? "Fatto: gli arriva il 5 di ogni mese." : "Salvato."}
           </Text>
         ) : null}
       </XStack>
+      <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
+        <YStack width={200}>
+          <Field label="Mese da mandare (AAAA-MM)" aria-label="Mese da mandare al commercialista" value={month} onChangeText={setMonth} />
+        </YStack>
+        <Button variant="secondary" alignSelf="flex-start" disabled={!saved.email || dirty || pending} opacity={!saved.email || dirty || pending ? 0.6 : 1} onPress={() => void sendNow()}>
+          Mandalo adesso
+        </Button>
+      </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        &quot;Mandalo adesso&quot; manda subito le fatture del mese scritto più in alto ({month}).
+        Ogni invio resta nel <Link href="/admin/finanza/invii">Registro invii</Link>.
       </Text>
       {sendNote ? (
         <Text role="status" color={sendNote.error ? brand.urgenza : brand.cianografiaScuro}>

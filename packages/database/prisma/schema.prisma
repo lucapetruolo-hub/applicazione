@@ -3006,6 +3006,30 @@ model PlatformInvoiceSettings {
   @@map("platform_invoice_settings")
 }
 
+/// Registro degli invii fiscali che non sono una nostra fattura vera: prove
+/// d'invio allo SdI e zip delle fatture al commercialista della società
+/// (Admin → Fisco e fatture → Registro invii, docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+model FiscalSendLog {
+  id              String   @id @default(uuid())
+  /// SDI_TEST (prova d'invio di Openapi) o ACCOUNTANT_ZIP (zip al commercialista).
+  kind            String
+  /// Mese delle fatture (AAAA-MM) per lo zip.
+  month           String?
+  /// Dove è andato: email del commercialista, o "Servizio di invio (prova)".
+  recipient       String?
+  /// Esito: sent, failed, too-big, empty, ok, stopped.
+  result          String
+  detail          String?
+  /// Identificativo Openapi della fattura di prova.
+  externalId      String?
+  /// Chi l'ha fatto partire a mano (vuoto = giro automatico).
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("fiscal_send_logs")
+}
+
 enum RefundStatus {
   REQUESTED
   APPROVED

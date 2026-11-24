@@ -51,7 +51,7 @@ export class AdminAccountingController {
   @Post("accountant/send/:month")
   async sendAccountantZip(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
     if (!isAccountingMonth(month)) throw new BadRequestException("Mese non valido: scrivilo come AAAA-MM.");
-    const result = await this.companyAccountantService.sendFor(month, new Date(), { manual: true });
+    const result = await this.companyAccountantService.sendFor(month, new Date(), { manual: true, userId: req.user.userId });
     await this.auditLogService.record({
       entityType: "InvoiceMonth",
       entityId: month,
@@ -75,8 +75,14 @@ export class AdminAccountingController {
 
   /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §379). */
   @Post("sdi-test")
-  sdiTest() {
-    return this.invoicesService.adminSdiSandboxTest();
+  sdiTest(@Req() req: AuthenticatedRequest) {
+    return this.invoicesService.adminSdiSandboxTest(new Date(), req.user.userId);
+  }
+
+  /** Registro invii: fatture allo SdI, prove d'invio e zip al commercialista. */
+  @Get("sends")
+  sends() {
+    return this.invoicesService.adminSends();
   }
 
   @Get()

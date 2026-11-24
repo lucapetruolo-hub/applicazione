@@ -18,6 +18,7 @@ import {
   type BillingInterval,
   type DocumentsOverview,
   type InvoiceSdiStatusValue,
+  type FiscalSendRow,
   type MonthInvoiceCsvRow,
   type PlatformInvoiceAdminRow,
   type PlatformInvoiceLine,
@@ -125,6 +126,27 @@ function summaryOf(row: Invoice): PlatformInvoiceSummary {
     sdiStatus: row.sdiStatus as InvoiceSdiStatusValue,
   };
 }
+
+function recipientNameOf(value: Prisma.JsonValue | null): string | null {
+  const recipient = readRecipient(value);
+  return recipient ? recipientParty(recipient).name || null : null;
+}
+
+const SDI_SEND_LABEL: Record<InvoiceSdiStatusValue, string> = {
+  NOT_SENT: "Da inviare",
+  SENT: "Inviata, in attesa dell'esito",
+  DELIVERED: "Consegnata",
+  REJECTED: "Scartata",
+};
+
+const FISCAL_LOG_LABEL: Record<string, string> = {
+  ok: "Riuscita",
+  stopped: "Fermata",
+  sent: "Mandata",
+  failed: "Non riuscita",
+  "too-big": "Troppo grande per l'email",
+  empty: "Nessuna fattura nel mese",
+};
 
 /**
  * Le nostre fatture al professionista (decisioni dell'utente del 27/10/2026,
@@ -631,7 +653,25 @@ export class InvoicesService {
    * tra le nostre e senza numero della serie), fa arrivare un esito finto e lo
    * legge. In produzione non parte: la fattura arriverebbe davvero all'Agenzia.
    */
-  async adminSdiSandboxTest(now: Date = new Date()): Promise<SdiSandboxTestResult> {
+  /** Prova d'invio allo SdI, segnata nel Registro invii di Admin → Fisco e fatture. */
+  async adminSdiSandboxTest(now: Date = new Date(), userId: string | null = null): Promise<SdiSandboxTestResult> {
+    const result = await this.runSdiSandboxTest(now);
+    const last = result.steps[result.steps.length - 1];
+    const sdiId = result.steps.map((step) => /Identificativo Openapi: (\S+)/.exec(step.detail ?? "")?.[1]).find(Boolean) ?? null;
+    await this.prisma.fiscalSendLog.create({
+      data: {
+        kind: "SDI_TEST",
+        recipient: "Servizio di invio (prova)",
+        result: result.ok ? "ok" : "stopped",
+        detail: last ? `${last.label}${last.detail ? `: ${last.detail}` : ""}` : null,
+        externalId: sdiId,
+        createdByUserId: userId,
+      },
+    });
+    return result;
+  }
+
+  private async runSdiSandboxTest(now: Date): Promise<SdiSandboxTestResult> {
     const steps: SdiSandboxTestResult["steps"] = [];
     const stop = (label: string, detail: string): SdiSandboxTestResult => ({ ok: false, steps: [...steps, { label, ok: false, detail }] });
     const sdi = this.sdi;
@@ -966,6 +1006,49 @@ export class InvoicesService {
       entries.push({ name: "da-sistemare.txt", data: Buffer.from(note, "utf8") });
     }
     return { fileName: `fatture-${month}.zip`, zip: buildZip(entries, now), count: rows.length, missingXml: missing.length };
+  }
+
+  /**
+   * Registro invii (Admin → Fisco e fatture): ogni nostra fattura partita verso
+   * lo SdI col suo esito, le prove d'invio e gli zip al commercialista, dal più
+   * recente (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+   */
+  async adminSends(limit = 200): Promise<FiscalSendRow[]> {
+    const [invoices, logs] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: { type: "MANOVIA_TO_PROFESSIONAL", sdiSentAt: { not: null } },
+        orderBy: { sdiSentAt: "desc" },
+        take: limit,
+      }),
+      this.prisma.fiscalSendLog.findMany({ orderBy: { createdAt: "desc" }, take: limit }),
+    ]);
+    const rows: FiscalSendRow[] = [
+      ...invoices.map((row) => ({
+        id: `invoice:${row.id}`,
+        kind: "INVOICE" as const,
+        at: row.sdiSentAt!.toISOString(),
+        what: `Fattura ${invoiceNumberLabel(row.series, row.year, row.number)}${row.creditNote ? " (nota di credito)" : ""}`,
+        recipient: recipientNameOf(row.recipient),
+        outcome: row.sdiStatus === "DELIVERED" ? ("ok" as const) : row.sdiStatus === "REJECTED" ? ("error" as const) : ("waiting" as const),
+        outcomeLabel: SDI_SEND_LABEL[row.sdiStatus as InvoiceSdiStatusValue],
+        detail: row.sdiMessage,
+        externalId: row.sdiId,
+        manual: false,
+      })),
+      ...logs.map((log) => ({
+        id: `log:${log.id}`,
+        kind: log.kind === "SDI_TEST" ? ("SDI_TEST" as const) : ("ACCOUNTANT_ZIP" as const),
+        at: log.createdAt.toISOString(),
+        what: log.kind === "SDI_TEST" ? "Fattura di prova da 1 €" : `Fatture di ${log.month ? accountingMonthLabel(log.month) : "un mese"} al commercialista`,
+        recipient: log.recipient,
+        outcome: log.result === "ok" || log.result === "sent" ? ("ok" as const) : log.result === "empty" ? ("waiting" as const) : ("error" as const),
+        outcomeLabel: FISCAL_LOG_LABEL[log.result] ?? log.result,
+        detail: log.detail,
+        externalId: log.externalId,
+        manual: !!log.createdByUserId,
+      })),
+    ];
+    return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
   }
 
   async adminView(invoiceId: string): Promise<PlatformInvoiceView> {

@@ -10,6 +10,7 @@ function build(settings: { accountantEmail: string | null; accountantZipAt: Date
       updateMany: vi.fn().mockResolvedValue({ count: opts.claim ?? 1 }),
       upsert: vi.fn(),
     },
+    fiscalSendLog: { create: vi.fn() },
   };
   const email = { send: vi.fn().mockResolvedValue(opts.emailOk ?? true) };
   const zip = opts.zip instanceof Error ? vi.fn().mockRejectedValue(opts.zip) : vi.fn().mockResolvedValue(opts.zip ?? { fileName: "fatture-2026-10.zip", zip: Buffer.from("PK"), count: 3, missingXml: 0 });
@@ -26,6 +27,10 @@ describe("CompanyAccountantService", () => {
     expect(await service.sendMonthly(new Date("2026-11-05T08:00:00Z"))).toBe("sent");
     expect(prisma.platformInvoiceSettings.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { accountantZipMonth: "2026-10" } }));
     expect(email.send).toHaveBeenCalledWith(expect.objectContaining({ to: "studio@example.com", attachments: [expect.objectContaining({ filename: "fatture-2026-10.zip", contentType: "application/zip" })] }));
+    // Nel Registro invii, come giro automatico.
+    expect(prisma.fiscalSendLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ kind: "ACCOUNTANT_ZIP", month: "2026-10", recipient: "studio@example.com", result: "sent", detail: "3 fatture", createdByUserId: null }),
+    });
   });
 
   it("senza spunta o senza email non manda niente", async () => {
