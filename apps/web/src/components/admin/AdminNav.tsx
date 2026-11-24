@@ -89,7 +89,9 @@ export const ADMIN_SECTIONS: NavSection[] = [
     label: "Fisco e fatture",
     icon: "landmark",
     tabs: [
-      { href: "/admin/finanza", label: "Le nostre fatture", icon: "file-text", scope: "FINANCE", badge: (o) => o.sdiRejectedInvoices },
+      { href: "/admin/finanza", label: "Fatture emesse", searchLabel: "Fatture ai professionisti e zip del mese", icon: "file-text", scope: "FINANCE", badge: (o) => o.sdiRejectedInvoices },
+      { href: "/admin/finanza/invii", label: "Registro invii", searchLabel: "Registro invii: fatture al fisco, prove, commercialista", icon: "send", scope: "FINANCE" },
+      { href: "/admin/finanza/societa", label: "Società e commercialista", searchLabel: "Dati della società, commercialista e commissioni", icon: "building-2", scope: "FINANCE" },
       { href: "/admin/finanza/dac7", label: "Guadagni per il fisco", searchLabel: "Guadagni dei professionisti per il fisco (DAC7)", icon: "landmark", scope: "FINANCE" },
     ],
   },

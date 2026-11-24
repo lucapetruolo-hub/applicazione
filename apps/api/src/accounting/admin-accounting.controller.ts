@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
-import { platformInvoiceSettingsSchema, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
+import { accountantSettingsSchema, isAccountingMonth, platformInvoiceSettingsSchema, type AccountantSettingsInput, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -7,6 +7,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { InvoicesService } from "./invoices.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
 import { StatementsService } from "./statements.service";
+import { CompanyAccountantService } from "./company-accountant.service";
 
 /** Admin → Finanza: dati della nostra società e le fatture emesse (docs/CHANGELOG.md §378). */
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -18,11 +19,47 @@ export class AdminAccountingController {
     private readonly feeReconciliationService: FeeReconciliationService,
     private readonly statementsService: StatementsService,
     private readonly auditLogService: AuditLogService,
+    private readonly companyAccountantService: CompanyAccountantService,
   ) {}
 
   @Get("settings")
   settings() {
     return this.invoicesService.settingsView();
+  }
+
+  /**
+   * Commercialista della società e spunta dello zip mensile
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Nel registro azioni.
+   */
+  @Put("accountant")
+  async updateAccountant(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(accountantSettingsSchema)) body: AccountantSettingsInput) {
+    const before = await this.companyAccountantService.view();
+    const after = await this.companyAccountantService.update(body);
+    const describe = (v: { email: string | null; enabled: boolean }) => `${v.email ?? "nessuna email"}, ${v.enabled ? "invio ogni mese" : "senza invio"}`;
+    await this.auditLogService.record({
+      entityType: "InvoiceSettings",
+      entityId: "default",
+      fieldName: "companyAccountant",
+      oldValue: describe(before),
+      newValue: describe(after),
+      changedByUserId: req.user.userId,
+    });
+    return after;
+  }
+
+  /** "Mandalo adesso": lo zip di un mese al commercialista della società, subito. */
+  @Post("accountant/send/:month")
+  async sendAccountantZip(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    if (!isAccountingMonth(month)) throw new BadRequestException("Mese non valido: scrivilo come AAAA-MM.");
+    const result = await this.companyAccountantService.sendFor(month, new Date(), { manual: true, userId: req.user.userId });
+    await this.auditLogService.record({
+      entityType: "InvoiceMonth",
+      entityId: month,
+      fieldName: "accountantZipSent",
+      newValue: result,
+      changedByUserId: req.user.userId,
+    });
+    return { result, accountant: await this.companyAccountantService.view() };
   }
 
   @Put("settings")
@@ -38,13 +75,37 @@ export class AdminAccountingController {
 
   /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §379). */
   @Post("sdi-test")
-  sdiTest() {
-    return this.invoicesService.adminSdiSandboxTest();
+  sdiTest(@Req() req: AuthenticatedRequest) {
+    return this.invoicesService.adminSdiSandboxTest(new Date(), req.user.userId);
+  }
+
+  /** Registro invii: fatture allo SdI, prove d'invio e zip al commercialista. */
+  @Get("sends")
+  sends() {
+    return this.invoicesService.adminSends();
   }
 
   @Get()
   list(@Query("month") month?: string) {
     return this.invoicesService.adminList(month);
+  }
+
+  /**
+   * Le fatture del mese in uno zip (XML e PDF) da dare al commercialista
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Nel registro azioni:
+   * dentro ci sono i dati fiscali dei professionisti.
+   */
+  @Get("month/:month/zip")
+  async monthZip(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    const { fileName, zip, count, missingXml } = await this.invoicesService.adminMonthZip(month);
+    await this.auditLogService.record({
+      entityType: "InvoiceMonth",
+      entityId: month,
+      fieldName: "monthZipDownloaded",
+      newValue: `${count} fatture${missingXml > 0 ? `, ${missingXml} senza XML` : ""}`,
+      changedByUserId: req.user.userId,
+    });
+    return new StreamableFile(zip, { type: "application/zip", disposition: `attachment; filename="${fileName}"`, length: zip.length });
   }
 
   @Get(":id")

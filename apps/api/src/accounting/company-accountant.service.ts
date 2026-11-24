@@ -1,0 +1,173 @@
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import type { PrismaClient } from "@professionisti/database";
+import { accountingMonthLabel, type AccountantSettingsInput, type PlatformInvoiceSettingsView } from "@professionisti/shared";
+import { PRISMA } from "../prisma/prisma.module";
+import { EmailService } from "../email/email.service";
+import { renderEmail, type EmailContent } from "../email/email-layout";
+import { EMAIL_BRAND } from "../email/email-brand";
+import { ScheduledJob } from "../common/scheduled-job";
+import { previousMonth, romeMonthOf } from "./accounting-dates";
+import { InvoicesService } from "./invoices.service";
+
+/**
+ * Oltre questa misura lo zip non parte per email: Resend accetta al massimo
+ * 40 MB, allegato in base64 compreso. Un mese di fatture pesa pochi MB.
+ */
+export const ACCOUNTANT_ZIP_MAX_BYTES = 25 * 1024 * 1024;
+
+export type AccountantZipResult = "off" | "already" | "empty" | "too-big" | "failed" | "sent";
+
+/**
+ * Il commercialista della nostra società (decisione di Luca del 24/11/2026,
+ * docs/changelog/2026-11-24-fatture-del-mese-zip.md): con la spunta in
+ * Admin → Finanza riceve ogni mese, il 5 alle 9, lo zip delle fatture del mese
+ * prima. Il 5 perché le fatture delle trattenute partono il 1° e fino al 15 si
+ * recuperano quelle saltate: così arrivano quasi tutte, e il commercialista ha
+ * ancora tempo per l'IVA del 16. Mai due volte lo stesso mese
+ * (`accountantZipMonth`, segnato prima di mandare e rimesso se l'invio non riesce).
+ */
+@Injectable()
+export class CompanyAccountantService {
+  private readonly logger = new Logger(CompanyAccountantService.name);
+
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly emailService: EmailService,
+    private readonly invoicesService: InvoicesService,
+  ) {}
+
+  async view(): Promise<PlatformInvoiceSettingsView["accountant"]> {
+    const row = await this.prisma.platformInvoiceSettings.findUnique({
+      where: { id: "default" },
+      select: { accountantEmail: true, accountantZipAt: true, accountantZipMonth: true },
+    });
+    return { email: row?.accountantEmail ?? null, enabled: !!row?.accountantZipAt, lastMonth: row?.accountantZipMonth ?? null };
+  }
+
+  async update(input: AccountantSettingsInput, now: Date = new Date()): Promise<PlatformInvoiceSettingsView["accountant"]> {
+    const current = await this.prisma.platformInvoiceSettings.findUnique({ where: { id: "default" }, select: { accountantZipAt: true } });
+    const data = {
+      accountantEmail: input.email || null,
+      accountantZipAt: input.enabled ? (current?.accountantZipAt ?? now) : null,
+    };
+    await this.prisma.platformInvoiceSettings.upsert({ where: { id: "default" }, create: { id: "default", ...data }, update: data });
+    return this.view();
+  }
+
+  @ScheduledJob("0 9 5 * *", { timeZone: "Europe/Rome" })
+  async sendMonthly(now: Date = new Date()): Promise<AccountantZipResult> {
+    const month = previousMonth(romeMonthOf(now));
+    const result = await this.sendFor(month, now);
+    // Se non parte, lo dicono agli admin della Finanza: lo zip va girato a mano.
+    if (result === "failed" || result === "too-big") {
+      const why = result === "too-big" ? "lo zip è troppo grande per un'email" : "l'invio non è riuscito";
+      await this.invoicesService.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+        kind: "accountant-zip",
+        month,
+        alerts: [
+          `Le fatture di ${accountingMonthLabel(month)} non sono arrivate al commercialista: ${why}.`,
+          "In Finanza scarica le fatture del mese e mandagliele tu, oppure riprova con \"Mandalo adesso\".",
+        ],
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Con `manual` (pulsante "Mandalo adesso" di Admin → Finanza) parte anche
+   * senza spunta e anche per un mese già mandato: lo chiede un admin.
+   */
+  async sendFor(month: string, now: Date = new Date(), options: { manual?: boolean; userId?: string } = {}): Promise<AccountantZipResult> {
+    const result = await this.trySend(month, now, options);
+    // Nel Registro invii: ogni tentativo vero, e col pulsante anche "nessuna fattura".
+    if (result.outcome === "sent" || result.outcome === "failed" || result.outcome === "too-big" || (options.manual && result.outcome === "empty")) {
+      await this.prisma.fiscalSendLog.create({
+        data: { kind: "ACCOUNTANT_ZIP", month, recipient: result.recipient, result: result.outcome, detail: result.detail, createdByUserId: options.userId ?? null },
+      });
+    }
+    return result.outcome;
+  }
+
+  private async trySend(
+    month: string,
+    now: Date,
+    options: { manual?: boolean },
+  ): Promise<{ outcome: AccountantZipResult; recipient: string | null; detail: string | null }> {
+    const row = await this.prisma.platformInvoiceSettings.findUnique({
+      where: { id: "default" },
+      select: { accountantEmail: true, accountantZipAt: true, accountantZipMonth: true },
+    });
+    if (!row?.accountantEmail || (!options.manual && !row.accountantZipAt)) return { outcome: "off", recipient: null, detail: null };
+    const to = row.accountantEmail;
+    const done = (outcome: AccountantZipResult, detail: string | null = null) => ({ outcome, recipient: to, detail });
+    let release: () => Promise<unknown> = async () => undefined;
+    if (!options.manual) {
+      // Segna il mese prima di mandare: con due copie dell'API ne parte una sola.
+      const claimed = await this.prisma.platformInvoiceSettings.updateMany({
+        where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
+        data: { accountantZipMonth: month },
+      });
+      if (claimed.count === 0) return done("already");
+      release = () =>
+        this.prisma.platformInvoiceSettings.updateMany({ where: { id: "default", accountantZipMonth: month }, data: { accountantZipMonth: row.accountantZipMonth } });
+    }
+
+    let zip: Awaited<ReturnType<InvoicesService["adminMonthZip"]>>;
+    try {
+      zip = await this.invoicesService.adminMonthZip(month, now);
+    } catch (err) {
+      await release();
+      if (err instanceof NotFoundException) return done("empty");
+      const why = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Zip delle fatture di ${month} per il commercialista non preparato: ${why}`);
+      return done("failed", why);
+    }
+    if (zip.zip.length > ACCOUNTANT_ZIP_MAX_BYTES) {
+      await release();
+      this.logger.error(`Zip delle fatture di ${month} troppo grande per l'email (${zip.zip.length} byte): va scaricato da Admin → Finanza.`);
+      return done("too-big", `${Math.round(zip.zip.length / 1024 / 1024)} MB`);
+    }
+    const email = renderEmail(companyAccountantZipEmail(month, zip.count, zip.missingXml));
+    const ok = await this.emailService.send({
+      to,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+      attachments: [{ filename: zip.fileName, content: zip.zip, contentType: "application/zip" }],
+    });
+    if (!ok) {
+      await release();
+      this.logger.error(`Zip delle fatture di ${month} non mandato al commercialista.`);
+      return done("failed", "Il servizio delle email non l'ha accettata.");
+    }
+    if (options.manual) {
+      // L'ultimo mese mandato resta il più recente.
+      await this.prisma.platformInvoiceSettings.updateMany({
+        where: { id: "default", OR: [{ accountantZipMonth: null }, { accountantZipMonth: { lt: month } }] },
+        data: { accountantZipMonth: month },
+      });
+    }
+    return done("sent", `${zip.count === 1 ? "1 fattura" : `${zip.count} fatture`}${zip.missingXml > 0 ? `, ${zip.missingXml} senza XML` : ""}`);
+  }
+}
+
+/** Email al commercialista della società con lo zip delle fatture del mese. */
+export function companyAccountantZipEmail(month: string, count: number, missingXml: number): EmailContent {
+  const label = accountingMonthLabel(month);
+  return {
+    kind: "external",
+    subject: `Fatture di ${label} di ${EMAIL_BRAND.name}`,
+    greeting: null,
+    title: `Fatture di ${label}`,
+    paragraphs: [
+      `Le mandiamo le fatture emesse da **${EMAIL_BRAND.name}** a ${label}: ${count === 1 ? "una fattura" : `${count} fatture`}, note di credito comprese.`,
+      "Nello zip in allegato ci sono il file XML di ogni fattura elettronica, il PDF e un riepilogo da aprire col foglio di calcolo (riepilogo.csv).",
+      ...(missingXml > 0
+        ? [
+            `${missingXml === 1 ? "Una fattura non ha" : `${missingXml} fatture non hanno`} ancora il file XML: ${missingXml === 1 ? "la trova" : "le trova"} solo in PDF, con il motivo nel file da-sistemare.txt. Appena sistemate le riceve dal cassetto fiscale.`,
+          ]
+        : []),
+    ],
+    after: [`La riceve perché ${EMAIL_BRAND.name} ha indicato questo indirizzo come quello del suo commercialista. Per non riceverla più basta dircelo.`],
+  };
+}

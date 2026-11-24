@@ -189,6 +189,7 @@ import type {
   MonthlyStatement,
   PlatformInvoiceAdminRow,
   PlatformInvoiceSettingsInput,
+  FiscalSendRow,
   PlatformInvoiceSettingsView,
   PlatformInvoiceView,
   FeeReconciliation,
@@ -2259,11 +2260,23 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     quotePdf: (token: string, quoteId: string) => downloadFile(`/documents/quotes/${encodeURIComponent(quoteId)}/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---
+    adminFiscalSends: (token: string) =>
+      request<FiscalSendRow[]>("/admin/invoices/sends", { headers: { Authorization: `Bearer ${token}` } }),
+
     adminInvoiceSettings: (token: string) =>
       request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminUpdateInvoiceSettings: (token: string, input: PlatformInvoiceSettingsInput) =>
       request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminUpdateCompanyAccountant: (token: string, input: AccountantSettingsInput) =>
+      request<PlatformInvoiceSettingsView["accountant"]>("/admin/invoices/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminSendCompanyAccountantZip: (token: string, month: string) =>
+      request<{ result: "off" | "already" | "empty" | "too-big" | "failed" | "sent"; accountant: PlatformInvoiceSettingsView["accountant"] }>(
+        `/admin/invoices/accountant/send/${encodeURIComponent(month)}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+      ),
 
     adminInvoices: (token: string, month?: string) =>
       request<PlatformInvoiceAdminRow[]>(`/admin/invoices${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2271,6 +2284,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminInvoice: (token: string, id: string) =>
       request<PlatformInvoiceView>(`/admin/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    /** Fatture del mese (XML e PDF) in un file zip per il commercialista (docs/changelog/2026-11-24-fatture-del-mese-zip.md). */
+    adminInvoicesMonthZip: (token: string, month: string) => downloadFile(`/admin/invoices/month/${encodeURIComponent(month)}/zip`, token),
     adminInvoiceXml: (token: string, id: string) =>
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

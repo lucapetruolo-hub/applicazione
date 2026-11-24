@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type {
-  AdminFinanceSummary,
-  PlatformFeeRule,
-} from "@professionisti/api-client";
+import type { AdminFinanceSummary } from "@professionisti/api-client";
 import { H2, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
+import { SkeletonBlock } from "@/components/Skeleton";
 import { AdminInvoicesSection } from "@/components/admin/AdminInvoicesSection";
-import { BRAND, ONLINE_APP_FEE_PERCENT, formatEurCents } from "@professionisti/shared";
+import { BRAND, formatEurCents } from "@professionisti/shared";
 import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
- * Fisco e fatture → Le nostre fatture (CLAUDE.md §88, docs/CHANGELOG.md §378):
- * riepilogo dei ricavi, fatture ai professionisti e regole di commissione.
+ * Fisco e fatture → Fatture emesse (CLAUDE.md §88, docs/CHANGELOG.md §378):
+ * fatture ai professionisti e riepilogo dei ricavi. Dati della società,
+ * commercialista e regole di commissione stanno in "Società e commercialista",
+ * gli invii nel "Registro invii" (riordino del 24/11/2026,
+ * docs/changelog/2026-11-24-fatture-del-mese-zip.md).
  * DAC7 ha la sua scheda (/admin/finanza/dac7) dal riordino del 30/10/2026
  * (docs/changelog/2026-10-30-admin-riordino.md): prima era tutto in una pagina.
  */
@@ -41,7 +41,6 @@ const JOB_PAYMENT_STATUS_LABEL: Record<string, string> = {
 export default function AdminFinanzaPage() {
   const { token } = useAuth();
   const [finance, setFinance] = useState<AdminFinanceSummary | null>(null);
-  const [feeRules, setFeeRules] = useState<PlatformFeeRule[] | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -49,16 +48,15 @@ export default function AdminFinanzaPage() {
       .adminFinanceSummary(token)
       .then(setFinance)
       .catch(() => {});
-    apiClient
-      .adminListFeeRules(token)
-      .then(setFeeRules)
-      .catch(() => {});
   }, [token]);
 
   if (!token) return null;
 
   return (
     <YStack gap="7">
+      {/* Fatture emesse ai professionisti (docs/CHANGELOG.md §378). */}
+      <AdminInvoicesSection token={token} view="invoices" />
+
       <YStack gap="4">
         <H2 size="7">Riepilogo finanza</H2>
         {finance === null ? (
@@ -128,84 +126,7 @@ export default function AdminFinanzaPage() {
         )}
       </YStack>
 
-      {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §378). */}
-      <AdminInvoicesSection token={token} />
 
-      <YStack gap="4">
-        <XStack
-          justifyContent="space-between"
-          alignItems="center"
-          flexWrap="wrap"
-          gap="3"
-        >
-          <H2 size="7">Regole di commissione</H2>
-          <Text fontSize={12} color={brand.grafite70}>
-            Le cambi da qui quando vuoi, senza chiamare un tecnico.
-          </Text>
-        </XStack>
-        {/* Collaudo dell'8/11/2026, E3-10: sui pagamenti online la trattenuta si tiene all'addebito. */}
-        <Text fontSize={14} color={brand.grafite70}>
-          Sui pagamenti online all&apos;addebito si tiene al massimo il {ONLINE_APP_FEE_PERCENT}% + IVA: una regola più alta conta solo
-          fino a lì, la differenza non si incassa.
-        </Text>
-        {feeRules === null ? (
-          <SkeletonTableRows rows={3} cols={7} />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>% (IVA esclusa)</th>
-                  <th>Fisso</th>
-                  <th>Min/Max</th>
-                  <th>Ambito</th>
-                  <th>Attiva dal</th>
-                  <th>Fino a</th>
-                </tr>
-              </thead>
-              <tbody>
-                {feeRules.map((rule) => (
-                  <tr key={rule.id}>
-                    <td>{rule.name}</td>
-                    <td>
-                      {(rule.percentageBasisPoints / 100).toFixed(2)}%
-                      {rule.percentageBasisPoints > ONLINE_APP_FEE_PERCENT * 100 || rule.fixedFeeEurCents > 0 || (rule.minFeeEurCents ?? 0) > 0 ? (
-                        <Text fontSize={13} color={brand.urgenza}> (online al massimo {ONLINE_APP_FEE_PERCENT}%)</Text>
-                      ) : null}
-                    </td>
-                    <td>{formatEurCents(rule.fixedFeeEurCents)}</td>
-                    <td>
-                      {rule.minFeeEurCents !== null
-                        ? formatEurCents(rule.minFeeEurCents)
-                        : "—"}{" "}
-                      /{" "}
-                      {rule.maxFeeEurCents !== null
-                        ? formatEurCents(rule.maxFeeEurCents)
-                        : "—"}
-                    </td>
-                    <td>
-                      {rule.professionalProfileId
-                        ? "Professionista specifico"
-                        : rule.categoryId
-                          ? "Categoria"
-                          : "Globale"}
-                    </td>
-                    <td>
-                      {new Date(rule.effectiveFrom).toLocaleDateString("it-IT")}
-                    </td>
-                    <td>
-                      {rule.effectiveTo
-                        ? new Date(rule.effectiveTo).toLocaleDateString("it-IT")
-                        : "Attiva"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </YStack>
     </YStack>
   );
 }

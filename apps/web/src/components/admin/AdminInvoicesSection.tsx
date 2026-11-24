@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   INVOICE_SOURCE_LABEL,
+  accountantSettingsSchema,
+  accountingMonthLabel,
   formatEurCents,
   monthlyInvoiceLate,
   platformInvoiceSettingsSchema,
@@ -15,8 +17,10 @@ import {
 } from "@professionisti/shared";
 import { Button, Field, H2, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { TechNote, downloadTextFile, errorMessage } from "./adminUi";
+import { TechNote, downloadBlobFile, downloadTextFile, errorMessage } from "./adminUi";
 import { AdminConfirmModal } from "./AdminConfirmModal";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import Link from "@/components/IntentLink";
 
 const SDI_LABEL: Record<InvoiceSdiStatusValue, string> = {
   NOT_SENT: "Da inviare",
@@ -61,17 +65,21 @@ function lastMonth(): string {
 }
 
 /**
- * Admin → Finanza, "Le nostre fatture" (docs/CHANGELOG.md §378): i dati
- * della società che le emette, le fatture emesse con il loro stato allo SdI,
- * l'XML da scaricare e il giro del mese da rilanciare a mano.
+ * Admin → Fisco e fatture (docs/CHANGELOG.md §378). Dal riordino del
+ * 24/11/2026 (docs/changelog/2026-11-24-fatture-del-mese-zip.md) in due
+ * schede: `invoices` = "Fatture emesse" (le fatture col loro stato allo SdI,
+ * il mese: giro, conti, zip); `company` = "Società e commercialista" (i dati
+ * della società che le emette, l'invio allo SdI con la prova, il commercialista).
  */
-export function AdminInvoicesSection({ token }: { token: string }) {
+export function AdminInvoicesSection({ token, view }: { token: string; view: "invoices" | "company" }) {
   const [settings, setSettings] = useState<PlatformInvoiceSettingsView | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [invoices, setInvoices] = useState<PlatformInvoiceAdminRow[] | null>(null);
   const [month, setMonth] = useState(lastMonth());
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Esito dei pulsanti del mese, scritto sotto quei pulsanti e non in cima alla pagina.
+  const [monthNotice, setMonthNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [pending, setPending] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "run" } | { kind: "resend"; id: string; number: string } | null>(null);
   const [reconciliation, setReconciliation] = useState<FeeReconciliation | null>(null);
@@ -125,7 +133,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     try {
       const { issued, notified, statements, abroad } = await apiClient.adminRunInvoiceMonth(token, month);
       const abroadNote = abroad > 0 ? ` ${abroad === 1 ? "Un professionista ha" : `${abroad} professionisti hanno`} la residenza fiscale all'estero: la fattura va fatta a mano.` : "";
-      setMessage(`${monthRerunMessage(issued, notified, statements)}${abroadNote}`);
+      setMonthNotice({ text: `${monthRerunMessage(issued, notified, statements)}${abroadNote}`, error: false });
       setConfirm(null);
       load();
     } finally {
@@ -135,11 +143,11 @@ export function AdminInvoicesSection({ token }: { token: string }) {
 
   async function checkReconciliation() {
     setPending(true);
-    setError(null);
+    setMonthNotice(null);
     try {
       setReconciliation(await apiClient.adminFeeReconciliation(token, month));
     } catch (e) {
-      setError(errorMessage(e));
+      setMonthNotice({ text: errorMessage(e), error: true });
     } finally {
       setPending(false);
     }
@@ -167,6 +175,20 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     }
   }
 
+  // Lo zip del mese da girare al commercialista (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+  async function downloadMonthZip() {
+    setPending(true);
+    setMonthNotice(null);
+    try {
+      downloadBlobFile(`fatture-${month}.zip`, await apiClient.adminInvoicesMonthZip(token, month));
+      setMonthNotice({ text: `Fatture di ${month} scaricate. Dentro ci sono i file delle fatture, i PDF e un riepilogo.`, error: false });
+    } catch (e) {
+      setMonthNotice({ text: errorMessage(e), error: true });
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function resend(id: string) {
     const row = await apiClient.adminResendInvoice(token, id);
     setInvoices((current) => current?.map((r) => (r.id === id ? row : r)) ?? null);
@@ -174,9 +196,10 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     setConfirm(null);
   }
 
-  return (
+  if (view === "company") {
+    return (
     <YStack gap="4">
-      <H2 size="7">Le nostre fatture</H2>
+      <H2 size="7">Dati della società</H2>
       {settings ? (
         <Text color={brand.grafite70}>
           {settings.ready ? "Dati della società completi: le fatture partono." : "Mancano i dati della società: per ora i professionisti vedono solo gli estratti."}{" "}
@@ -234,9 +257,26 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Text>
       ) : null}
 
+      {settings ? <CompanyAccountantBox token={token} initial={settings.accountant} /> : null}
+    </YStack>
+    );
+  }
+
+  return (
+    <YStack gap="4">
+      <H2 size="7">Fatture emesse</H2>
+      {settings && !settings.ready ? (
+        <Text color={brand.grafite70}>
+          Mancano i dati della società: per ora i professionisti vedono solo gli estratti. Li scrivi in{" "}
+          <Link href="/admin/finanza/societa">Società e commercialista</Link>.
+        </Text>
+      ) : null}
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {message ? <Text color={brand.cianografiaScuro}>{message}</Text> : null}
+
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
-          <Field label="Mese (AAAA-MM)" aria-label="Mese del giro da rifare" value={month} onChangeText={setMonth} />
+          <Field label="Mese (AAAA-MM)" aria-label="Mese" value={month} onChangeText={setMonth} />
         </YStack>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => setConfirm({ kind: "run" })}>
           Rifai il giro del mese
@@ -244,9 +284,17 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void checkReconciliation()}>
           Controlla che i conti tornino
         </Button>
+        <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void downloadMonthZip()}>
+          Scarica le fatture del mese
+        </Button>
       </XStack>
+      {monthNotice ? (
+        <Text role="status" color={monthNotice.error ? brand.urgenza : brand.cianografiaScuro}>
+          {monthNotice.text}
+        </Text>
+      ) : null}
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese. Con &quot;Scarica le fatture del mese&quot; hai un solo file per il commercialista. Dentro c&apos;è ogni fattura del mese, anche in PDF, con un riepilogo per il foglio di calcolo.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 
@@ -395,4 +443,124 @@ function monthRerunMessage(issued: number, notified: number, statements: number)
     statements > 0 ? `${statements} ${statements === 1 ? "estratto mandato" : "estratti mandati"} ai commercialisti` : null,
   ].filter(Boolean);
   return `${parts.join(", ")}.`;
+}
+
+/**
+ * Commercialista della nostra società: con la spunta il 5 di ogni mese gli
+ * arriva lo zip delle fatture del mese prima (decisione di Luca del 24/11/2026,
+ * docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+ */
+const SEND_RESULT: Record<string, string> = {
+  sent: "mandate, gli arrivano tra poco.",
+  off: "prima scrivi e salva l'email del commercialista.",
+  empty: "nel mese non ci sono fatture, non è partito niente.",
+  "too-big": "lo zip è troppo grande per un'email. Scaricalo e mandalo tu.",
+  failed: "l'invio non è riuscito. Riprova tra poco.",
+  already: "già mandate.",
+};
+
+function CompanyAccountantBox({ token, initial }: { token: string; initial: PlatformInvoiceSettingsView["accountant"] }) {
+  const [month, setMonth] = useState(lastMonth());
+  const [saved, setSaved] = useState(initial);
+  const [email, setEmail] = useState(initial.email ?? "");
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [sendNote, setSendNote] = useState<{ text: string; error: boolean } | null>(null);
+  const dirty = email.trim().toLowerCase() !== (saved.email ?? "") || enabled !== saved.enabled;
+
+  async function save() {
+    const parsed = accountantSettingsSchema.safeParse({ email: email.trim() || undefined, enabled });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Controlla l'email.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const result = await apiClient.adminUpdateCompanyAccountant(token, parsed.data);
+      setSaved(result);
+      setEmail(result.email ?? "");
+      setEnabled(result.enabled);
+      setDone(true);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function sendNow() {
+    setPending(true);
+    setSendNote(null);
+    try {
+      const { result, accountant } = await apiClient.adminSendCompanyAccountantZip(token, month);
+      setSaved(accountant);
+      setSendNote({ text: `Fatture di ${month}: ${SEND_RESULT[result] ?? result}`, error: result !== "sent" });
+    } catch (e) {
+      setSendNote({ text: errorMessage(e), error: true });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <YStack gap="3" padding="3" borderRadius={10} borderWidth={1} borderColor={brand.filetto}>
+      <Text fontWeight="800">Commercialista della società</Text>
+      <YStack maxWidth={480}>
+        <Field
+          label="Email del commercialista"
+          aria-label="Email del commercialista della società"
+          value={email}
+          onChangeText={(value) => {
+            setEmail(value);
+            setDone(false);
+          }}
+          inputMode="email"
+          autoComplete="email"
+          error={error ?? undefined}
+        />
+      </YStack>
+      <ConsentCheckbox
+        checked={enabled}
+        onToggle={() => {
+          setEnabled((value) => !value);
+          setDone(false);
+        }}
+      >
+        Manda ogni mese le fatture al commercialista
+      </ConsentCheckbox>
+      <Text fontSize={13} color={brand.grafite70}>
+        Il 5 del mese gli arriva lo zip delle fatture del mese prima, con il riepilogo.
+        {saved.lastMonth ? ` Ultimo invio: ${accountingMonthLabel(saved.lastMonth)}.` : ""}
+      </Text>
+      <XStack gap="3" alignItems="center" flexWrap="wrap">
+        <Button variant="secondary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
+          Salva il commercialista
+        </Button>
+        {done && !dirty ? (
+          <Text color={brand.cianografiaScuro} role="status">
+            {saved.enabled ? "Fatto: gli arriva il 5 di ogni mese." : "Salvato."}
+          </Text>
+        ) : null}
+      </XStack>
+      <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
+        <YStack width={200}>
+          <Field label="Mese da mandare (AAAA-MM)" aria-label="Mese da mandare al commercialista" value={month} onChangeText={setMonth} />
+        </YStack>
+        <Button variant="secondary" alignSelf="flex-start" disabled={!saved.email || dirty || pending} opacity={!saved.email || dirty || pending ? 0.6 : 1} onPress={() => void sendNow()}>
+          Mandalo adesso
+        </Button>
+      </XStack>
+      <Text fontSize={13} color={brand.grafite70}>
+        Ogni invio resta nel <Link href="/admin/finanza/invii">Registro invii</Link>.
+      </Text>
+      {sendNote ? (
+        <Text role="status" color={sendNote.error ? brand.urgenza : brand.cianografiaScuro}>
+          {sendNote.text}
+        </Text>
+      ) : null}
+    </YStack>
+  );
 }

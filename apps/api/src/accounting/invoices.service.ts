@@ -11,12 +11,15 @@ import {
   freePeriodSummary,
   invoiceNumberLabel,
   isAccountingMonth,
+  monthInvoicesCsv,
   monthlyInvoiceLate,
   notificationJobLabel,
   subscriptionTierInfo,
   type BillingInterval,
   type DocumentsOverview,
   type InvoiceSdiStatusValue,
+  type FiscalSendRow,
+  type MonthInvoiceCsvRow,
   type PlatformInvoiceAdminRow,
   type PlatformInvoiceLine,
   type PlatformInvoiceSettingsInput,
@@ -55,6 +58,9 @@ import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
 import { COUNTED_USER } from "../site-counts/counted";
 import { ScheduledJob } from "../common/scheduled-job";
+import { buildZip, type ZipEntry } from "../common/zip";
+import { renderDocumentPdf } from "./document-pdf";
+import { invoicePdfModel } from "./document-pdf-models";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -121,6 +127,27 @@ function summaryOf(row: Invoice): PlatformInvoiceSummary {
   };
 }
 
+function recipientNameOf(value: Prisma.JsonValue | null): string | null {
+  const recipient = readRecipient(value);
+  return recipient ? recipientParty(recipient).name || null : null;
+}
+
+const SDI_SEND_LABEL: Record<InvoiceSdiStatusValue, string> = {
+  NOT_SENT: "Da inviare",
+  SENT: "Inviata, in attesa dell'esito",
+  DELIVERED: "Consegnata",
+  REJECTED: "Scartata",
+};
+
+const FISCAL_LOG_LABEL: Record<string, string> = {
+  ok: "Riuscita",
+  stopped: "Fermata",
+  sent: "Mandata",
+  failed: "Non riuscita",
+  "too-big": "Troppo grande per l'email",
+  empty: "Nessuna fattura nel mese",
+};
+
 /**
  * Le nostre fatture al professionista (decisioni dell'utente del 27/10/2026,
  * docs/CHANGELOG.md §378): una al mese per le trattenute sui pagamenti online
@@ -166,6 +193,7 @@ export class InvoicesService {
         : 0,
       sdiConfigured: !!this.sdi,
       sdiSandbox: !!this.sdi?.sandbox,
+      accountant: { email: row?.accountantEmail ?? null, enabled: !!row?.accountantZipAt, lastMonth: row?.accountantZipMonth ?? null },
     };
   }
 
@@ -625,7 +653,25 @@ export class InvoicesService {
    * tra le nostre e senza numero della serie), fa arrivare un esito finto e lo
    * legge. In produzione non parte: la fattura arriverebbe davvero all'Agenzia.
    */
-  async adminSdiSandboxTest(now: Date = new Date()): Promise<SdiSandboxTestResult> {
+  /** Prova d'invio allo SdI, segnata nel Registro invii di Admin → Fisco e fatture. */
+  async adminSdiSandboxTest(now: Date = new Date(), userId: string | null = null): Promise<SdiSandboxTestResult> {
+    const result = await this.runSdiSandboxTest(now);
+    const last = result.steps[result.steps.length - 1];
+    const sdiId = result.steps.map((step) => /Identificativo Openapi: (\S+)/.exec(step.detail ?? "")?.[1]).find(Boolean) ?? null;
+    await this.prisma.fiscalSendLog.create({
+      data: {
+        kind: "SDI_TEST",
+        recipient: "Servizio di invio (prova)",
+        result: result.ok ? "ok" : "stopped",
+        detail: last ? `${last.label}${last.detail ? `: ${last.detail}` : ""}` : null,
+        externalId: sdiId,
+        createdByUserId: userId,
+      },
+    });
+    return result;
+  }
+
+  private async runSdiSandboxTest(now: Date): Promise<SdiSandboxTestResult> {
     const steps: SdiSandboxTestResult["steps"] = [];
     const stop = (label: string, detail: string): SdiSandboxTestResult => ({ ok: false, steps: [...steps, { label, ok: false, detail }] });
     const sdi = this.sdi;
@@ -909,6 +955,100 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) throw new NotFoundException("Fattura non trovata.");
     return this.xmlOf(invoice);
+  }
+
+  /**
+   * Tutte le fatture e note di credito di un mese (per data del documento) in
+   * un file zip, XML e PDF, da girare al commercialista
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Una fattura col file
+   * XML non ancora pronto entra solo in PDF, e il file "da-sistemare.txt"
+   * dice quali sono e perché.
+   */
+  async adminMonthZip(month: string, now: Date = new Date()): Promise<{ fileName: string; zip: Buffer; count: number; missingXml: number }> {
+    if (!isAccountingMonth(month)) throw new BadRequestException("Mese non valido: scrivilo come AAAA-MM.");
+    const { start, end } = romeMonthRange(month);
+    const rows = await this.prisma.invoice.findMany({
+      where: { type: "MANOVIA_TO_PROFESSIONAL", status: "ISSUED", issuedAt: { gte: start, lt: end } },
+      orderBy: [{ series: "asc" }, { number: "asc" }],
+    });
+    if (rows.length === 0) throw new NotFoundException("Nessuna fattura in quel mese.");
+    const entries: ZipEntry[] = [];
+    const missing: string[] = [];
+    const summary: MonthInvoiceCsvRow[] = [];
+    for (const row of rows) {
+      const label = invoiceNumberLabel(row.series, row.year, row.number);
+      const base = label.replace(/\//g, "-");
+      const xml = readFiscal(row.xml);
+      if (xml) entries.push({ name: `xml/${base}.xml`, data: Buffer.from(xml, "utf8") });
+      else missing.push(`${label}: ${row.sdiMessage ?? "file della fattura elettronica non ancora pronto"}`);
+      const view = await this.invoiceView(row);
+      entries.push({ name: `pdf/${base}.pdf`, data: await renderDocumentPdf(invoicePdfModel(view)) });
+      const recipient = readRecipient(row.recipient);
+      summary.push({
+        number: view.number,
+        issuedAt: view.issuedAt,
+        source: view.source,
+        creditNote: view.creditNote,
+        relatedNumber: view.relatedNumber,
+        recipientName: view.recipient.name,
+        vatNumber: recipient?.vatNumber ?? null,
+        taxCode: recipient?.taxCode ?? null,
+        taxableEurCents: view.taxableEurCents,
+        vatEurCents: view.vatEurCents,
+        totalEurCents: view.totalEurCents,
+        hasXml: !!xml,
+        sdiStatus: view.sdiStatus,
+      });
+    }
+    entries.unshift({ name: "riepilogo.csv", data: Buffer.from(monthInvoicesCsv(summary), "utf8") });
+    if (missing.length > 0) {
+      const note = [`Fatture di ${month} senza il file XML (non ancora inviate allo SdI), qui solo in PDF:`, "", ...missing, ""].join("\r\n");
+      entries.push({ name: "da-sistemare.txt", data: Buffer.from(note, "utf8") });
+    }
+    return { fileName: `fatture-${month}.zip`, zip: buildZip(entries, now), count: rows.length, missingXml: missing.length };
+  }
+
+  /**
+   * Registro invii (Admin → Fisco e fatture): ogni nostra fattura partita verso
+   * lo SdI col suo esito, le prove d'invio e gli zip al commercialista, dal più
+   * recente (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+   */
+  async adminSends(limit = 200): Promise<FiscalSendRow[]> {
+    const [invoices, logs] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: { type: "MANOVIA_TO_PROFESSIONAL", sdiSentAt: { not: null } },
+        orderBy: { sdiSentAt: "desc" },
+        take: limit,
+      }),
+      this.prisma.fiscalSendLog.findMany({ orderBy: { createdAt: "desc" }, take: limit }),
+    ]);
+    const rows: FiscalSendRow[] = [
+      ...invoices.map((row) => ({
+        id: `invoice:${row.id}`,
+        kind: "INVOICE" as const,
+        at: row.sdiSentAt!.toISOString(),
+        what: `Fattura ${invoiceNumberLabel(row.series, row.year, row.number)}${row.creditNote ? " (nota di credito)" : ""}`,
+        recipient: recipientNameOf(row.recipient),
+        outcome: row.sdiStatus === "DELIVERED" ? ("ok" as const) : row.sdiStatus === "REJECTED" ? ("error" as const) : ("waiting" as const),
+        outcomeLabel: SDI_SEND_LABEL[row.sdiStatus as InvoiceSdiStatusValue],
+        detail: row.sdiMessage,
+        externalId: row.sdiId,
+        manual: false,
+      })),
+      ...logs.map((log) => ({
+        id: `log:${log.id}`,
+        kind: log.kind === "SDI_TEST" ? ("SDI_TEST" as const) : ("ACCOUNTANT_ZIP" as const),
+        at: log.createdAt.toISOString(),
+        what: log.kind === "SDI_TEST" ? "Fattura di prova da 1 €" : `Fatture di ${log.month ? accountingMonthLabel(log.month) : "un mese"} al commercialista`,
+        recipient: log.recipient,
+        outcome: log.result === "ok" || log.result === "sent" ? ("ok" as const) : log.result === "empty" ? ("waiting" as const) : ("error" as const),
+        outcomeLabel: FISCAL_LOG_LABEL[log.result] ?? log.result,
+        detail: log.detail,
+        externalId: log.externalId,
+        manual: !!log.createdByUserId,
+      })),
+    ];
+    return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
   }
 
   async adminView(invoiceId: string): Promise<PlatformInvoiceView> {

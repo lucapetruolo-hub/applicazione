@@ -441,6 +441,77 @@ export function statementCsv(rows: StatementCsvRow[]): string {
   return `﻿${[header.join(";"), ...body].join("\r\n")}\r\n`;
 }
 
+/** Una riga del Registro invii di Admin → Fisco e fatture (docs/changelog/2026-11-24-fatture-del-mese-zip.md). */
+export type FiscalSendRow = {
+  id: string;
+  kind: "INVOICE" | "SDI_TEST" | "ACCOUNTANT_ZIP";
+  at: string;
+  what: string;
+  recipient: string | null;
+  outcome: "ok" | "waiting" | "error";
+  outcomeLabel: string;
+  detail: string | null;
+  externalId: string | null;
+  /** Partito da un admin col pulsante (non dal giro automatico). */
+  manual: boolean;
+};
+
+/** Una riga del riepilogo delle nostre fatture del mese, nello zip per il nostro commercialista. */
+export type MonthInvoiceCsvRow = {
+  number: string;
+  issuedAt: string;
+  source: PlatformInvoiceSource;
+  creditNote: boolean;
+  relatedNumber: string | null;
+  recipientName: string;
+  vatNumber: string | null;
+  taxCode: string | null;
+  taxableEurCents: number;
+  vatEurCents: number;
+  totalEurCents: number;
+  hasXml: boolean;
+  sdiStatus: InvoiceSdiStatusValue;
+};
+
+const SDI_STATUS_CSV: Record<InvoiceSdiStatusValue, string> = {
+  NOT_SENT: "Da inviare",
+  SENT: "Inviata",
+  DELIVERED: "Consegnata",
+  REJECTED: "Scartata",
+};
+
+/**
+ * Il riepilogo delle fatture del mese nello zip per il commercialista
+ * (docs/changelog/2026-11-24-fatture-del-mese-zip.md): una riga per fattura,
+ * come l'estratto (punto e virgola, importi all'italiana). Le note di credito
+ * hanno gli importi col meno, così la somma della colonna è il netto del mese.
+ */
+export function monthInvoicesCsv(rows: MonthInvoiceCsvRow[]): string {
+  const header = ["Numero", "Data", "Tipo documento", "Servizio", "Fattura collegata", "Professionista", "Partita IVA", "Codice fiscale", "Imponibile", "IVA", "Totale", "File XML", "Stato SdI"];
+  const body = rows.map((r) => {
+    const sign = r.creditNote ? -1 : 1;
+    const kind = r.creditNote ? "TD04 Nota di credito" : r.source === "JOB_FEES" ? "TD24 Fattura differita" : "TD01 Fattura";
+    return [
+      r.number,
+      romeDayIso(r.issuedAt),
+      kind,
+      INVOICE_SOURCE_LABEL[r.source],
+      r.relatedNumber ?? "",
+      r.recipientName,
+      r.vatNumber ?? "",
+      r.taxCode ?? "",
+      csvAmount(sign * r.taxableEurCents),
+      csvAmount(sign * r.vatEurCents),
+      csvAmount(sign * r.totalEurCents),
+      r.hasXml ? "Sì" : "No",
+      SDI_STATUS_CSV[r.sdiStatus],
+    ]
+      .map(csvCell)
+      .join(";");
+  });
+  return `\uFEFF${[header.join(";"), ...body].join("\r\n")}\r\n`;
+}
+
 // --- Pagina "Fatture e documenti" ----------------------------------------
 
 export type MissingClientDocument = {
@@ -480,6 +551,8 @@ export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSe
   sdiConfigured: boolean;
   /** Openapi nell'ambiente di prova (`OPENAPI_SANDBOX=true`): si può fare la prova d'invio (§379). */
   sdiSandbox: boolean;
+  /** Commercialista della società e spunta dello zip mensile (docs/changelog/2026-11-24-fatture-del-mese-zip.md). */
+  accountant: { email: string | null; enabled: boolean; lastMonth: string | null };
 };
 
 /** Prova d'invio allo SdI nella prova di Openapi, passo per passo (Admin → Finanza, docs/CHANGELOG.md §379). */
