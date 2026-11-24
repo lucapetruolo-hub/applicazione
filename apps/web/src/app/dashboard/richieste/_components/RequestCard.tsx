@@ -187,6 +187,10 @@ export function RequestCard({
   const gr = lead.guidedRequest;
   const canRepeat = recurringAllowedForCategory(gr.categorySlug);
   const isOnline = gr.serviceMode === "ONLINE";
+  // Una richiesta online può non avere la città: niente "Idraulico ·" né "Zona:" vuoti
+  // (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+  const hasCity = Boolean(gr.city?.trim());
+  const jobAndCity = hasCity ? `${gr.categoryLabel} · ${gr.city}` : gr.categoryLabel;
   const router = useRouter();
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
@@ -1154,7 +1158,7 @@ export function RequestCard({
         <XStack alignItems="center" gap="1">
           <Icon name="wrench" size={15} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
-            <HighlightMatch text={`${gr.categoryLabel} · ${gr.city}`} />
+            <HighlightMatch text={jobAndCity} />
           </Text>
         </XStack>
         {/* A scheda aperta la descrizione è sotto "Descrizione lavoro": in alto
@@ -1174,7 +1178,7 @@ export function RequestCard({
             </Text>
           </XStack>
         ) : null}
-        {isOpen ? null : (
+        {isOpen || (isOnline && !hasCity) ? null : (
           <XStack alignItems="center" gap="1">
             <Icon name="map-pin" size={14} color={brand.grafite70} />
             <Text fontSize={16} color={brand.grafite70}>
@@ -1346,7 +1350,8 @@ export function RequestCard({
                     <ClientDetailRow icon="calendar">{formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}</ClientDetailRow>
                   ) : null}
                   {isOnline ? (
-                    <ClientDetailRow icon="map-pin">Zona: {gr.city} (indirizzo nascosto)</ClientDetailRow>
+                    // Online non c'è un indirizzo da nascondere: solo la zona, se il cliente l'ha scritta.
+                    hasCity ? <ClientDetailRow icon="map-pin">Zona: {gr.city}</ClientDetailRow> : null
                   ) : (
                     <ClientDetailRow icon="map-pin">{revealedAddress ?? gr.city}</ClientDetailRow>
                   )}
@@ -1886,7 +1891,7 @@ export function RequestCard({
           {showQuoteForm && limitBlocked && subscription ? (
             <JobLimitModal
               sub={subscription}
-              request={`${gr.categoryLabel} · ${gr.city}`}
+              request={jobAndCity}
               onClose={() => setShowQuoteForm(false)}
               onUpgraded={() => onSubscriptionChanged?.()}
             />

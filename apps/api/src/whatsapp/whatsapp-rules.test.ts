@@ -13,6 +13,7 @@ import {
   whatsappNumber,
 } from "./whatsapp-rules";
 import {
+  whatsappJobWhere,
   professionalDayMessage,
   renderTemplateText,
   renderWhatsAppText,
@@ -116,6 +117,19 @@ describe("testi dei messaggi", () => {
     const at = new Date("2026-11-05T10:30:00Z");
     expect(whatsappTime(at)).toBe("10:30");
     expect(whatsappDayTime(at)).toBe("giovedì 5 novembre alle 10:30");
+  });
+
+  // docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md
+  it("riepilogo del professionista: a domicilio o online", () => {
+    expect(whatsappJobWhere("HOME", "Latina")).toBe("a domicilio a Latina");
+    expect(whatsappJobWhere("HOME", null)).toBe("a domicilio");
+    expect(whatsappJobWhere("ONLINE", "Latina")).toBe("online");
+    expect(whatsappJobWhere(null, "Latina")).toBe("Latina");
+    const one = professionalDayMessage([
+      { scheduledAt: new Date("2026-10-13T08:30:00Z"), what: "Perdita", where: whatsappJobWhere("HOME", "San Giovanni in Fiore") },
+    ]);
+    // Il comune non si taglia per colpa di "a domicilio a ".
+    expect(one.bodyParams[2]).toBe("Perdita · a domicilio a San Giovanni in Fiore");
   });
 
   it("riepilogo del professionista: un lavoro per riga con l'ora in grassetto", () => {

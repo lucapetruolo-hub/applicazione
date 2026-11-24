@@ -35,3 +35,33 @@ di aprire la richiesta.
 typecheck di API e sito. Foto prima/dopo della campanella (computer e
 telefono, sito acceso in locale con il database) e delle email in
 `anteprime/domicilio-online-notifiche/` della cartella del progetto.
+
+## Secondo giro (24/11, "sì" di Luca alle tre migliorie e a "Da rispondere ora")
+
+- **Oggetto dell'email "preventivo accettato"**: "Il cliente ha accettato il
+  tuo preventivo · Idraulico a domicilio" (o "online"); senza il tipo resta
+  quello di prima.
+- **Icona nella campanella e nel popup**: casa per un lavoro a domicilio,
+  videocamera per uno online (le stesse dei filtri della ricerca), al posto
+  dell'icona dell'argomento, per nuove richieste, preventivo accettato e Lavori
+  cercati (`notificationTopicStyle.ts`).
+- **Riepilogo della sera su WhatsApp**: ogni lavoro dice "a domicilio a
+  Latina" oppure "online" (`whatsappJobWhere`). Cambia solo la variabile, non
+  il testo del modello da far approvare a Meta; aggiornati gli esempi in
+  `docs/whatsapp-modelli.md`. Il comune resta entro i 30 caratteri dei nomi
+  anche dopo "a domicilio a ".
+- **"Da rispondere ora" in Oggi**: titolo "Idraulico a domicilio · Marcianise"
+  o "Idraulico online" (con la zona se il cliente l'ha scritta) e una riga
+  "Ricevuta oggi alle 11:52 · Per gio 26 nov, 08:00–13:00" (o "Per questa
+  settimana", "Con calma, senza fretta"; l'urgente ha già il bollino).
+- **Scheda della richiesta online senza città** (foto di Luca): niente più
+  "Idraulico ·" né "Zona: (indirizzo nascosto)" vuoti. Online la zona si
+  mostra solo se il cliente l'ha scritta, senza "(indirizzo nascosto)": online
+  non c'è un indirizzo da nascondere.
+- Chiesto in un lavoro a parte: "Clienti per orario" separato tra domicilio e
+  online nell'agenda.
+
+**Verifica**: prove WhatsApp (`whatsapp-rules.test.ts`, 63 passate) ed email
+(79 passate); typecheck e lint del sito; foto prima/dopo di Oggi, della scheda
+online e della campanella con le icone (computer e telefono) in
+`anteprime/domicilio-online-notifiche/`.

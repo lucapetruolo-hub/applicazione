@@ -67,13 +67,28 @@ const BAD_COLORS = { color: brand.urgenza, tint: brand.urgenzaVelo };
 
 const FALLBACK = { icon: "bell-ring" as IconName, color: brand.grafite70, tint: brand.gesso };
 
+/**
+ * Lavoro a domicilio (casa) o online (videocamera) al posto dell'icona
+ * dell'argomento, per riconoscerlo a colpo d'occhio: stesse icone dei filtri
+ * della ricerca ("sì" di Luca, docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+ */
+const SERVICE_MODE_TYPES = new Set(["NEW_LEAD", "QUOTE_ACCEPTED", "BOARD_NEARBY", "BOARD_CLAIM_ARRIVED"]);
+
+function serviceModeIcon(type: string, payload: unknown): IconName | null {
+  if (!SERVICE_MODE_TYPES.has(type) || !payload || typeof payload !== "object") return null;
+  const mode = (payload as Record<string, unknown>).serviceMode;
+  return mode === "HOME" ? "house" : mode === "ONLINE" ? "video" : null;
+}
+
 /** Titolo breve (l'argomento, dal punto di vista di chi riceve) + icona e colori. */
 export function notificationTopicStyle(type: string, isProfessional: boolean, payload?: unknown): { title: string; icon: IconName; color: string; tint: string } {
   const topic = notificationTopicOf(type);
   if (!topic) return { title: "Notifica", ...FALLBACK };
   const info = NOTIFICATION_TOPIC_INFO[topic];
   const title = (isProfessional ? info.professional : info.client).label;
-  const base = NOTIFICATION_TOPIC_STYLE[topic];
+  const topicBase = NOTIFICATION_TOPIC_STYLE[topic];
+  const modeIcon = serviceModeIcon(type, payload);
+  const base = modeIcon ? { ...topicBase, icon: modeIcon } : topicBase;
   const tone = notificationTone(type, payload);
   // Nell'account lo scudo prende la spunta quando la notizia è buona.
   if (tone === "good") return { title, ...base, ...GOOD_COLORS, icon: topic === "account" ? "shield-check" : base.icon };

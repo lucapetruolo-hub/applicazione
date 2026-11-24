@@ -901,10 +901,12 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
             {personal ? <Badge variant="fatto">{personal}</Badge> : null}
           </span>
         ) : null}
-        <strong>
-          {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
-        </strong>
+        {/* A domicilio o online; online senza città, che prima lasciava "Idraulico ·"
+            (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */}
+        <strong>{leadTitle(lead.guidedRequest)}</strong>
         <span className="today-row-sub">{truncate(lead.guidedRequest.description, 110)}</span>
+        {/* Quando è arrivata e per quando serve ("sì" di Luca del 24/11). */}
+        <span className="today-row-when">{[leadReceived(lead.createdAt), leadWanted(lead.guidedRequest)].filter(Boolean).join(" · ")}</span>
         <span className="today-row-meta">
           {deadlines.map((deadline) => (
             <span key={deadline.label} className={deadline.urgent ? "today-deadline is-urgent" : "today-deadline"}>
@@ -917,6 +919,40 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
       <span className="today-row-cta">Invia preventivo</span>
     </Link>
   );
+}
+
+/** "Idraulico a domicilio · Marcianise", "Idraulico online" (con la zona se il cliente l'ha scritta), o come prima senza il tipo. */
+function leadTitle(request: ProfessionalLead["guidedRequest"]): string {
+  const city = request.city?.trim();
+  const head = request.serviceMode === "ONLINE" ? `${request.categoryLabel} online` : request.serviceMode === "HOME" ? `${request.categoryLabel} a domicilio` : request.categoryLabel;
+  return city ? `${head} · ${city}` : head;
+}
+
+/** "Ricevuta oggi alle 10:38", "ieri alle 18:20", "lun 23 nov alle 9:10": in ora italiana, come "Ricevuta" nella scheda. */
+function leadReceived(iso: string): string {
+  const at = new Date(iso);
+  const rome = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+  const time = at.toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60_000);
+  const day =
+    rome(at) === rome(today)
+      ? "oggi"
+      : rome(at) === rome(yesterday)
+        ? "ieri"
+        : at.toLocaleDateString("it-IT", { timeZone: "Europe/Rome", weekday: "short", day: "numeric", month: "short" });
+  return `Ricevuta ${day} alle ${time}`;
+}
+
+/** Per quando serve: il giorno e la fascia scelti, oppure "in settimana"/"con calma" (l'urgente ha già il bollino). */
+function leadWanted(request: ProfessionalLead["guidedRequest"]): string | null {
+  if (request.preferredDate) {
+    const day = new Date(`${request.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+    return `Per ${day}${request.preferredTimeSlot ? `, ${request.preferredTimeSlot.replace("-", "–")}` : ""}`;
+  }
+  if (request.timing === "WEEK") return "Per questa settimana";
+  if (request.timing === "CALM") return "Con calma, senza fretta";
+  return null;
 }
 
 function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {

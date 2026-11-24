@@ -458,7 +458,8 @@ const BUILDERS: Record<string, Builder> = {
     ];
     return {
       kind: "notification",
-      subject: "Il cliente ha accettato il tuo preventivo",
+      // Mestiere e tipo già nell'oggetto (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+      subject: `Il cliente ha accettato il tuo preventivo${ctx.category && serviceModeLabel(payload.serviceMode) ? ` · ${jobPlaceLabel(ctx.category, null, payload.serviceMode)}` : ""}`,
       greeting: ctx.name,
       title: "Preventivo accettato!",
       paragraphs: [

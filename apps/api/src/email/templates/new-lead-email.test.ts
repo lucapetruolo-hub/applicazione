@@ -61,7 +61,10 @@ describe("email Nuova richiesta", () => {
     const withCtx = { ...ctx, category: "Idraulico", city: "Roma" };
     const online = notificationEmail("QUOTE_ACCEPTED", { serviceMode: "ONLINE" }, withCtx)!;
     expect(online.details).toEqual(expect.arrayContaining([{ label: "Lavoro", value: "Idraulico" }, { label: "Dove", value: "Online" }]));
+    expect(online.subject).toBe("Il cliente ha accettato il tuo preventivo · Idraulico online");
     const home = notificationEmail("QUOTE_ACCEPTED", { serviceMode: "HOME" }, withCtx)!;
+    expect(home.subject).toBe("Il cliente ha accettato il tuo preventivo · Idraulico a domicilio");
+    expect(notificationEmail("QUOTE_ACCEPTED", {}, withCtx)!.subject).toBe("Il cliente ha accettato il tuo preventivo");
     expect(home.details).toEqual(expect.arrayContaining([{ label: "Lavoro", value: "Idraulico, Roma" }, { label: "Dove", value: "A domicilio" }]));
     expect(notificationEmail("QUOTE_ACCEPTED", {}, withCtx)!.details?.some((d) => d.label === "Dove")).toBe(false);
   });

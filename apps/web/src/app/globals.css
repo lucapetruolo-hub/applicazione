@@ -2325,6 +2325,11 @@ html.site-menu-open .profile-cta-bar {
   color: #5e5a54;
   font-size: 16px;
 }
+/* Quando è arrivata la richiesta e per quando serve (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md). */
+.today-row-when {
+  color: #5e5a54;
+  font-size: 14px;
+}
 .today-row-meta {
   display: flex;
   flex-wrap: wrap;
