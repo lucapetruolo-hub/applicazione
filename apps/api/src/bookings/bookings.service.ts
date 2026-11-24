@@ -694,6 +694,8 @@ export class BookingsService implements OnModuleInit {
       // Quale lavoro, nel testo della notifica (docs/CHANGELOG.md §349).
       category: guidedRequest.category.label,
       jobLabel: notificationJobLabel(guidedRequest.description),
+      // A domicilio o online (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+      serviceMode: guidedRequest.serviceMode ?? null,
       clientPhone: booking.recipientPhone ?? client?.phone ?? null,
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,

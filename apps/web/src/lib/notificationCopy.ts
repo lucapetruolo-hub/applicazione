@@ -1,4 +1,4 @@
-import { asScheduleChange, formatAppointmentDate, formatEur, formatAppointmentTimeRange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
+import { asScheduleChange, formatAppointmentDate, formatEur, formatAppointmentTimeRange, jobPlaceLabel, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
 
 /**
  * Testo simpatico per il popup "toast" quando arriva una nuova notifica
@@ -246,7 +246,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
     // Come paga, senza aprire il lavoro (docs/changelog/2026-11-19-pagamento-scelto-al-professionista.md).
     const payment = text(data.paymentShort);
-    const accepted = `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`;
+    // A domicilio o online, tra parentesi: "online" da solo si confondeva con "Paga online"
+    // (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+    const mode = data.serviceMode === "HOME" ? " (a domicilio)" : data.serviceMode === "ONLINE" ? " (online)" : "";
+    const accepted = `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${mode}${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`;
     // Il lavoro può finire già con un punto ("...della cucina."): mai due punti di fila.
     return { icon: "🥳", message: payment ? `${accepted.replace(/[.!?…\s]+$/u, "")}. ${payment}.` : accepted };
   }
@@ -323,19 +326,17 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "✅", message: `${who ?? "Il cliente"} ha confermato che il lavoro${jobSuffix} è terminato: segnalalo anche tu con l'importo finale.` };
   }
   if (type === "BOARD_CLAIM_ARRIVED" && text(data.category)) {
-    const where = text(data.city) ? ` a ${text(data.city)}` : "";
-    return { icon: "📌", message: `La richiesta che avevi scelto è nel tuo elenco (${text(data.category)}${where}): manda il preventivo.` };
+    return { icon: "📌", message: `La richiesta che avevi scelto è nel tuo elenco (${jobPlaceLabel(text(data.category)!, text(data.city), data.serviceMode)}): manda il preventivo.` };
   }
   if (type === "BOARD_NEARBY" && text(data.category)) {
-    const where = text(data.city) ? ` a ${text(data.city)}` : "";
     const others = typeof data.count === "number" && data.count > 1 ? ` e altre ${data.count - 1}` : "";
-    return { icon: "📍", message: `Lavori cercati: una richiesta nuova vicino a te (${text(data.category)}${where})${others}. Puoi rispondere.` };
+    return { icon: "📍", message: `Lavori cercati: una richiesta nuova vicino a te (${jobPlaceLabel(text(data.category)!, text(data.city), data.serviceMode)})${others}. Puoi rispondere.` };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
-    const where = text(data.city) ? ` a ${text(data.city)}` : "";
     // Solo per te o scelto tra pochi, come nell'email (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
     const audience = data.audience === "direct" ? " solo per te" : data.audience === "chosen" && typeof data.among === "number" ? ` (scelto tra ${data.among})` : "";
-    return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}${audience}: ${text(data.category)}${where}` };
+    // A domicilio o online (docs/changelog/2026-11-24-domicilio-online-nelle-notifiche.md).
+    return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}${audience}: ${jobPlaceLabel(text(data.category)!, text(data.city), data.serviceMode)}` };
   }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
