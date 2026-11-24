@@ -463,7 +463,9 @@ export function QuoteCard({
                 Il professionista ha cambiato il prezzo
               </Text>
             ) : null}
-            {/* Le voci solo se sono più di una: con una sola ripetevano il totale (scelta di Luca, 05/11/2026). */}
+            {/* Con una voce sola niente importo, che ripeterebbe il totale (scelta di Luca, 05/11/2026),
+                ma il nome sì: senza, il cliente leggeva il prezzo e non per cosa
+                (Luca, docs/changelog/2026-11-24-voce-unica-nel-preventivo.md). */}
             {/* Una voce per riga, nome a sinistra e importo a destra (richiesta di Luca,
                 docs/changelog/2026-11-11-voci-prezzo-in-colonna.md): in fila con "·" non si
                 capiva quale importo andava con quale voce. */}
@@ -481,6 +483,10 @@ export function QuoteCard({
                   </XStack>
                 ))}
               </YStack>
+            ) : quote.items.length === 1 ? (
+              <Text fontSize={15} color={brand.grafite70} marginTop={6} maxWidth={460}>
+                {capitalizeItemName(quote.items[0]!.name)}
+              </Text>
             ) : null}
           </QuoteFact>
         ) : quote.items.length > 0 ? (
