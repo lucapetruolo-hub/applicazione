@@ -2497,6 +2497,8 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Quando (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md), null per i lavori annullati prima.
+      canceledAt: booking.canceledAt?.toISOString() ?? null,
       // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
       reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).

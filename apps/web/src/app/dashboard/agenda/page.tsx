@@ -705,7 +705,7 @@ function DashboardAgendaContent() {
   async function handleCancelWithNote(note: string | undefined) {
     if (!token || !cancelingBooking) return;
     await apiClient.cancelBookingByProfessional(token, cancelingBooking.id, { note });
-    patchBooking(cancelingBooking.id, { status: "CANCELED", canceledBy: "PROFESSIONAL", cancellationNote: note ?? null });
+    patchBooking(cancelingBooking.id, { status: "CANCELED", canceledBy: "PROFESSIONAL", canceledAt: new Date().toISOString(), cancellationNote: note ?? null });
     setCancelingBooking(null);
     setSelectedBooking(null);
   }

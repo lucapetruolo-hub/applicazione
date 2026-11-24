@@ -1556,6 +1556,11 @@ model Booking {
   // stato passa a CANCELED dal calendario (PROFESSIONAL in entrambi i casi).
   canceledBy BookingCanceledBy?
 
+  // Quando è stato annullato (Luca, docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md):
+  // si legge toccando l'etichetta "Annullata". Null per le righe annullate
+  // prima di questo campo; torna null se l'appuntamento si riapre.
+  canceledAt DateTime?
+
   // Nota privata del professionista per ricordare dettagli sulla
   // prenotazione (es. "portare il pezzo di ricambio", richiesta esplicita
   // dell'utente) — mai mostrata al cliente, a differenza di

@@ -99,6 +99,8 @@ import { AudienceBadge, DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE,
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
+import { CanceledInfo } from "@/components/CanceledInfo";
+import { canceledInfoForProfessional } from "@/lib/canceledInfo";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 /** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §349). */
@@ -1039,6 +1041,8 @@ export function RequestCard({
     }
   }
 
+  const canceledInfo = stage === "annullata" && booking?.status === "CANCELED" ? canceledInfoForProfessional(booking, "Annullata") : null;
+
   return (
     <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="0" padding={0} overflow="hidden">
       {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
@@ -1062,7 +1066,11 @@ export function RequestCard({
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
-            <StagePill stage={stage} label={stage === "chiusa" ? closedStageLabel(lead) : undefined} />
+            {/* Chi ha annullato, quando e perché, al passaggio del mouse o con un tocco
+                (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+            <CanceledInfo info={canceledInfo}>
+              <StagePill stage={stage} label={stage === "chiusa" ? closedStageLabel(lead) : undefined} moreInfo={canceledInfo !== null} />
+            </CanceledInfo>
             <ServiceBadge online={isOnline} />
             {/* Quando serve, scelto dal cliente (§344): "Oggi" è già il badge Urgente. */}
             {gr.timing === "WEEK" || gr.timing === "CALM" ? (

@@ -352,6 +352,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Quando è stato annullato (ISO), null per i lavori annullati prima di questo dato (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */
+  canceledAt: string | null;
   /** Chi ha chiesto di riaprire l'appuntamento annullato, in attesa della risposta dell'altro (collaudo F-08). */
   reopenRequestedBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */

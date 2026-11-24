@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 import Link from "next/link";
-import { Check, Navigation, Phone, Repeat, Truck, Video, X } from "lucide-react";
+import { Check, Info, Navigation, Phone, Repeat, Truck, Video, X } from "lucide-react";
 import {
   RECURRING_FREQUENCY_LABELS,
   formatAppointmentDate,
@@ -18,6 +18,8 @@ import {
   type ProfessionalBooking,
 } from "@professionisti/shared";
 import { agendaPayment } from "@/lib/agendaPayment";
+import { CanceledInfo } from "@/components/CanceledInfo";
+import { canceledInfoForProfessional } from "@/lib/canceledInfo";
 
 const STATUS_PILL: Record<ProfessionalBooking["status"], { label: string; tone: string }> = {
   PENDING: { label: "Da confermare", tone: "brass" },
@@ -110,13 +112,20 @@ export function AppointmentPanel({
   }
 
   const jobDays = formatJobDays(booking.scheduledAt, booking.scheduledEndAt);
+  const canceledInfo = booking.status === "CANCELED" ? canceledInfoForProfessional(booking, "Annullato") : null;
 
   return (
     <>
       <div className="ag-scrim" onClick={onClose} aria-hidden />
       <aside ref={dialogRef} className="ag-sheet" role="dialog" aria-modal="true" aria-label={`Appuntamento con ${name}`}>
         <div className="ag-sheet-top">
-          <span className={`ag-pill ${pill.tone}`}>{pill.label}</span>
+          {/* Chi ha annullato, quando e perché (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+          <CanceledInfo info={canceledInfo}>
+            <span className={`ag-pill ${pill.tone}`}>
+              {pill.label}
+              {canceledInfo ? <Info size={13} strokeWidth={2.25} aria-hidden /> : null}
+            </span>
+          </CanceledInfo>
           {kindLabel ? <span className="ag-pill">{kindLabel}</span> : null}
           {booking.recurring ? (
             // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md).

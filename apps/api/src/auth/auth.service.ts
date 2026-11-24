@@ -968,6 +968,7 @@ export class AuthService {
             finalItems: { orderBy: { position: "asc" } },
             cancellationNote: true,
             canceledBy: true,
+            canceledAt: true,
             meetingLink: true,
             refundRequested: true,
             refundRequestedAt: true,

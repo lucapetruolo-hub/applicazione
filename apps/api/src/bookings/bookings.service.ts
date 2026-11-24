@@ -218,7 +218,7 @@ export class BookingsService implements OnModuleInit {
     for (const job of jobs) {
       await this.prisma.booking.update({
         where: { id: job.id },
-        data: { status: "CANCELED", canceledBy: "PROFESSIONAL", cancellationNote: ACCOUNT_CLOSED_NOTE },
+        data: { status: "CANCELED", canceledBy: "PROFESSIONAL", canceledAt: new Date(), cancellationNote: ACCOUNT_CLOSED_NOTE },
       });
       await this.jobPaymentsService.refundOnCancel(job.id, professionalUserId);
       await this.notificationsService.notify(job.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
@@ -778,7 +778,7 @@ export class BookingsService implements OnModuleInit {
       // stesso valore già usato da cancelByProfessional.
       data: {
         status,
-        ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}),
+        ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const, canceledAt: new Date() } : {}),
       },
     });
     if (status === "CANCELED") {
@@ -1246,7 +1246,7 @@ export class BookingsService implements OnModuleInit {
     const recurringSkip = job.recurringJobId !== null && !job.recurringJob?.stoppedAt;
     await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL", ...(recurringSkip ? { skippedAt: new Date() } : {}) },
+      data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL", canceledAt: new Date(), ...(recurringSkip ? { skippedAt: new Date() } : {}) },
     });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
     await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
@@ -1309,6 +1309,7 @@ export class BookingsService implements OnModuleInit {
       data: {
         status: "CANCELED",
         canceledBy: "CLIENT",
+        canceledAt: new Date(),
         canceledLate: late,
         ...(recurringSkip ? { skippedAt: new Date() } : {}),
         // Account chiuso: niente più indirizzo né telefono per il professionista (collaudo B-01).
@@ -1436,7 +1437,7 @@ export class BookingsService implements OnModuleInit {
           await this.assertSlotFree(tx, booking.professionalProfileId, booking.scheduledAt, booking.scheduledEndAt, booking.serviceMode);
           await tx.booking.update({
             where: { id: bookingId },
-            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false, reopenRequestedAt: null, reopenRequestedBy: null },
+            data: { status: "CONFIRMED", canceledBy: null, canceledAt: null, cancellationNote: null, canceledLate: false, reopenRequestedAt: null, reopenRequestedBy: null },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -2070,6 +2071,8 @@ export class BookingsService implements OnModuleInit {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Quando (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md), null per i lavori annullati prima.
+      canceledAt: booking.canceledAt?.toISOString() ?? null,
       // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
       reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Dati di contatto del professionista, per il popup "Non presentato"

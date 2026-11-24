@@ -3,6 +3,7 @@
 import { REQUEST_TIMING_LABEL, formatAppointmentTimeRange, leadAudienceLabel, type LeadAudience, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
+import { Info } from "lucide-react";
 
 export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 // Filtri in cima alla pagina (cerca/ordina/zona) — dimensioni più grandi
@@ -108,7 +109,7 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
 }
 
 /** `label` sostituisce il nome dello stato, per esempio "Ritirata dal cliente" su una richiesta chiusa (docs/CHANGELOG.md §343). */
-export function StagePill({ stage, label }: { stage: RequestStage; label?: string }) {
+export function StagePill({ stage, label, moreInfo }: { stage: RequestStage; label?: string; moreInfo?: boolean }) {
   const s = STAGE_STYLE[stage];
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
@@ -116,6 +117,8 @@ export function StagePill({ stage, label }: { stage: RequestStage; label?: strin
       <Text fontFamily="body" fontSize={16} fontWeight="700" color={s.fg}>
         {label ?? s.label}
       </Text>
+      {/* Si tocca per sapere di più, per esempio chi ha annullato (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+      {moreInfo ? <Info size={15} strokeWidth={2} color={s.fg} aria-hidden /> : null}
     </XStack>
   );
 }
