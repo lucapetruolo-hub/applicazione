@@ -2911,6 +2911,15 @@ model Invoice {
   sdiSentAt             DateTime?
   /// Invii allo SdI: dopo uno scarto il file va rimandato con un nome nuovo.
   sdiAttempts           Int              @default(0)
+  /// Quando lo SdI l'ha scartata (notifica NS): va rimandata entro 5 giorni
+  /// con lo stesso numero e la stessa data (circolare 13/E del 2018,
+  /// docs/changelog/2026-11-24-scadenze-fiscali-attivita.md).
+  sdiRejectedAt         DateTime?
+  /// Secondo avviso alla Finanza sullo scarto ancora da rimandare (giorno 4).
+  sdiRejectRemindedAt   DateTime?
+  /// Mancata consegna (MC): la fattura è emessa, ma l'originale il
+  /// professionista lo trova solo nel suo cassetto fiscale.
+  sdiUndeliveredAt      DateTime?
   /// FatturaPA XML generato all'emissione, cifrato come il codice fiscale che contiene.
   xml                   String?
   createdAt             DateTime         @default(now())

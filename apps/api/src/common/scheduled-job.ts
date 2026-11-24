@@ -21,22 +21,71 @@ import { Prisma, prisma } from "@professionisti/database";
  * prima: le prove e i pulsanti di Admin lo chiamano direttamente, senza
  * passare dalla riga; il giro a orario usa un metodo nascosto accanto.
  */
-export function ScheduledJob(cronTime: string, options: CronOptions = {}): MethodDecorator {
+export function ScheduledJob(cronTime: string, options: ScheduledJobOptions = {}): MethodDecorator {
   return (target, key, descriptor) => {
     const original = descriptor.value as unknown as (this: unknown) => Promise<unknown> | unknown;
     const name = `${target.constructor.name}.${String(key)}`;
+    const { catchUpWithinMs, ...cronOptions } = options;
     const wrapper = async function (this: unknown): Promise<void> {
       await runScheduled(name, new Date(), () => original.call(this), prismaCronRunStore);
     };
+    if (catchUpWithinMs) {
+      catchUpJobs.push({
+        name,
+        owner: target.constructor,
+        withinMs: catchUpWithinMs,
+        run: (instance, slot) => runScheduled(name, slot, () => original.call(instance), prismaCronRunStore),
+      });
+    }
     const hiddenKey = `${String(key)}__aOrario`;
     Object.defineProperty(target, hiddenKey, { value: wrapper, writable: true, configurable: true, enumerable: false });
-    Cron(cronTime, { timeZone: "Europe/Rome", waitForCompletion: true, name, ...options } as CronOptions)(
+    Cron(cronTime, { timeZone: "Europe/Rome", waitForCompletion: true, name, ...cronOptions } as CronOptions)(
       target,
       hiddenKey,
       { value: wrapper, writable: true, configurable: true, enumerable: false } as TypedPropertyDescriptor<typeof wrapper>,
     );
     return descriptor;
   };
+}
+
+export type ScheduledJobOptions = CronOptions & {
+  /**
+   * Recupero all'avvio (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md):
+   * se l'API era spenta all'orario (piano Free di Render, riavvio, deploy) e
+   * da allora sono passati meno di questi millisecondi, il giro mancato parte
+   * appena l'API si riaccende (`ScheduledCatchUpService`). Solo per le
+   * attività "a stato", che fanno tutto quello che manca e non creano
+   * doppioni (fatture del mese, esiti, zip): mai per un promemoria a orario
+   * fisso, che il giorno dopo non serve più.
+   */
+  catchUpWithinMs?: number;
+};
+
+/** Un'attività che si recupera all'avvio: il servizio la cerca tra i provider di Nest. */
+export interface CatchUpJob {
+  name: string;
+  owner: object;
+  withinMs: number;
+  run(instance: unknown, slot: Date): Promise<"done" | "skipped">;
+}
+
+/** Attività con `catchUpWithinMs`, registrate dal decoratore al caricamento delle classi. */
+export const catchUpJobs: CatchUpJob[] = [];
+
+/**
+ * Ultimo orario previsto entro `withinMs` prima di `now` (null se nessuno).
+ * `next` è il prossimo orario dell'attività dopo un istante (da `CronTime`).
+ */
+export function lastExpectedSlot(next: (from: Date) => Date, now: Date, withinMs: number): Date | null {
+  let last: Date | null = null;
+  let cursor = new Date(now.getTime() - withinMs);
+  for (let i = 0; i < 1000; i += 1) {
+    const at = next(cursor);
+    if (at.getTime() > now.getTime()) break;
+    last = cronSlot(at);
+    cursor = at;
+  }
+  return last;
 }
 
 /** Dove si segnano i giri: il database in produzione, una mappa nelle prove. */

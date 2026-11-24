@@ -76,7 +76,7 @@ export class FeeReconciliationService {
   }
 
   /** Il 1° del mese alle 7:30, dopo le fatture: avviso se il mese prima non torna. */
-  @ScheduledJob("30 7 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 7 1 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 14 * 24 * 60 * 60_000 })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
     try {

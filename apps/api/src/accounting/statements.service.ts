@@ -473,7 +473,7 @@ export class StatementsService {
    * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§390),
    * pure senza movimenti a dicembre.
    */
-  @ScheduledJob("0 8 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 1 * *", { timeZone: "Europe/Rome", catchUpWithinMs: 14 * 24 * 60 * 60_000 })
   async sendAccountantStatements(now: Date = new Date()): Promise<number> {
     return this.sendAccountantStatementsFor(previousMonth(romeMonthOf(now)), now);
   }

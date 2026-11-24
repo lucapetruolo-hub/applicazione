@@ -48,6 +48,10 @@ export function invoicePdfModel(invoice: PlatformInvoiceView): PdfDocumentModel 
   const noteLines = [
     recoverable,
     jobFees && invoice.periodMonth ? `Le stesse cifre le trovi, lavoro per lavoro, nell'estratto di ${accountingMonthLabel(invoice.periodMonth)}.` : null,
+    // Mancata consegna (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md): la fattura è emessa, va detto dove trovarla.
+    invoice.sdiUndelivered
+      ? "Il fisco non è riuscito a consegnare la fattura elettronica al tuo codice destinatario o alla tua PEC: l'originale lo trovi nel tuo cassetto fiscale, in Fatture e corrispettivi. Questo PDF è una copia di cortesia."
+      : null,
   ].filter((line): line is string => !!line);
 
   const blocks: PdfBlock[] = [

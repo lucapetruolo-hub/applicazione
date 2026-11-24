@@ -2,13 +2,17 @@ import { Controller, Get, Inject, ServiceUnavailableException } from "@nestjs/co
 import type { PrismaClient } from "@professionisti/database";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { PRISMA } from "../prisma/prisma.module";
+import { ScheduledCatchUpService } from "./scheduled-catch-up.service";
 
 /** Oltre questo tempo il database è considerato giù: l'uptime riprova da sé. */
 const DB_CHECK_TIMEOUT_MS = 3000;
 
 @Controller("health")
 export class HealthController {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly catchUp: ScheduledCatchUpService,
+  ) {}
 
   /**
    * Controllo leggero di Render (`healthCheckPath`): risponde se il processo è
@@ -40,6 +44,22 @@ export class HealthController {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /**
+   * Controllo "uomo morto" delle attività a orario
+   * (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md): 503 se
+   * un'attività che si recupera all'avvio (fatture del mese, esiti, zip al
+   * commercialista) non è partita, è finita con un errore o si è fermata a
+   * metà. Lo chiama `.github/workflows/uptime.yml` da fuori, così suona anche
+   * quando l'API dormiva. Aspetta prima il recupero all'avvio. Solo nomi
+   * delle attività e orari, nessun dato.
+   */
+  @Get("cron")
+  async cron() {
+    const late = await this.catchUp.lateJobs();
+    if (late.length > 0) throw new ServiceUnavailableException({ status: "error", late });
+    return { status: "ok" };
   }
 
   /**

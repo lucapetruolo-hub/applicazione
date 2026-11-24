@@ -5,7 +5,8 @@ const TIMEOUT_MS = 15_000;
 /** Esito che ci interessa di una fattura inviata. */
 export type SdiDeliveryStatus = "SENT" | "DELIVERED" | "REJECTED";
 
-export type SdiNotification = { sdiId: string; status: SdiDeliveryStatus; message: string | null };
+/** `undelivered`: ricevuta MC, emessa ma non consegnata (il professionista la trova nel cassetto fiscale). */
+export type SdiNotification = { sdiId: string; status: SdiDeliveryStatus; message: string | null; undelivered?: boolean };
 
 /** La nostra società presso il fornitore: partita IVA, ragione sociale, email per la conservazione. */
 export type SdiCompany = { fiscalId: string; name: string; email: string };
@@ -56,6 +57,29 @@ export function sdiRejectionMessage(message: unknown): string | null {
 }
 
 /**
+ * Cosa fare per gli scarti più comuni (codici delle specifiche tecniche SdI,
+ * docs/changelog/2026-11-24-scadenze-fiscali-attivita.md). Null per gli altri:
+ * resta il motivo dello SdI.
+ */
+const SDI_REJECTION_HINTS: Record<string, string> = {
+  "00200": "Il file non rispetta il formato: è un errore nostro, va segnalato a chi segue il codice prima di rimandarla.",
+  "00305": "La partita IVA del professionista non risulta all'Anagrafe tributaria: chiedigli di correggerla nei dati fiscali, poi rimandala.",
+  "00306": "Il codice fiscale del professionista non risulta all'Anagrafe tributaria: chiedigli di correggerlo nei dati fiscali, poi rimandala.",
+  "00311": "Il codice destinatario del professionista non esiste: chiedigli di correggerlo o di toglierlo (resta la PEC o il cassetto fiscale), poi rimandala.",
+  "00312": "Il codice destinatario del professionista non è attivo: chiedigli di correggerlo o di toglierlo, poi rimandala.",
+  "00404": "Lo SdI dice che è un doppione: forse una copia è già arrivata. Controlla sul servizio di invio prima di rimandarla.",
+  "00423": "Un importo non torna (prezzo per quantità): è un errore nostro, va segnalato a chi segue il codice prima di rimandarla.",
+};
+
+export function sdiRejectionHint(message: string | null): string | null {
+  for (const code of message?.match(/\b\d{5}\b/g) ?? []) {
+    const hint = SDI_REJECTION_HINTS[code];
+    if (hint) return hint;
+  }
+  return null;
+}
+
+/**
  * L'esito che decide, dalle notifiche di una fattura (`GET
  * /invoices_notifications/{uuid}`): vale l'ultima ricevuta RC, MC o NS.
  */
@@ -68,7 +92,8 @@ export function sdiOutcomeFromNotifications(sdiId: string, body: unknown): SdiNo
     const status = sdiOutcome(String(readPath(item, ["type"]) ?? "").toUpperCase());
     if (!status) continue;
     const message = readPath(item, ["message"]);
-    result = { sdiId, status, message: status === "REJECTED" ? sdiRejectionMessage(message) : null };
+    const undelivered = String(readPath(item, ["type"]) ?? "").toUpperCase() === "MC";
+    result = { sdiId, status, message: status === "REJECTED" ? sdiRejectionMessage(message) : null, ...(undelivered ? { undelivered } : {}) };
   }
   return result;
 }
