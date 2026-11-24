@@ -41,4 +41,15 @@ if (missing.length > 0) {
   console.error("Aggiungile a render.yaml (sync: false, con un commento) e a docs/ops/variabili.md.");
   process.exit(1);
 }
-console.log(`render.yaml in ordine: ${used.size} variabili lette dall'API, tutte nel Blueprint.`);
+// Avvio dell'API senza pnpm o npm in mezzo e con "exec": altrimenti il
+// SIGTERM di Render si ferma al processo di mezzo e l'API viene uccisa dopo
+// 30 secondi invece di chiudersi in ordine
+// (docs/changelog/2026-11-23-chiusura-api-su-render.md).
+const startCommand = readFileSync(join(root, "render.yaml"), "utf8").match(/^\s*startCommand:\s*(.+)$/m)?.[1]?.trim() ?? "";
+if (!/(^|&&\s*)exec node dist\/main\.js$/.test(startCommand) || /\b(pnpm|npm|npx|yarn)\b/.test(startCommand)) {
+  console.error(`startCommand di render.yaml non valido: "${startCommand}".`);
+  console.error('Deve finire con "exec node dist/main.js" e non usare pnpm, npm, npx o yarn (docs/changelog/2026-11-23-chiusura-api-su-render.md).');
+  process.exit(1);
+}
+
+console.log(`render.yaml in ordine: ${used.size} variabili lette dall'API, tutte nel Blueprint; avvio dell'API diretto.`);

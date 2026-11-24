@@ -40,3 +40,16 @@ vecchia non deve più comparire l'uccisione dopo 30 secondi.
 lanciato con `sh -c`: l'API parte (migrazioni, poi "API in ascolto"), e con
 un flusso in tempo reale aperto si chiude subito al SIGTERM chiudendo anche
 il flusso; con il comando di prima resta accesa 38 secondi. CI della PR.
+
+## Controllo automatico dell'avvio (24/11/2026)
+
+**Richiesta** (Luca, 24/11, miglioria proposta dopo l'unione della PR #469): un
+controllo che blocchi la PR se qualcuno rimette pnpm nell'avvio di Render.
+
+**Decisione**: `apps/api/scripts/check-render-env.mjs` (passo "Variabili di
+Render e attività a orario" della CI) controlla anche che lo `startCommand`
+di `render.yaml` finisca con `exec node dist/main.js` e non usi pnpm, npm,
+npx o yarn; altrimenti la CI si ferma con il motivo e questo file.
+
+**Verifica**: lo script passa con il comando attuale e si ferma con
+`pnpm --filter @professionisti/api start` e con il comando senza `exec`.
