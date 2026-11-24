@@ -7,6 +7,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { AccountingController } from "./accounting.controller";
 import { AdminAccountingController } from "./admin-accounting.controller";
 import { AdminCourtesyDocumentsController } from "./admin-courtesy-documents.controller";
+import { CompanyAccountantService } from "./company-accountant.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
 import { InvoicesService } from "./invoices.service";
@@ -18,7 +19,7 @@ import { StatementsService } from "./statements.service";
 @Module({
   imports: [AuthModule, AdminModule, AuditLogModule, EmailModule, NotificationsModule],
   controllers: [AccountingController, AdminAccountingController, AdminCourtesyDocumentsController],
-  providers: [InvoicesService, StatementsService, CourtesyCopyService, FeeReconciliationService, JobDocumentsService, QuotePdfService],
+  providers: [InvoicesService, StatementsService, CourtesyCopyService, FeeReconciliationService, JobDocumentsService, QuotePdfService, CompanyAccountantService],
   exports: [InvoicesService, StatementsService],
 })
 export class AccountingModule {}

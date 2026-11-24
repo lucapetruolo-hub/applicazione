@@ -2994,6 +2994,13 @@ model PlatformInvoiceSettings {
   pecEmail     String?
   /// Da quando emettere le fatture (prima solo estratto).
   invoicesFrom DateTime?
+  /// Commercialista della società: riceve lo zip delle fatture del mese
+  /// (docs/changelog/2026-11-24-fatture-del-mese-zip.md).
+  accountantEmail    String?
+  /// Spunta "Manda ogni mese le fatture al commercialista": quando è stata messa.
+  accountantZipAt    DateTime?
+  /// Ultimo mese (AAAA-MM) mandato, così non parte due volte.
+  accountantZipMonth String?
   updatedAt    DateTime  @updatedAt
 
   @@map("platform_invoice_settings")

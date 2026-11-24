@@ -11,12 +11,14 @@ import {
   freePeriodSummary,
   invoiceNumberLabel,
   isAccountingMonth,
+  monthInvoicesCsv,
   monthlyInvoiceLate,
   notificationJobLabel,
   subscriptionTierInfo,
   type BillingInterval,
   type DocumentsOverview,
   type InvoiceSdiStatusValue,
+  type MonthInvoiceCsvRow,
   type PlatformInvoiceAdminRow,
   type PlatformInvoiceLine,
   type PlatformInvoiceSettingsInput,
@@ -169,6 +171,7 @@ export class InvoicesService {
         : 0,
       sdiConfigured: !!this.sdi,
       sdiSandbox: !!this.sdi?.sandbox,
+      accountant: { email: row?.accountantEmail ?? null, enabled: !!row?.accountantZipAt, lastMonth: row?.accountantZipMonth ?? null },
     };
   }
 
@@ -931,14 +934,33 @@ export class InvoicesService {
     if (rows.length === 0) throw new NotFoundException("Nessuna fattura in quel mese.");
     const entries: ZipEntry[] = [];
     const missing: string[] = [];
+    const summary: MonthInvoiceCsvRow[] = [];
     for (const row of rows) {
       const label = invoiceNumberLabel(row.series, row.year, row.number);
       const base = label.replace(/\//g, "-");
       const xml = readFiscal(row.xml);
       if (xml) entries.push({ name: `xml/${base}.xml`, data: Buffer.from(xml, "utf8") });
       else missing.push(`${label}: ${row.sdiMessage ?? "file della fattura elettronica non ancora pronto"}`);
-      entries.push({ name: `pdf/${base}.pdf`, data: await renderDocumentPdf(invoicePdfModel(await this.invoiceView(row))) });
+      const view = await this.invoiceView(row);
+      entries.push({ name: `pdf/${base}.pdf`, data: await renderDocumentPdf(invoicePdfModel(view)) });
+      const recipient = readRecipient(row.recipient);
+      summary.push({
+        number: view.number,
+        issuedAt: view.issuedAt,
+        source: view.source,
+        creditNote: view.creditNote,
+        relatedNumber: view.relatedNumber,
+        recipientName: view.recipient.name,
+        vatNumber: recipient?.vatNumber ?? null,
+        taxCode: recipient?.taxCode ?? null,
+        taxableEurCents: view.taxableEurCents,
+        vatEurCents: view.vatEurCents,
+        totalEurCents: view.totalEurCents,
+        hasXml: !!xml,
+        sdiStatus: view.sdiStatus,
+      });
     }
+    entries.unshift({ name: "riepilogo.csv", data: Buffer.from(monthInvoicesCsv(summary), "utf8") });
     if (missing.length > 0) {
       const note = [`Fatture di ${month} senza il file XML (non ancora inviate allo SdI), qui solo in PDF:`, "", ...missing, ""].join("\r\n");
       entries.push({ name: "da-sistemare.txt", data: Buffer.from(note, "utf8") });

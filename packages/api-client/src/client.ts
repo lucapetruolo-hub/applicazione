@@ -2265,6 +2265,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminUpdateInvoiceSettings: (token: string, input: PlatformInvoiceSettingsInput) =>
       request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
+    adminUpdateCompanyAccountant: (token: string, input: AccountantSettingsInput) =>
+      request<PlatformInvoiceSettingsView["accountant"]>("/admin/invoices/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
     adminInvoices: (token: string, month?: string) =>
       request<PlatformInvoiceAdminRow[]>(`/admin/invoices${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

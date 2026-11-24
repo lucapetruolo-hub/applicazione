@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
-import { platformInvoiceSettingsSchema, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
+import { accountantSettingsSchema, platformInvoiceSettingsSchema, type AccountantSettingsInput, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -7,6 +7,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { InvoicesService } from "./invoices.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
 import { StatementsService } from "./statements.service";
+import { CompanyAccountantService } from "./company-accountant.service";
 
 /** Admin → Finanza: dati della nostra società e le fatture emesse (docs/CHANGELOG.md §378). */
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -18,11 +19,32 @@ export class AdminAccountingController {
     private readonly feeReconciliationService: FeeReconciliationService,
     private readonly statementsService: StatementsService,
     private readonly auditLogService: AuditLogService,
+    private readonly companyAccountantService: CompanyAccountantService,
   ) {}
 
   @Get("settings")
   settings() {
     return this.invoicesService.settingsView();
+  }
+
+  /**
+   * Commercialista della società e spunta dello zip mensile
+   * (docs/changelog/2026-11-24-fatture-del-mese-zip.md). Nel registro azioni.
+   */
+  @Put("accountant")
+  async updateAccountant(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(accountantSettingsSchema)) body: AccountantSettingsInput) {
+    const before = await this.companyAccountantService.view();
+    const after = await this.companyAccountantService.update(body);
+    const describe = (v: { email: string | null; enabled: boolean }) => `${v.email ?? "nessuna email"}, ${v.enabled ? "invio ogni mese" : "senza invio"}`;
+    await this.auditLogService.record({
+      entityType: "InvoiceSettings",
+      entityId: "default",
+      fieldName: "companyAccountant",
+      oldValue: describe(before),
+      newValue: describe(after),
+      changedByUserId: req.user.userId,
+    });
+    return after;
   }
 
   @Put("settings")

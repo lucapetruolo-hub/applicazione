@@ -45,6 +45,7 @@ data fissa:
 |---|---|---|---|
 | `InvoicesService.runMonthly` | 1° del mese, 7:00 | Fatture delle trattenute del mese prima e riepilogo ai professionisti non partono | Admin → Finanza → mese → **Rifai il giro del mese** |
 | `StatementsService.sendAccountantStatements` | 1° del mese, 8:00 | Estratti ai commercialisti non partono | Lo stesso pulsante: fa fatture, riepiloghi ed estratti che mancano, mai doppi (`accountant_statement_sends`) |
+| `CompanyAccountantService.sendMonthly` | 5 del mese, 9:00 | Lo zip delle fatture del mese prima non arriva al commercialista della società (solo con la spunta in Admin → Finanza) | Admin → Finanza → mese → **Scarica le fatture del mese** e giralo a mano |
 | `FeeReconciliationService.runMonthly` | 1° del mese, 7:30 | Quadratura con Stripe del mese non fatta | Admin → Finanza (quadratura) |
 | `DatabaseVersionService.monthlyCheck` | 1° del mese, 9:00 | Nessun avviso sulla versione di PostgreSQL per un mese | Nessuno, riprova il mese dopo |
 | `Dac7Service.sendYearEndReminders` | 1° novembre, 9:00 | Promemoria DAC7 di fine anno | Chiedere a un thread |

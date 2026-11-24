@@ -24,7 +24,9 @@ const view = {
   onlinePaidEurCents: 10000,
 };
 
-function build(rows: { id: string; series: string; year: number; number: number; xml: string | null; sdiMessage?: string | null }[]) {
+type Row = { id: string; series: string; year: number; number: number; xml: string | null; sdiMessage?: string | null; recipient?: unknown };
+
+function build(rows: Row[]) {
   const prisma = { invoice: { findMany: vi.fn().mockResolvedValue(rows) } };
   const service = new InvoicesService(prisma as never, { notify: vi.fn() } as never);
   vi.spyOn(service, "invoiceView").mockResolvedValue(view as never);
@@ -34,7 +36,7 @@ function build(rows: { id: string; series: string; year: number; number: number;
 describe("InvoicesService.adminMonthZip", () => {
   it("mette XML e PDF di ogni fattura del mese, cercando per data del documento", async () => {
     const { service, prisma } = build([
-      { id: "a", series: "ABB", year: 2026, number: 3, xml: "<a/>" },
+      { id: "a", series: "ABB", year: 2026, number: 3, xml: "<a/>", recipient: { vatNumber: "01234567897", taxCode: null } },
       { id: "b", series: "COM", year: 2026, number: 17, xml: "<b/>" },
       { id: "c", series: "COM", year: 2026, number: 18, xml: null, sdiMessage: "Dati fiscali del professionista incompleti" },
     ]);
@@ -49,6 +51,10 @@ describe("InvoicesService.adminMonthZip", () => {
     expect(names).toContain("pdf/COM-2026-0018.pdf");
     expect(names).not.toContain("xml/COM-2026-0018.xml");
     expect(names).toContain("COM/2026/0018: Dati fiscali del professionista incompleti");
+    // Il riepilogo per il foglio di calcolo: una riga per fattura, importi all'italiana.
+    expect(names).toContain("riepilogo.csv");
+    expect(names).toContain("Numero;Data;Tipo documento;Servizio");
+    expect(names).toContain("COM/2026/0017;2026-10-31;TD24 Fattura differita;Trattenute sui pagamenti online;;Idraulica Rossi;01234567897;;7,00;1,54;8,54;S");
     expect(prisma.invoice.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "ISSUED", issuedAt: expect.any(Object) }) }));
   });
 
