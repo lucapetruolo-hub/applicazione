@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BillingService } from "./billing.service";
+import { BillingService, STRIPE_INVOICE_FOOTER } from "./billing.service";
 import { statementSuffix } from "../job-payments/online-money.service";
 
 /**
@@ -17,7 +17,7 @@ function buildService(profileOverrides: Record<string, unknown> = {}) {
     subscription: { findUnique: vi.fn().mockResolvedValue(null) },
   };
   const stripe = {
-    customers: { create: vi.fn().mockResolvedValue({ id: "cus_new" }) },
+    customers: { create: vi.fn().mockResolvedValue({ id: "cus_new" }), update: vi.fn().mockResolvedValue({ id: "cus_old" }) },
     subscriptions: { retrieve: vi.fn() },
     billingPortal: {
       sessions: { create: vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/p/session" }) },
@@ -35,7 +35,10 @@ describe("BillingService.createBillingPortal", () => {
 
     await expect(service.createBillingPortal("user-1")).resolves.toEqual({ url: "https://billing.stripe.com/p/session" });
 
-    expect(stripe.customers.create).toHaveBeenCalledWith(expect.objectContaining({ email: "pro@example.com" }), { idempotencyKey: "professional-customer-pro-1" });
+    expect(stripe.customers.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "pro@example.com", invoice_settings: { footer: STRIPE_INVOICE_FOOTER } }),
+      { idempotencyKey: "professional-customer-pro-1" },
+    );
     expect(prisma.professionalProfile.updateMany).toHaveBeenCalledWith({ where: { id: "pro-1", stripeCustomerId: null }, data: { stripeCustomerId: "cus_new" } });
     expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new" }));
   });
@@ -58,6 +61,7 @@ describe("BillingService.createBillingPortal", () => {
 
     expect(stripe.customers.create).not.toHaveBeenCalled();
     expect(prisma.professionalProfile.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { stripeCustomerId: "cus_old" } }));
+    expect(stripe.customers.update).toHaveBeenCalledWith("cus_old", { invoice_settings: { footer: STRIPE_INVOICE_FOOTER } });
   });
 });
 

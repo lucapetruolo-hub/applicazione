@@ -326,8 +326,12 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     e solo con tutti i passi verdi togliere la sandbox; (c) email di Stripe ai clienti: restano accese sia le ricevute dei
     pagamenti sia le fatture finalizzate (decisione di Luca del 2/11: il
     commercialista fa un doppio controllo). Il PDF "fattura" di Stripe ha un
-    numero diverso dalla nostra ABB: far confermare al commercialista che
-    non crea doppie registrazioni (domanda F del pacchetto). Lo storico
+    numero diverso dalla nostra ABB: dal 24/11 porta in fondo "Copia di
+    cortesia, non valida ai fini fiscali" (docs/changelog/2026-11-24-copia-di-cortesia-stripe.md);
+    in Live mettere la stessa frase anche in Stripe → Impostazioni →
+    Fatturazione → Modello di fattura, piè di pagina predefinito. Far
+    confermare al commercialista che non crea doppie registrazioni (domanda F
+    del pacchetto, C4). Lo storico
     fatture nel portale clienti è già spento dal codice (portale "Solo la carta");
     (d) dare al commercialista il pacchetto `analisi/pacchetto-commercialista/`
     dei file del progetto (PDF di ogni documento, XML, domande A-E; si
