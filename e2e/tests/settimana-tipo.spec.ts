@@ -67,6 +67,33 @@ test("salvata, la settimana riempie i prossimi giorni senza scegliere un mese", 
   expect(left.filter((s) => !bookingDates.has(s.date!))).toEqual([]);
 });
 
+test("a domicilio e online insieme: clienti per orario separati (docs/changelog/2026-11-24-clienti-per-orario-separati.md)", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== "telefono-italia", "Cambia i dati: una volta sola.");
+  const headers = { Authorization: `Bearer ${e2eData().token}`, "Content-Type": "application/json" };
+  const slot = (start: string, end: string) => ({ start, end, allowsHome: true, allowsOnline: true, homeMax: 2, onlineMax: 1 });
+  const day = [slot("08:00", "13:00"), slot("14:00", "20:00")];
+  expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { days: [[], day, day, day, day, day, []] } })).ok()).toBe(true);
+
+  await page.goto("/dashboard/agenda?tab=orari");
+  const week = page.getByRole("region", { name: "La tua settimana" });
+  const perSlot = week.getByRole("group", { name: "Clienti per orario" });
+  await expect(perSlot.getByLabel("A domicilio")).toHaveValue("2");
+  await expect(perSlot.getByLabel("Online")).toHaveValue("1");
+  await perSlot.getByLabel("Online").selectOption("5");
+  await week.getByRole("button", { name: "Salva la settimana" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Settimana salvata" })).toBeVisible();
+
+  const saved = (await (await request.get(`${API_URL}/agenda/week-template`, { headers })).json()) as { template: { days: { homeMax: number | null; onlineMax: number | null }[][] } };
+  expect(saved.template.days[1]!.every((s) => s.homeMax === 2 && s.onlineMax === 5)).toBe(true);
+
+  // Con una sola modalità resta un campo solo, col suo numero.
+  await week.getByRole("button", { name: "A domicilio", exact: true }).click();
+  await expect(perSlot).toHaveCount(0);
+  await expect(week.getByLabel("Clienti per orario")).toHaveValue("5");
+
+  expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { days: [[], [], [], [], [], [], []] } })).ok()).toBe(true);
+});
+
 test("orari sbagliati: l'avviso spiega cosa non va e non si salva", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "computer-tokyo", "Basta una volta, da computer.");
   await page.goto("/dashboard/agenda?tab=orari");

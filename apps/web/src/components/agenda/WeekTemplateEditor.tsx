@@ -12,7 +12,10 @@ const WEEKDAY_SHORT = WEEKDAY_FULL_LABELS.map((label) => label.slice(0, 3));
 const MAX_RANGES = 4;
 
 type Range = { start: string; end: string };
-type Mode = { allowsHome: boolean; allowsOnline: boolean; perSlot: number };
+/** Clienti per orario separati: a domicilio e online si contano ognuno per conto suo (come in agenda e sul server). */
+type Mode = { allowsHome: boolean; allowsOnline: boolean; homeMax: number; onlineMax: number };
+
+const PER_SLOT_CHOICES = [1, 2, 3, 4, 5, 10, 20];
 
 const PRESETS: { id: string; label: string; ranges: Range[] }[] = [
   { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "20:00" }] },
@@ -54,10 +57,14 @@ export function draftFromTemplate(template: AgendaWeekTemplate): Draft {
     if (rangesKey(template.days[day]!) !== rangesKey(base)) special[day] = template.days[day]!.map(({ start, end }) => ({ start, end }));
   }
   const first = workDays.length ? template.days[workDays[0]!]![0] : undefined;
+  const slots = workDays.flatMap((day) => template.days[day]!);
+  const homeMax = slots.find((s) => s.allowsHome && s.homeMax)?.homeMax ?? 1;
   const mode: Mode = {
     allowsHome: first?.allowsHome ?? true,
     allowsOnline: first?.allowsOnline ?? false,
-    perSlot: (first?.allowsHome ? first.homeMax : first?.onlineMax) ?? 1,
+    homeMax,
+    // Senza online in settimana parte dallo stesso numero di prima (un campo solo per tutti e due).
+    onlineMax: slots.find((s) => s.allowsOnline && s.onlineMax)?.onlineMax ?? homeMax,
   };
   return { workDays, base, special, mode };
 }
@@ -68,8 +75,8 @@ export function templateFromDraft(draft: Draft): AgendaWeekTemplate {
     end: r.end,
     allowsHome: draft.mode.allowsHome,
     allowsOnline: draft.mode.allowsOnline,
-    homeMax: draft.mode.allowsHome ? draft.mode.perSlot : null,
-    onlineMax: draft.mode.allowsOnline ? draft.mode.perSlot : null,
+    homeMax: draft.mode.allowsHome ? draft.mode.homeMax : null,
+    onlineMax: draft.mode.allowsOnline ? draft.mode.onlineMax : null,
   });
   return {
     days: [0, 1, 2, 3, 4, 5, 6].map((day) =>
@@ -388,16 +395,26 @@ export function WeekTemplateEditor({
                   <Plus size={15} aria-hidden /> {enablingOnline ? "Attivo…" : "Online"}
                 </button>
               ) : null}
-              <label className="ag-wt-per-slot">
-                <span className="ag-muted">Clienti per orario</span>
-                <select className="ag-input" value={draft.mode.perSlot} onChange={(e) => update({ mode: { ...draft.mode, perSlot: Number(e.target.value) } })}>
-                  {[1, 2, 3, 4, 5, 10, 20].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {draft.mode.allowsHome && draft.mode.allowsOnline ? (
+                // Tutti e due: due numeri, perché un'ora di videochiamate non vale un'ora di lavori a casa.
+                <div className="ag-wt-per-slot is-split" role="group" aria-labelledby="ag-wt-per-slot-title">
+                  <span id="ag-wt-per-slot-title" className="ag-muted">
+                    Clienti per orario
+                  </span>
+                  <span className="ag-wt-per-slot-pair">
+                    <PerSlotSelect label="A domicilio" value={draft.mode.homeMax} onChange={(homeMax) => update({ mode: { ...draft.mode, homeMax } })} />
+                    <PerSlotSelect label="Online" value={draft.mode.onlineMax} onChange={(onlineMax) => update({ mode: { ...draft.mode, onlineMax } })} />
+                  </span>
+                </div>
+              ) : draft.mode.allowsHome || draft.mode.allowsOnline ? (
+                <div className="ag-wt-per-slot">
+                  <PerSlotSelect
+                    label="Clienti per orario"
+                    value={draft.mode.allowsOnline ? draft.mode.onlineMax : draft.mode.homeMax}
+                    onChange={(n) => update({ mode: draft.mode.allowsOnline ? { ...draft.mode, onlineMax: n } : { ...draft.mode, homeMax: n } })}
+                  />
+                </div>
+              ) : null}
             </div>
             {onlineNotice ? (
               <p className="ag-wt-hint ag-muted" role="status">
@@ -522,5 +539,22 @@ export function WeekTemplateEditor({
         </div>
       </div>
     </section>
+  );
+}
+
+/** Menu "quanti clienti": un numero salvato fuori dall'elenco (es. 7 dalla singola fascia) resta tra le scelte. */
+function PerSlotSelect({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  const choices = PER_SLOT_CHOICES.includes(value) ? PER_SLOT_CHOICES : [...PER_SLOT_CHOICES, value].sort((a, b) => a - b);
+  return (
+    <label className="ag-wt-per-slot-field">
+      <span className="ag-muted">{label}</span>
+      <select className="ag-input" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        {choices.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
