@@ -346,6 +346,7 @@ export class GuidedRequestsService {
         requestsBlockedUntil: true,
         awayUntil: true,
         businessName: true,
+        remoteAvailable: true,
         categoryId: true,
         extraCategories: { select: { id: true } },
         ...PUBLIC_VISIBILITY_SELECT,
@@ -442,6 +443,13 @@ export class GuidedRequestsService {
       await this.assertGeneralRequestsOpen(category, input.city ?? null);
     }
     const chosenProfiles = chosenIds.length > 0 ? await this.loadChosenProfiles(chosenIds, category.id) : [];
+    // Online solo a scelti che lavorano online, come per il professionista
+    // singolo qui sotto (docs/changelog/2026-11-24-online-scelti-e-profilo.md).
+    const chosenOffline = input.serviceMode === "ONLINE" ? chosenProfiles.filter((profile) => !profile.remoteAvailable) : [];
+    if (chosenOffline.length > 0) {
+      const names = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(chosenOffline.map((profile) => profile.businessName));
+      throw new BadRequestException(`${names} ${chosenOffline.length === 1 ? "non lavora" : "non lavorano"} online: ${chosenOffline.length === 1 ? "toglilo" : "toglili"} dalla scelta o scegli "A domicilio".`);
+    }
 
     let targetProfile: {
       id: string;

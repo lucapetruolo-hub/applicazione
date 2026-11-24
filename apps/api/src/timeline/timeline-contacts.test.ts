@@ -4,14 +4,14 @@ import type { PrismaClient } from "@professionisti/database";
 import { TimelineService } from "./timeline.service";
 
 /** Contatti in chat solo dopo l'accettazione (docs/changelog/2026-11-02-admin-protezioni.md). */
-function service({ booked = false } = {}) {
+function service({ booked = false, canceled = false } = {}) {
   const create = vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: "e", createdAt: new Date(), automatic: false, ...data }));
   const prisma = {
     guidedRequest: { findUnique: vi.fn().mockResolvedValue({ clientId: "cliente", deletedByClientAt: null }) },
     professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "professionista", jobLimitReachedAt: null }) },
     lead: { findUnique: vi.fn().mockResolvedValue({ id: "l" }) },
     quote: { findFirst: vi.fn().mockResolvedValue(null) },
-    booking: { findFirst: vi.fn().mockResolvedValue(booked ? { id: "b" } : null) },
+    booking: { findMany: vi.fn().mockResolvedValue(booked ? [{ status: "CONFIRMED" }] : canceled ? [{ status: "CANCELED" }] : []) },
     conversationEvent: { findFirst: vi.fn().mockResolvedValue(null), create },
   };
   const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
@@ -42,5 +42,14 @@ describe("contatti in chat prima dell'accettazione", () => {
     const booked = service({ booked: true });
     await booked.svc.addUpdate("professionista", "r", "p", "Il mio numero è 333 123 4567", []).catch(() => undefined);
     expect(booked.create).toHaveBeenCalled();
+  });
+
+  it("dopo un annullamento blocca di nuovo i contatti e dice perché", async () => {
+    // docs/changelog/2026-11-24-annullato-senza-contatti.md
+    const { svc, create } = service({ canceled: true });
+    const error = await svc.addUpdate("professionista", "r", "p", "Il mio numero è 333 123 4567", []).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as Error).message).toContain("annullato");
+    expect(create).not.toHaveBeenCalled();
   });
 });

@@ -34,3 +34,18 @@ ricavare l'ora); senza nemmeno chi l'etichetta resta com'era.
 vero dall'API, passaggio del mouse, tocco, tocco fuori, Esc in Agenda) su
 telefono e computer; prove dell'API su prenotazioni, profili e account verdi.
 Foto in `/mnt/project-files/anteprime/chi-ha-annullato/`.
+
+## Seguito, stesso giorno (sì di Luca alle migliorie proposte)
+
+- **Scheda del cliente** ("Le mie richieste"): stesso riquadro sull'etichetta
+  "Annullata" ("Annullata dal professionista" / "da te", quando, motivo) e la
+  riga sotto il nome dice anche quando ("Annullata da te · martedì 24 novembre
+  alle 11:52").
+- **Voce unica nel preventivo del professionista** (Richieste, "Preventivo
+  accettato"): con una voce sola si legge il nome senza l'importo, che dice già
+  "Prezzo", come per il cliente (`2026-11-24-voce-unica-nel-preventivo.md`).
+- **Riga a puntini** tra nome e importo quando le voci sono più di una: su
+  computer l'importo sta molto a destra e l'occhio si perdeva.
+- Il riquadro segue l'etichetta mentre si scorre e si nasconde quando lei
+  finisce sotto la barra in alto.
+- Lavoro annullato senza contatti del cliente: `2026-11-24-annullato-senza-contatti.md`.
