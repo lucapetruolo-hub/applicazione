@@ -67,5 +67,5 @@ test("con una voce sola si legge il nome sotto il prezzo, senza ripetere l'impor
   const price = quote.getByText("Prezzo", { exact: true }).locator("xpath=../..");
   await expect(price.getByText(items[0].name, { exact: true })).toBeVisible();
   // L'importo una volta sola: quello del totale.
-  await expect(price.getByText(/\d+ €/)).toHaveCount(1);
+  await expect(price.getByText("€")).toHaveCount(1);
 });
