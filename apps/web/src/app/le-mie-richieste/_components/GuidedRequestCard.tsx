@@ -48,6 +48,8 @@ import { combineUnreadCounts } from "@/lib/notificationSections";
 import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
+import { CanceledInfo } from "@/components/CanceledInfo";
+import { canceledInfoForClient } from "@/lib/canceledInfo";
 import { BookingSection, ChangeLinks } from "./BookingSection";
 import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { QuoteDateChooser } from "./QuoteDateChooser";
@@ -1117,6 +1119,8 @@ export function GuidedRequestCard({
     .filter(Boolean)
     .join(" · ");
 
+  const canceledInfo = stage === "annullata" && booking?.status === "CANCELED" ? canceledInfoForClient(booking) : null;
+
   return (
     <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="0" padding={0} overflow="hidden">
       {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
@@ -1127,7 +1131,11 @@ export function GuidedRequestCard({
         <XStack justifyContent="space-between" alignItems="flex-start" gap="2" flexWrap="wrap">
           <XStack gap="2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
-            <ClientStagePill stage={stage} />
+            {/* Chi ha annullato, quando e perché, come nella scheda del professionista
+                (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+            <CanceledInfo info={canceledInfo}>
+              <ClientStagePill stage={stage} moreInfo={canceledInfo !== null} />
+            </CanceledInfo>
             <ServiceBadge online={isOnline} />
             {/* Quando serve, scelto alla richiesta (§344): "Oggi" è già il badge Urgente. */}
             {request.timing === "WEEK" || request.timing === "CALM" ? (
@@ -1195,9 +1203,10 @@ export function GuidedRequestCard({
             </Text>
           </XStack>
         ) : null}
-        {stage === "annullata" && booking?.canceledBy ? (
+        {canceledInfo && booking?.canceledBy ? (
           <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
-            Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}
+            {canceledInfo.who}
+            {canceledInfo.when ? <Text fontWeight="400">{` · ${canceledInfo.when.charAt(0).toLowerCase()}${canceledInfo.when.slice(1)}`}</Text> : null}
           </Text>
         ) : null}
 

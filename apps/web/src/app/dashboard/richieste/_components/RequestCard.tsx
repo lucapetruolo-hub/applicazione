@@ -1042,6 +1042,7 @@ export function RequestCard({
   }
 
   const canceledInfo = stage === "annullata" && booking?.status === "CANCELED" ? canceledInfoForProfessional(booking, "Annullata") : null;
+  const severalItems = (lead.quote?.items.length ?? 0) > 1;
 
   return (
     <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="0" padding={0} overflow="hidden">
@@ -1419,9 +1420,18 @@ export function RequestCard({
                   <Text fontSize={16} color={brand.grafite70} flexShrink={1} minWidth={0}>
                     {item.name}
                   </Text>
-                  <Text fontSize={16} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {formatEurRange(item.priceMinEurCents, item.priceMaxEurCents)}
-                  </Text>
+                  {/* Con una voce sola niente importo: lo dice già "Prezzo" qui sotto, come per il
+                      cliente (docs/changelog/2026-11-24-voce-unica-nel-preventivo.md). Con più voci
+                      una riga a puntini porta l'occhio dal nome all'importo, che su computer è lontano
+                      (docs/changelog/2026-11-24-chi-ha-annullato-e-quando.md). */}
+                  {severalItems ? (
+                    <>
+                      <YStack flex={1} minWidth={16} alignSelf="flex-end" marginBottom={5} borderBottomWidth={1} borderStyle="dotted" borderColor={brand.grafite70} opacity={0.45} aria-hidden />
+                      <Text fontSize={16} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {formatEurRange(item.priceMinEurCents, item.priceMaxEurCents)}
+                      </Text>
+                    </>
+                  ) : null}
                 </XStack>
               ))}
               {stage === "completata" && booking?.finalAmountEurCents != null ? (

@@ -34,3 +34,10 @@ export function canceledInfoForProfessional(input: CanceledInfoInput, label: "An
     note: input.cancellationNote?.trim() || null,
   };
 }
+
+/** Visto dal cliente in "Le mie richieste": stesse righe, dette dal suo lato. */
+export function canceledInfoForClient(input: Omit<CanceledInfoInput, "canceledLate">): CanceledInfoLines | null {
+  if (!input.canceledBy && !input.canceledAt) return null;
+  const who = input.canceledBy === "PROFESSIONAL" ? "Annullata dal professionista" : input.canceledBy === "CLIENT" ? "Annullata da te" : "Annullata";
+  return { who, when: input.canceledAt ? formatCanceledAt(input.canceledAt) : null, late: null, note: input.cancellationNote?.trim() || null };
+}
