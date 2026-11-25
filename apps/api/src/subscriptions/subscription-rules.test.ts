@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freeMonthUpgradeEurCents, upgradeFeeEurCents } from "@professionisti/shared";
+import { freeMonthUpgradeEurCents, paidUpgradeEurCents } from "@professionisti/shared";
 import {
   addMonthsUtc,
   countsClientsOnce,
@@ -204,27 +204,14 @@ describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §170)", () => 
   });
 });
 
-describe("quota di passaggio a un livello superiore (§361)", () => {
+describe("passaggio a un livello superiore (docs/changelog/2026-11-25-passaggio-di-livello.md)", () => {
   const DAY = 24 * 60 * 60 * 1000;
-  const month = 30 * DAY;
-  it("10 € + differenza per i giorni rimasti, maggiorata del 10%, senza tetto", () => {
-    const fee = (from: "BASE" | "PLUS", to: "PLUS" | "PRO", days: number) => upgradeFeeEurCents({ from, to, interval: "MONTH", remainingMs: days * DAY, periodMs: month });
-    expect(fee("BASE", "PLUS", 30)).toBe(5400);
-    expect(fee("BASE", "PLUS", 20)).toBe(3933);
-    expect(fee("BASE", "PLUS", 7)).toBe(2027);
-    expect(fee("BASE", "PLUS", 1)).toBe(1147);
-    expect(fee("BASE", "PRO", 7)).toBe(3053);
-    expect(fee("PLUS", "PRO", 7)).toBe(2027);
-  });
-  it("annuale: differenza dei prezzi annui sui giorni dell'anno", () => {
-    expect(upgradeFeeEurCents({ from: "BASE", to: "PLUS", interval: "YEAR", remainingMs: 73 * DAY, periodMs: 365 * DAY })).toBe(1000 + Math.round(40000 * 0.2 * 1.1));
-  });
-  it("stesso livello o inferiore: niente da pagare", () => {
-    expect(upgradeFeeEurCents({ from: "PLUS", to: "PLUS", interval: "MONTH", remainingMs: DAY, periodMs: month })).toBe(0);
-    expect(upgradeFeeEurCents({ from: "PRO", to: "BASE", interval: "MONTH", remainingMs: DAY, periodMs: month })).toBe(0);
+  it("abbonamento pagato: prezzo intero del nuovo livello, senza giorni scalati", () => {
+    expect(paidUpgradeEurCents("PLUS", "MONTH")).toBe(5900);
+    expect(paidUpgradeEurCents("PRO", "MONTH")).toBe(9900);
   });
 
-  const base = { interval: "MONTH" as const, waitingLaunch: false, currentPeriodStart: null, currentPeriodEnd: null, now: NOW };
+  const base = { interval: "MONTH" as const, waitingLaunch: false, now: NOW };
   it("nei mesi gratis, con o senza carta: il mese del livello meno Base, da oggi", () => {
     const trialEndsAt = new Date(NOW.getTime() + 75 * DAY);
     const quotes = [
@@ -237,13 +224,13 @@ describe("quota di passaggio a un livello superiore (§361)", () => {
   it("prima del lancio non si passa: non c'è limite di lavori", () => {
     expect(upgradeQuotes({ ...base, state: "TRIAL", tier: null, waitingLaunch: true, trialEndsAt: null })).toEqual([]);
   });
-  it("abbonamento pagato: periodo di Stripe fino al rinnovo; Pro e prova finita senza quote", () => {
-    const start = new Date(NOW.getTime() - 23 * DAY);
-    const end = new Date(NOW.getTime() + 7 * DAY);
-    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "PLUS", trialEndsAt: null, currentPeriodStart: start, currentPeriodEnd: end })).toEqual([
-      { tier: "PRO", amountEurCents: 2027, until: end.toISOString() },
+  it("abbonamento pagato: prezzo intero e mese nuovo da oggi (niente until); Pro e prova finita senza quote", () => {
+    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "BASE", trialEndsAt: null })).toEqual([
+      { tier: "PLUS", amountEurCents: 5900, until: null },
+      { tier: "PRO", amountEurCents: 9900, until: null },
     ]);
-    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "PRO", trialEndsAt: null, currentPeriodStart: start, currentPeriodEnd: end })).toEqual([]);
+    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "PLUS", trialEndsAt: null })).toEqual([{ tier: "PRO", amountEurCents: 9900, until: null }]);
+    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "PRO", trialEndsAt: null })).toEqual([]);
     expect(upgradeQuotes({ ...base, state: "TRIAL_ENDED", tier: null, trialEndsAt: null })).toEqual([]);
   });
 });

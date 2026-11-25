@@ -107,6 +107,18 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Passaggio a un livello superiore a prezzo intero con un mese nuovo da quel giorno
+    // (decisione di Luca, docs/changelog/2026-11-25-passaggio-di-livello.md).
+    version: "2026-11-25",
+    publishedAt: "2026-11-25",
+    effectiveAt: "2026-11-25",
+    summary: [
+      "Passando a un livello superiore con un abbonamento a pagamento si paga subito il prezzo mensile intero del nuovo livello, senza la quota di 10 € e senza riduzioni per i giorni rimasti: da quel giorno parte un nuovo mese e i lavori compresi ripartono da zero.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

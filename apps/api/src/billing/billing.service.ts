@@ -7,7 +7,6 @@ import {
   SUBSCRIPTION_TIERS,
   TRIAL_DAYS,
   subscriptionTierInfo,
-  upgradeFeeEurCents,
   type BillingInterval,
   type SubscriptionCheckoutResult,
   type SubscriptionTier,
@@ -583,9 +582,9 @@ export class BillingService implements OnModuleInit {
    *   mese Base regalato; da oggi parte un mese nuovo con 0 lavori e i mesi
    *   gratis rimasti aspettano il ritorno a Base. Prima del lancio no: non ci
    *   sono limiti di lavori.
-   * - Abbonamento pagato, livello superiore: quota di passaggio (10 € più la
-   *   differenza per i giorni che mancano al rinnovo, maggiorata del 10%)
-   *   addebitata subito, poi il nuovo livello fino al rinnovo e oltre.
+   * - Abbonamento pagato, livello superiore: prezzo intero del nuovo livello
+   *   subito e mese nuovo da oggi, con 0 lavori e il rinnovo spostato a oggi
+   *   (decisione di Luca del 25/11/2026).
    * - Livello inferiore: "Torna a Base" alla scadenza (`setReturnToBase`).
    */
   async createSubscriptionCheckout(userId: string, plan: SubscriptionTier): Promise<SubscriptionCheckoutResult> {
@@ -836,107 +835,47 @@ export class BillingService implements OnModuleInit {
       if (tier && tierRank(plan) < tierRank(tier)) {
         throw new BadRequestException("Per tornare a Base usa \"Torna a Base\": vale dalla scadenza del mese pagato.");
       }
-      return this.upgradeLocked(stripe, row.id, professionalProfileId, stripeSubscriptionId, tier, plan, launched);
+      return this.upgradeLocked(stripe, stripeSubscriptionId, plan, launched);
     });
   }
 
-  private async upgradeLocked(
-    stripe: Stripe,
-    subscriptionRowId: string,
-    professionalProfileId: string,
-    stripeSubscriptionId: string,
-    currentTier: SubscriptionTier | null,
-    plan: SubscriptionTier,
-    launched: boolean,
-  ): Promise<SubscriptionCheckoutResult> {
+  private async upgradeLocked(stripe: Stripe, stripeSubscriptionId: string, plan: SubscriptionTier, launched: boolean): Promise<SubscriptionCheckoutResult> {
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const item = subscription.items.data[0];
     if (!item) throw new BadRequestException("Abbonamento Stripe senza voci: contattaci.");
     const interval = this.priceOf(item.price?.id)?.interval ?? "MONTH";
     const priceId = this.requirePrice(plan, interval);
-    const taxRates = this.requireTaxRates();
-    const customer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
-    const now = new Date();
 
     // Carta data e mesi gratis in corso: finisce la prova di Stripe adesso e
     // si paga subito il mese del nuovo livello meno il mese Base regalato.
-    // Se la carta non passa non cambia niente.
     if (subscription.status === "trialing") {
       if (!launched) throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");
-      return this.upgradeDuringFreeMonths(stripe, subscription, item, priceId);
+      return this.upgradeNow(stripe, subscription, item, priceId, { trial_end: "now", discounts: [{ coupon: await this.freeBaseMonthCoupon(stripe) }] });
     }
-
-    // Abbonamento pagato: quota di passaggio su una fattura a parte, pagata
-    // subito con la carta dell'abbonamento; solo a pagamento riuscito si
-    // cambia livello, senza altri conguagli di Stripe. La fattura si ricorda
-    // prima di pagarla (E3-02): se poi il cambio di livello non riesce, il
-    // tentativo dopo (o il controllo orario) dà il livello senza far pagare
-    // di nuovo.
-    const periodEnd = item.current_period_end * 1000;
-    const periodStart = item.current_period_start * 1000;
-    const fee = upgradeFeeEurCents({ from: currentTier ?? "BASE", to: plan, interval, remainingMs: periodEnd - now.getTime(), periodMs: periodEnd - periodStart });
-    if (fee > 0) {
-      const label = `Passaggio al livello ${subscriptionTierInfo(plan).label} fino al rinnovo`;
-      const invoice = await stripe.invoices.create({
-        customer,
-        collection_method: "charge_automatically",
-        auto_advance: false,
-        pending_invoice_items_behavior: "exclude",
-        default_tax_rates: taxRates,
-        description: label,
-        footer: STRIPE_INVOICE_FOOTER,
-        metadata: { kind: "tier_upgrade_fee", professionalProfileId, stripeSubscriptionId, plan },
-      });
-      await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: invoice.id } });
-      await stripe.invoiceItems.create(
-        { customer, invoice: invoice.id, amount: fee, currency: "eur", description: label },
-        { idempotencyKey: `tier-upgrade-item-${invoice.id}` },
-      );
-      const paymentMethod = typeof subscription.default_payment_method === "string" ? subscription.default_payment_method : subscription.default_payment_method?.id;
-      try {
-        await stripe.invoices.pay(invoice.id!, { off_session: true, ...(paymentMethod ? { payment_method: paymentMethod } : {}) });
-      } catch (error) {
-        // La banca chiede di confermare il pagamento (3D Secure): la quota si
-        // paga sulla pagina di Stripe e il livello cambia appena è pagata
-        // (`invoice.paid`), senza far ripartire il passaggio.
-        if (error instanceof Stripe.errors.StripeCardError && error.code === "authentication_required") {
-          const open = await stripe.invoices.retrieve(invoice.id!);
-          if (open.hosted_invoice_url) return { url: null, bankConfirmUrl: open.hosted_invoice_url };
-        }
-        if (error instanceof Stripe.errors.StripeCardError || error instanceof Stripe.errors.StripeInvalidRequestError) {
-          await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
-          await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
-          throw new BadRequestException("Il pagamento della quota di passaggio non è andato a buon fine: controlla la carta e riprova.");
-        }
-        // Risposta di Stripe persa: la fattura resta ricordata e il tentativo dopo vede se è pagata.
-        throw error;
-      }
-    }
-    try {
-      await this.switchPrice(stripe, subscription.id, item.id, priceId);
-    } catch (error) {
-      if (fee <= 0) throw error;
-      this.logger.error(`Quota pagata ma livello non ancora cambiato (${subscriptionRowId})`, error as Error);
-      throw new ServiceUnavailableException("Quota pagata: il nuovo livello si attiva entro un'ora, senza pagare di nuovo.");
-    }
-    await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
-    return { url: null };
+    // Abbonamento pagato (decisione di Luca del 25/11/2026,
+    // docs/changelog/2026-11-25-passaggio-di-livello.md): prezzo intero del
+    // nuovo livello e mese nuovo da adesso, con i lavori da 0 e il rinnovo
+    // spostato a oggi. Niente giorni scalati né quota su una fattura a parte.
+    return this.upgradeNow(stripe, subscription, item, priceId, { billing_cycle_anchor: { type: "now" } });
   }
 
   /**
-   * Plus o Pro nei mesi gratis: la prova di Stripe finisce adesso e si paga
-   * subito il mese del nuovo livello meno il mese Base regalato. Il cambio
-   * resta "in sospeso" su Stripe finché il pagamento non passa
-   * (`pending_if_incomplete`): con una carta rifiutata non cambia niente; se la
-   * banca chiede la conferma (3D Secure) il professionista conferma sulla
-   * pagina di Stripe e il cambio si applica da solo al pagamento
-   * (`customer.subscription.updated`). Senza conferma Stripe lo scarta dopo 23 ore.
+   * Nuovo livello pagato subito con un mese nuovo che parte adesso: nei mesi
+   * gratis (prova finita adesso, sconto del mese Base) e con un abbonamento
+   * pagato (ciclo che riparte adesso, prezzo intero). Il cambio resta "in
+   * sospeso" su Stripe finché il pagamento non passa (`pending_if_incomplete`):
+   * con una carta rifiutata non cambia niente; se la banca chiede la conferma
+   * (3D Secure) il professionista conferma sulla pagina di Stripe e il cambio
+   * si applica da solo al pagamento (`customer.subscription.updated`). Senza
+   * conferma Stripe lo scarta dopo 23 ore. Il nuovo periodo di Stripe fa
+   * ripartire anche il conto dei lavori (`usagePeriod`).
    */
-  private async upgradeDuringFreeMonths(
+  private async upgradeNow(
     stripe: Stripe,
     subscription: Stripe.Subscription,
     item: Stripe.SubscriptionItem,
     priceId: string,
+    start: { trial_end?: "now"; billing_cycle_anchor?: { type: "now" }; discounts?: { coupon: string }[] },
   ): Promise<SubscriptionCheckoutResult> {
     // Stessa scelta ancora in attesa della banca (seconda scheda, doppio tocco): si riapre quella pagina.
     if (subscription.pending_update?.subscription_items?.some((i) => i.price?.id === priceId)) {
@@ -951,9 +890,8 @@ export class BillingService implements OnModuleInit {
     try {
       updated = await stripe.subscriptions.update(subscription.id, {
         items: [{ id: item.id, price: priceId }],
-        trial_end: "now",
+        ...start,
         proration_behavior: "none",
-        discounts: [{ coupon: await this.freeBaseMonthCoupon(stripe) }],
         payment_behavior: "pending_if_incomplete",
       });
     } catch (error) {

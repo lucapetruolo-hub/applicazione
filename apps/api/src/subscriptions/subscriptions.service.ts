@@ -518,8 +518,6 @@ export class SubscriptionsService {
         interval: sub?.billingInterval ?? "MONTH",
         waitingLaunch,
         trialEndsAt,
-        currentPeriodStart: sub?.currentPeriodStart ?? null,
-        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
         now,
       }),
       checkoutAvailable: paymentsActive(),

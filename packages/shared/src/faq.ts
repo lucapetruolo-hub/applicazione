@@ -386,7 +386,7 @@ export const FAQ: readonly FaqItem[] = [
     answer:
       "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste; per mandare preventivi nuovi passi al livello sopra o aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi.",
     detail:
-      "Passando al livello sopra paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
+      "Passando al livello sopra paghi subito il nuovo livello intero (+ IVA): da quel giorno parte un mese nuovo e i lavori ripartono da zero. Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
   },
 
   // ——— Professionisti: agenda e clienti ———

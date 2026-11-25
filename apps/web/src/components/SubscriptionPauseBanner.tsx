@@ -28,17 +28,21 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 }
 
-/** Quota di passaggio adesso verso un livello (docs/CHANGELOG.md §361), o null se non si può passare. */
+/** Costo di oggi per passare a un livello (docs/changelog/2026-11-25-passaggio-di-livello.md), o null se non si può passare. */
 export function upgradeQuoteOf(sub: MySubscription, to: SubscriptionTier) {
   return sub.upgradeQuotes.find((quote) => quote.tier === to) ?? null;
 }
 
-/** "20,27 € + IVA fino al 31 ottobre, poi 59 € al mese + IVA." */
+/** "Paghi ora 59 € + IVA: il mese riparte da oggi, con i lavori da zero." */
 export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): string {
   const quote = upgradeQuoteOf(sub, to);
   const interval = sub.billingInterval ?? "MONTH";
   const then = `${formatEur(tierPeriodPriceEurCents(to, interval))} ${interval === "YEAR" ? "all'anno" : "al mese"} + IVA`;
   if (!quote || quote.amountEurCents === 0) return `Nessun costo adesso, poi ${then}.`;
+  // Abbonamento pagato: prezzo intero, mese nuovo da oggi (docs/changelog/2026-11-25-passaggio-di-livello.md).
+  if (!quote.until && quote.amountEurCents === tierPeriodPriceEurCents(to, interval)) {
+    return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA: il mese riparte da oggi, con i lavori da zero.`;
+  }
   // Nei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): il primo mese meno Base, da oggi.
   return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : " per il primo mese"}, poi ${then}.`;
 }

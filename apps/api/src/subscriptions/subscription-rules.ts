@@ -10,7 +10,7 @@ import {
   freeMonthUpgradeEurCents,
   USAGE_WARNING_RATIO,
   subscriptionTierInfo,
-  upgradeFeeEurCents,
+  paidUpgradeEurCents,
   type BillingInterval,
   type MySubscription,
   type PauseReason,
@@ -319,15 +319,14 @@ export function freeMonthsLeftAfterCurrent(months: number, trialEndsAt: Date | n
   return Math.min(months, Math.floor(remaining / FREE_PERIOD_MS));
 }
 
-const MONTH_FALLBACK_MS = 30 * TRIAL_DAY_MS;
-const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
-
 /**
  * Quanto costa passare a ogni livello sopra quello attuale. Nei mesi gratis
- * (con o senza carta) il mese del nuovo livello meno Base, e parte un mese
- * nuovo (decisione di Luca del 29/10/2026); prima del lancio non si passa,
- * perché non c'è limite di lavori. Con un abbonamento pagato la quota di
- * passaggio fino al rinnovo (docs/CHANGELOG.md §361).
+ * (con o senza carta) il mese del nuovo livello meno Base (decisione di Luca
+ * del 29/10/2026); con un abbonamento pagato il prezzo intero del nuovo
+ * livello (decisione di Luca del 25/11/2026,
+ * docs/changelog/2026-11-25-passaggio-di-livello.md). In tutti e due i casi
+ * da quel giorno parte un mese nuovo con 0 lavori, quindi niente `until`.
+ * Prima del lancio non si passa, perché non c'è limite di lavori.
  */
 export function upgradeQuotes(input: {
   state: MySubscription["state"];
@@ -335,8 +334,6 @@ export function upgradeQuotes(input: {
   interval: BillingInterval;
   waitingLaunch: boolean;
   trialEndsAt: Date | null;
-  currentPeriodStart: Date | null;
-  currentPeriodEnd: Date | null;
   now: Date;
 }): MySubscription["upgradeQuotes"] {
   const paid = input.state === "ACTIVE" || input.state === "PAST_DUE";
@@ -347,14 +344,8 @@ export function upgradeQuotes(input: {
   const higher = SUBSCRIPTION_TIERS.slice(SUBSCRIPTION_TIERS.findIndex((t) => t.tier === from) + 1);
   return higher.map(({ tier }) => {
     if (freeMonthsRunning) return { tier, amountEurCents: freeMonthUpgradeEurCents(tier), until: null };
-    const end = input.currentPeriodEnd;
-    if (!paid || !end) return { tier, amountEurCents: 0, until: null };
-    const periodMs = input.currentPeriodStart ? end.getTime() - input.currentPeriodStart.getTime() : input.interval === "YEAR" ? YEAR_FALLBACK_MS : MONTH_FALLBACK_MS;
-    return {
-      tier,
-      amountEurCents: upgradeFeeEurCents({ from, to: tier, interval: input.interval, remainingMs: end.getTime() - input.now.getTime(), periodMs }),
-      until: end.toISOString(),
-    };
+    if (!paid) return { tier, amountEurCents: 0, until: null };
+    return { tier, amountEurCents: paidUpgradeEurCents(tier, input.interval), until: null };
   });
 }
 
