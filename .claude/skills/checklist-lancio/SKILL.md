@@ -608,17 +608,29 @@ aperti solo:
       importi e rimborsi manomessi.
     - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di
       Render.
-    - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
+    - ~~**OWASP ASVS livello 2 e API Security Top 10 2023**, voce per
+      voce~~ — fatto il 25/11/2026 (`/mnt/project-files/analisi/asvs-livello-2.md`):
+      restano tre voci da decidere con Luca (foto su Cloudinary dopo la
+      chiusura dell'account, elenco delle password comuni, numeri in lettere
+      in chat).
     - **Mappa dei dati personali definitiva** e DPIA della verifica con
-      selfie, da far vedere all'avvocato (bozza nel file sopra).
+      selfie: scritte il 25/11/2026
+      (`/mnt/project-files/analisi/mappa-dati-e-dpia-selfie.md`), da far
+      vedere all'avvocato (domande A38-A40). Luca: conservazione minima delle
+      immagini nel pannello Didit e DPA di Didit.
+    - **Stripe CLI**: fatto in locale il 25/11/2026 con webhook firmati da
+      noi (firma sbagliata, evento vecchio, contenuto cambiato, ripetuto,
+      contemporaneo, non pagato, fuori ordine): tutto tiene.
     - **Piano per gli incidenti**: scritto il 16/11/2026 in
       `docs/ops/emergenza.md` (cosa è giù, rollback, ripristino, chiavi da
       cambiare, Garante entro 72 ore, registro delle violazioni). Resta da
       provarlo insieme alla prova di ripristino del database del punto 28
-      (la fa Luca).
+      (la fa Luca), col foglio
+      `/mnt/project-files/analisi/prova-piano-emergenza.md`.
     - **Penetration test esterno** (una o due giornate, da uno studio o un
       professionista): è l'unica verifica davvero indipendente. Lo sceglie
-      e lo paga Luca.
+      e lo paga Luca. Testo da mandare agli studi:
+      `/mnt/project-files/analisi/pentest-esterno-richiesta.md`.
 
 **Visibilità su Google (SEO)** (thread "Visibilità su Google (SEO)",
 22/10/2026, controllo in `/mnt/project-files/analisi/seo-controllo.md`):
