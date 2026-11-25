@@ -20,6 +20,8 @@ import { EmailModule } from "../email/email.module";
 import { AdminTwoFactorController } from "./admin-two-factor.controller";
 import { AdminTwoFactorService } from "./admin-two-factor.service";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
+import { MonthlyAccountsController } from "./monthly-accounts.controller";
+import { MonthlyAccountsService } from "./monthly-accounts.service";
 
 @Module({
   // NotificationsModule: AdminService.resolveContentReport notifica ora sia
@@ -29,8 +31,8 @@ import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
   // iniettata in AdminService (stesso pattern già in uso per QuotesModule/
   // GuidedRequestsModule/BookingsModule verso lo stesso servizio).
   imports: [AuthModule, EmailModule, NotificationsModule, ProfessionalMetricsModule, AuditLogModule, JobIssuesModule],
-  controllers: [AdminController, AdminBootstrapController, AdminTwoFactorController],
-  providers: [InvitePartnersService, AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService, SiteStatsService, AdminQueueService, SuspiciousAccountsService, DatabaseVersionService, AccountClosuresService, SiteHealthService, CaseAdviceService],
+  controllers: [AdminController, AdminBootstrapController, AdminTwoFactorController, MonthlyAccountsController],
+  providers: [InvitePartnersService, AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService, SiteStatsService, AdminQueueService, SuspiciousAccountsService, DatabaseVersionService, AccountClosuresService, SiteHealthService, CaseAdviceService, MonthlyAccountsService],
   // AdminGuard esportata: i nuovi controller finanza/fiscale/DAC7 (CLAUDE.md
   // §88) vivono nei propri moduli ma restano protetti dallo stesso gate
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella

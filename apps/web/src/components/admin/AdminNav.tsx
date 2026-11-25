@@ -102,6 +102,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     tabs: [
       { href: "/admin/andamento", label: "Andamento e consigli", icon: "lightbulb", scope: "ANY" },
       { href: "/admin/numeri-professionisti", label: "Professionisti e ricerche", icon: "briefcase", scope: "ANY" },
+      { href: "/admin/conti-del-mese", label: "Conti del mese", searchLabel: "Conti del mese: abbonati paganti, utile e traguardo dei 12.000 €", icon: "coins", scope: "FINANCE" },
       { href: "/admin/statistiche", label: "Entrate", searchLabel: "Entrate e visite", icon: "coins", scope: "FINANCE" },
     ],
   },

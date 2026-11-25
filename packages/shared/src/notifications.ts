@@ -48,7 +48,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     // BOARD_CLAIM_ARRIVED: al professionista, è arrivata la richiesta che aveva scelto da "Lavori cercati" (docs/changelog/2026-11-17-bacheca-rispondi.md).
     // BOARD_WEEKLY_DIGEST: solo email, il lunedì le richieste nuove di "Lavori cercati" del suo mestiere entro 100 km (docs/changelog/2026-11-18-bacheca-cliente.md).
     // BOARD_NEARBY: solo sul sito, al professionista, è entrata in "Lavori cercati" una richiesta a cui può rispondere (docs/changelog/2026-11-19-lavori-cercati-in-oggi.md).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED", "BOARD_WEEKLY_DIGEST", "BOARD_NEARBY"],
+    // SUBSCRIPTION_PLUS_SUGGESTED: solo email, una volta sola nei mesi gratis a chi riceve più richieste dei lavori Base (docs/changelog/2026-11-25-conti-del-mese.md).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED", "BOARD_WEEKLY_DIGEST", "BOARD_NEARBY", "SUBSCRIPTION_PLUS_SUGGESTED"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -383,6 +384,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     // Si sceglie nella pagina "Lavori cercati", non in Notifiche (Luca, docs/changelog/2026-11-18-email-settimana-in-bacheca.md).
     elsewhere: "/lavora-con-noi",
     professional: { label: "Lavori cercati della settimana", description: "Il lunedì, le richieste nuove del tuo mestiere entro 100 km che non ti sono ancora arrivate." },
+  },
+  {
+    // Consiglio commerciale: si spegne, mai nell'argomento bloccato "Account" (docs/changelog/2026-11-25-conti-del-mese.md).
+    key: "richieste.livello",
+    topic: "richieste",
+    types: ["SUBSCRIPTION_PLUS_SUGGESTED"],
+    channels: ["email"],
+    professional: { label: "Consiglio sul livello", description: "Una volta sola nei mesi gratis, se ricevi più richieste dei lavori che puoi accettare." },
   },
   {
     key: "richieste.inviata",

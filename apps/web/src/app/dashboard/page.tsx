@@ -16,6 +16,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
+import { PlusSuggestionCard } from "@/components/PlusSuggestionCard";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
@@ -475,6 +476,7 @@ export default function DashboardTodayPage() {
 
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
+        {subscription ? <PlusSuggestionCard sub={subscription} /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
         {token ? <AwayCard token={token} awayUntil={awayUntil} onChange={setAwayUntil} onlyWhenAway /> : null}
         {/* Preventivi da mandare e date proposte dai clienti in cima a tutto,
