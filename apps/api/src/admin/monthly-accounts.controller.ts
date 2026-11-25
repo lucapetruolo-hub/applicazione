@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Put, Query, Req, UseGuards } from "@nestjs/common";
-import { saveMonthlyCostsSchema, type SaveMonthlyCostsInput } from "@professionisti/shared";
+import { saveMonthlyCostsSchema, saveProfitTargetSchema, type SaveMonthlyCostsInput, type SaveProfitTargetInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "./admin.guard";
@@ -20,5 +20,10 @@ export class MonthlyAccountsController {
   @Put("costs")
   saveCosts(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(saveMonthlyCostsSchema)) body: SaveMonthlyCostsInput) {
     return this.monthlyAccounts.saveCosts(body, req.user.userId);
+  }
+
+  @Put("target")
+  saveProfitTarget(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(saveProfitTargetSchema)) body: SaveProfitTargetInput) {
+    return this.monthlyAccounts.saveProfitTarget(body, req.user.userId);
   }
 }

@@ -8,6 +8,7 @@ import {
   type AdminMonthlyAccounts,
   type MonthlyCostLine,
   type SaveMonthlyCostsInput,
+  type SaveProfitTargetInput,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -44,7 +45,7 @@ export class MonthlyAccountsService {
     const range = monthRange(month);
     const inMonth = { gte: range.from, lt: range.to };
 
-    const [subscriptions, canceledInMonth, excluded, payments, feeEntries, invoices, whatsapp, costRows] = await Promise.all([
+    const [subscriptions, canceledInMonth, excluded, payments, feeEntries, invoices, whatsapp, costRows, settings] = await Promise.all([
       this.prisma.subscription.findMany({
         where: { professionalProfile: COUNTED_PROFILE },
         select: {
@@ -58,7 +59,7 @@ export class MonthlyAccountsService {
           stripeSubscriptionId: true,
         },
       }),
-      this.prisma.subscription.count({ where: { status: "CANCELED", updatedAt: inMonth, professionalProfile: COUNTED_PROFILE } }),
+      this.prisma.subscription.count({ where: { status: "CANCELED", canceledAt: inMonth, professionalProfile: COUNTED_PROFILE } }),
       // Le trattenute non hanno la relazione col profilo: si tolgono per elenco.
       this.prisma.professionalProfile.findMany({
         where: { OR: [{ isDemo: true }, { user: { testAccountAt: { not: null } } }] },
@@ -75,6 +76,7 @@ export class MonthlyAccountsService {
       this.prisma.invoice.findMany({ where: { issuedAt: inMonth }, select: { professionalProfileId: true } }),
       this.prisma.outboundMessage.aggregate({ where: { createdAt: inMonth }, _sum: { costMicroEur: true } }),
       this.prisma.platformMonthlyCost.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+      this.prisma.platformAccountsSettings.findFirst({ select: { profitTargetYearEurCents: true } }),
     ]);
 
     // Fotografia di oggi.
@@ -128,6 +130,7 @@ export class MonthlyAccountsService {
     const lines: MonthlyCostLine[] = costRows.map((row) => ({ label: row.label, monthlyEurCents: row.monthlyEurCents }));
     const fixedTotal = lines.reduce((sum, line) => sum + line.monthlyEurCents, 0);
     const margin = marginPerPaying({ paying, revenueEurCents: revenueTotal, variableCostsEurCents: variableTotal });
+    const targetYear = settings?.profitTargetYearEurCents ?? PROFIT_TARGET_YEAR_EUR_CENTS;
 
     return {
       month,
@@ -148,10 +151,11 @@ export class MonthlyAccountsService {
       fixedCosts: { lines, totalEurCents: fixedTotal },
       profitEurCents: revenueTotal - variableTotal - fixedTotal,
       target: {
-        yearEurCents: PROFIT_TARGET_YEAR_EUR_CENTS,
+        yearEurCents: targetYear,
+        custom: settings !== null,
         marginPerPayingEurCents: margin.eurCents,
         marginEstimated: margin.estimated,
-        payingNeeded: payingNeededFor(PROFIT_TARGET_YEAR_EUR_CENTS, fixedTotal, margin.eurCents),
+        payingNeeded: payingNeededFor(targetYear, fixedTotal, margin.eurCents),
       },
     };
   }
@@ -173,5 +177,22 @@ export class MonthlyAccountsService {
       changedByUserId: adminUserId,
     });
     return input.lines;
+  }
+
+  /** Traguardo di utile all'anno: una riga sola, creata al primo salvataggio. */
+  async saveProfitTarget(input: SaveProfitTargetInput, adminUserId: string): Promise<{ yearEurCents: number }> {
+    const existing = await this.prisma.platformAccountsSettings.findFirst({ select: { id: true, profitTargetYearEurCents: true } });
+    const data = { profitTargetYearEurCents: input.yearEurCents, updatedByUserId: adminUserId };
+    if (existing) await this.prisma.platformAccountsSettings.update({ where: { id: existing.id }, data });
+    else await this.prisma.platformAccountsSettings.create({ data });
+    await this.auditLogService.record({
+      entityType: "PlatformAccountsSettings",
+      entityId: existing?.id ?? "new",
+      fieldName: "profitTargetYearEurCents",
+      oldValue: existing?.profitTargetYearEurCents ?? PROFIT_TARGET_YEAR_EUR_CENTS,
+      newValue: input.yearEurCents,
+      changedByUserId: adminUserId,
+    });
+    return { yearEurCents: input.yearEurCents };
   }
 }

@@ -2525,6 +2525,35 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
     };
   },
+  // Plus proposto una volta sola nei mesi gratis (docs/changelog/2026-11-25-conti-del-mese.md):
+  // buona notizia, mai allarme; si spegne in Notifiche → Nuove richieste.
+  SUBSCRIPTION_PLUS_SUGGESTED: (payload, ctx) => {
+    const requests = typeof payload.requests === "number" ? payload.requests : null;
+    const limit = typeof payload.limit === "number" ? payload.limit : null;
+    const plusJobs = typeof payload.plusJobs === "number" ? payload.plusJobs : null;
+    const until = str(payload.until) ? formatDay(str(payload.until)) : null;
+    const amount = typeof payload.amountEurCents === "number" ? payload.amountEurCents : null;
+    const monthly = typeof payload.monthlyEurCents === "number" ? payload.monthlyEurCents : null;
+    const price =
+      amount !== null && monthly !== null
+        ? amount > 0
+          ? `Passare a Plus adesso costa ${formatEur(amount)} + IVA${str(payload.quoteUntil) ? ` fino al ${formatDay(str(payload.quoteUntil))}` : ""}, poi ${formatEur(monthly)} al mese + IVA.`
+          : `Passare a Plus adesso non costa nulla, poi ${formatEur(monthly)} al mese + IVA.`
+        : null;
+    return {
+      kind: "notification",
+      subject: "Ti arrivano tante richieste",
+      greeting: ctx.name,
+      title: "Ti arrivano tante richieste",
+      paragraphs: [
+        requests !== null && limit !== null
+          ? `In questo periodo hai ricevuto **${requests} richieste**, ma nei mesi gratis puoi accettare ${limit} lavori${until ? ` fino al ${until}` : ""}.`
+          : "In questo periodo hai ricevuto più richieste dei lavori che puoi accettare nei mesi gratis.",
+        `${plusJobs !== null ? `Con Plus ne accetti ${plusJobs} al mese.` : "Con Plus ne accetti di più."}${price ? ` ${price}` : ""} Se ti bastano, non devi fare nulla.`,
+      ],
+      cta: { label: "Vedi i livelli", url: `${frontendUrl()}/dashboard/abbonamento#livelli` },
+    };
+  },
   SUBSCRIPTION_LIMIT_NEAR: (payload, ctx) => {
     const used = typeof payload.used === "number" ? payload.used : null;
     const limit = typeof payload.limit === "number" ? payload.limit : null;

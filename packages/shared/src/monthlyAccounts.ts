@@ -87,6 +87,8 @@ export type AdminMonthlyAccounts = {
   profitEurCents: number;
   target: {
     yearEurCents: number;
+    /** true = traguardo scritto dall'admin, false = quello di partenza (12.000 €). */
+    custom: boolean;
     /** Margine al mese per abbonato pagante usato nel calcolo. */
     marginPerPayingEurCents: number;
     /** true = margine della stima del 25/11, il mese non ha ancora dati sufficienti. */

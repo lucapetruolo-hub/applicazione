@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESTIMATED_MONTHLY_COSTS, marginPerPaying, payingNeededFor, saveMonthlyCostsSchema } from "@professionisti/shared";
+import { ESTIMATED_MONTHLY_COSTS, marginPerPaying, payingNeededFor, saveMonthlyCostsSchema, saveProfitTargetSchema } from "@professionisti/shared";
 import { connectCostEurCents, monthRange, monthlyPriceEurCents, selectableMonths, subscriptionStripeCostEurCents } from "./monthly-accounts";
 
 describe("Conti del mese (docs/changelog/2026-11-25-conti-del-mese.md)", () => {
@@ -41,5 +41,13 @@ describe("Conti del mese (docs/changelog/2026-11-25-conti-del-mese.md)", () => {
     expect(saveMonthlyCostsSchema.safeParse({ lines: [{ label: "Hosting", monthlyEurCents: 6000 }] }).success).toBe(true);
     expect(saveMonthlyCostsSchema.safeParse({ lines: [{ label: " ", monthlyEurCents: 6000 }] }).success).toBe(false);
     expect(saveMonthlyCostsSchema.safeParse({ lines: [{ label: "Hosting", monthlyEurCents: -1 }] }).success).toBe(false);
+  });
+});
+
+describe("traguardo di utile scritto dall'admin", () => {
+  it("da 1.000 € in su, in centesimi interi", () => {
+    expect(saveProfitTargetSchema.safeParse({ yearEurCents: 2_000_000 }).success).toBe(true);
+    expect(saveProfitTargetSchema.safeParse({ yearEurCents: 50_000 }).success).toBe(false);
+    expect(saveProfitTargetSchema.safeParse({ yearEurCents: 1_200_000.5 }).success).toBe(false);
   });
 });

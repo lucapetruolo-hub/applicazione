@@ -16,3 +16,10 @@ export const saveMonthlyCostsSchema = z.object({
 });
 
 export type SaveMonthlyCostsInput = z.infer<typeof saveMonthlyCostsSchema>;
+
+/** Traguardo di utile all'anno scritto dall'admin, da 1.000 € a 10 milioni di €. */
+export const saveProfitTargetSchema = z.object({
+  yearEurCents: z.number().int().min(100_000).max(1_000_000_000),
+});
+
+export type SaveProfitTargetInput = z.infer<typeof saveProfitTargetSchema>;

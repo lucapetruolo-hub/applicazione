@@ -829,6 +829,12 @@ model Subscription {
   // no) e inizio del passaggio, contro i doppi clic da due schede.
   upgradeInvoiceId      String?
   upgradeStartedAt      DateTime?
+  // Fine dell'abbonamento (Admin → Conti del mese, disdette del mese,
+  // docs/changelog/2026-11-25-conti-del-mese.md): si scrive quando passa a
+  // CANCELED, si toglie se riparte.
+  canceledAt            DateTime?
+  // Email "Passa a Plus" nei mesi gratis già mandata: parte una volta sola.
+  plusSuggestionEmailedAt DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -4150,4 +4156,15 @@ model PlatformMonthlyCost {
   updatedAt       DateTime @updatedAt
 
   @@map("platform_monthly_costs")
+}
+
+// Traguardo di utile dei Conti del mese, scritto dall'admin (una riga sola;
+// senza righe vale PROFIT_TARGET_YEAR_EUR_CENTS di packages/shared).
+model PlatformAccountsSettings {
+  id                       String   @id @default(uuid())
+  profitTargetYearEurCents Int
+  updatedAt                DateTime @updatedAt
+  updatedByUserId          String?
+
+  @@map("platform_accounts_settings")
 }

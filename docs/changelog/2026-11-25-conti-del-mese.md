@@ -53,3 +53,27 @@ stesso 48 dell'analisi) e della proposta di Plus
 (`packages/shared/src/plusSuggestion.test.ts`); prova nel browser
 `e2e/tests/admin-conti-del-mese.spec.ts` (telefono e computer: stima, voce
 corretta e salvata, ricaricamento, axe senza errori).
+
+## Migliorie del 25/11 (Luca: "Effettua le ultime tre migliorie proposte")
+
+- **Data di fine abbonamento** (`Subscription.canceledAt`): si scrive la prima
+  volta che l'abbonamento passa a CANCELED (dati di Stripe o chiusura
+  dell'account) e si toglie se riparte. "Abbonamenti chiusi nel mese" conta su
+  questa data e non più sull'ultima modifica; per i chiusi di prima la
+  migrazione copia l'ultima modifica.
+- **Traguardo di utile scritto dall'admin** (`platform_accounts_settings`, una
+  riga, `PUT /admin/monthly-accounts/target`, scope FINANCE, nel registro
+  azioni): "Cambia il traguardo" nel riquadro Traguardo, da 1.000 € in su.
+  Senza riga vale 12.000 €.
+- **Email "Ti arrivano tante richieste"** (`SUBSCRIPTION_PLUS_SUGGESTED`): ogni
+  giorno alle 10, dopo il lancio, una volta sola
+  (`Subscription.plusSuggestionEmailedAt`, segnata prima dell'invio così due
+  copie dell'API non la mandano due volte) a chi è nei mesi gratis sul Base con
+  più richieste dei lavori del periodo. Stessa regola del riquadro
+  (`shouldSuggestPlus`). Solo email, mai WhatsApp. È un consiglio commerciale,
+  quindi sta in "Nuove richieste → Consiglio sul livello" e si spegne, non
+  nell'argomento bloccato "Account".
+
+Verifica: prove di shared, API (1.791) e Playwright da telefono e computer
+(traguardo cambiato e salvato dopo il ricaricamento); anteprima dell'email in
+anteprime/conti-del-mese/email-plus.png.

@@ -3526,6 +3526,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ lines }),
       }),
+    adminSaveProfitTarget: (token: string, yearEurCents: number) =>
+      request<{ yearEurCents: number }>("/admin/monthly-accounts/target", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ yearEurCents }),
+      }),
 
     adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

@@ -56,6 +56,7 @@ test.beforeAll(async () => {
   }
   // Pagina pulita: l'elenco dei costi è uno solo per tutto il sito.
   await prisma.platformMonthlyCost.deleteMany({ where: { id: { not: "" } } });
+  await prisma.platformAccountsSettings.deleteMany({ where: { id: { not: "" } } });
 });
 
 test.afterAll(() => prisma.$disconnect());
@@ -86,6 +87,14 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
   await expect(page.getByRole("heading", { level: 2, name: "Conti del mese" })).toBeVisible();
   await expect(page.getByText("Abbonati che pagano oggi")).toBeVisible();
   await expect(page.getByText(/Traguardo: 12\.000/)).toBeVisible();
+
+  // Traguardo scritto dall'admin: resta dopo il ricaricamento.
+  await page.getByRole("button", { name: "Cambia il traguardo" }).click();
+  await page.getByRole("textbox", { name: "Utile all'anno, in euro" }).fill("20000");
+  await page.getByRole("button", { name: "Salva il traguardo" }).click();
+  await expect(page.getByText(/Traguardo: 20\.000/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Traguardo: 20\.000/)).toBeVisible();
 
   // Costi fissi (l'elenco si azzera prima di ogni giro): si parte dalla stima, si corregge una voce e si salva.
   await page.getByRole("button", { name: "Parti dalla stima" }).click();

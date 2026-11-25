@@ -10,6 +10,7 @@ import {
   TRIAL_DAYS,
   TRIAL_ENDING_NOTICE_DAYS,
   FREE_MONTHS_END_NOTICE_DAYS,
+  shouldSuggestPlus,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
   type MySubscription,
@@ -588,6 +589,8 @@ export class SubscriptionsService {
         ...freeMonths,
         // Abbonamento concluso: niente ritorno a Base in sospeso.
         ...(input.status === "CANCELED" ? { returnToBaseAt: null } : {}),
+        // Data di fine per le disdette del mese (Conti del mese): la prima volta che si chiude, tolta se riparte.
+        ...(input.status === "CANCELED" ? (row.status === "CANCELED" && row.canceledAt ? {} : { canceledAt: now }) : input.status ? { canceledAt: null } : {}),
         // Rinnovo non pagato: da quando (E3-03), per chiuderlo dopo 14 giorni.
         ...(input.status === "PAST_DUE" ? (row.pastDueSince ? {} : { pastDueSince: now }) : input.status ? { pastDueSince: null, pastDueWarnedAt: null } : {}),
         // Prima carta data (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
@@ -791,6 +794,51 @@ export class SubscriptionsService {
         });
       } catch (error) {
         this.logger.error(`Controllo fine mesi gratis non riuscito per ${sub.id}`, error as Error);
+      }
+    }
+  }
+
+  /**
+   * Ogni giorno alle 10: email "Ti arrivano tante richieste" una volta sola
+   * nei mesi gratis, a chi ha più richieste dei lavori Base (decisione di Luca
+   * del 25/11/2026, docs/changelog/2026-11-25-conti-del-mese.md). Stessa regola
+   * del riquadro nel sito (`shouldSuggestPlus`); solo email, si spegne in
+   * Notifiche → Nuove richieste → Consiglio sul livello. Mai su WhatsApp.
+   */
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_10AM)
+  async runPlusSuggestionEmails(now = new Date()): Promise<void> {
+    if (!hasLaunched(now, launchDate())) return;
+    const subs = await this.prisma.subscription.findMany({
+      where: {
+        status: "ACTIVE",
+        plan: "BASE",
+        stripeSubscriptionId: { not: null },
+        trialEndsAt: { gt: now },
+        plusSuggestionEmailedAt: null,
+        professionalProfile: { deletedAt: null },
+      },
+      select: { id: true, professionalProfile: { select: { userId: true } } },
+    });
+    for (const row of subs) {
+      try {
+        const userId = row.professionalProfile.userId;
+        const sub = await this.getMySubscription(userId);
+        if (!shouldSuggestPlus(sub)) continue;
+        // Una volta sola anche con due API accese: vince chi segna per primo.
+        const claimed = await this.prisma.subscription.updateMany({ where: { id: row.id, plusSuggestionEmailedAt: null }, data: { plusSuggestionEmailedAt: now } });
+        if (claimed.count === 0) continue;
+        const quote = sub.upgradeQuotes.find((q) => q.tier === "PLUS");
+        this.notificationsService.emailOnly(userId, "SUBSCRIPTION_PLUS_SUGGESTED", {
+          requests: sub.usage.requests,
+          limit: sub.usage.limit,
+          until: sub.usage.periodEnd,
+          plusJobs: subscriptionTierInfo("PLUS").monthlyAcceptedJobs,
+          amountEurCents: quote?.amountEurCents ?? null,
+          quoteUntil: quote?.until ?? null,
+          monthlyEurCents: tierPeriodPriceEurCents("PLUS", "MONTH"),
+        });
+      } catch (error) {
+        this.logger.error(`Email Plus nei mesi gratis non riuscita per ${row.id}`, error as Error);
       }
     }
   }

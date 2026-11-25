@@ -147,7 +147,7 @@ export class BillingService implements OnModuleInit {
     if (row.stripeSubscriptionId && this.stripe) await this.cancelOnStripe(this.stripe, row.stripeSubscriptionId, `chiusura-account-${row.id}`);
     await this.prisma.subscription.update({
       where: { id: row.id },
-      data: { status: "CANCELED", cancelAtPeriodEnd: false, returnToBaseAt: null, pastDueSince: null },
+      data: { status: "CANCELED", canceledAt: new Date(), cancelAtPeriodEnd: false, returnToBaseAt: null, pastDueSince: null },
     });
   }
 
@@ -1194,6 +1194,7 @@ export class BillingService implements OnModuleInit {
           update: {
             plan: metadata.plan as SubscriptionTier,
             status: "ACTIVE",
+            canceledAt: null,
             billingInterval,
             stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
           },
