@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { shouldSuggestPlus, type MySubscription } from "./plans";
 
 const base: MySubscription = {
@@ -25,23 +26,23 @@ const base: MySubscription = {
 
 describe("Plus proposto nei mesi gratis (docs/changelog/2026-11-25-conti-del-mese.md)", () => {
   it("più richieste che lavori Base: sì", () => {
-    expect(shouldSuggestPlus(base)).toBe(true);
+    assert.equal(shouldSuggestPlus(base), true);
   });
   it("fino a 3 richieste: no", () => {
-    expect(shouldSuggestPlus({ ...base, usage: { ...base.usage, requests: 3 } })).toBe(false);
+    assert.equal(shouldSuggestPlus({ ...base, usage: { ...base.usage, requests: 3 } }), false);
   });
   it("già al limite (c'è l'altro avviso), in pausa, senza carta, mesi gratis finiti o già su Plus: no", () => {
-    expect(shouldSuggestPlus({ ...base, limitReached: true })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, cardNeeded: true })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, pausedReason: "CARD_NEEDED" })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, freeMonths: { months: 3, currentMonth: null } })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, freeMonths: null })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, tier: "PLUS" })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, state: "TRIAL", tier: null })).toBe(false);
+    assert.equal(shouldSuggestPlus({ ...base, limitReached: true }), false);
+    assert.equal(shouldSuggestPlus({ ...base, cardNeeded: true }), false);
+    assert.equal(shouldSuggestPlus({ ...base, pausedReason: "CARD_NEEDED" }), false);
+    assert.equal(shouldSuggestPlus({ ...base, freeMonths: { months: 3, currentMonth: null } }), false);
+    assert.equal(shouldSuggestPlus({ ...base, freeMonths: null }), false);
+    assert.equal(shouldSuggestPlus({ ...base, tier: "PLUS" }), false);
+    assert.equal(shouldSuggestPlus({ ...base, state: "TRIAL", tier: null }), false);
   });
   it("prima del lancio o senza pagamenti attivi: no", () => {
-    expect(shouldSuggestPlus({ ...base, limitsActive: false })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, checkoutAvailable: false })).toBe(false);
-    expect(shouldSuggestPlus({ ...base, upgradeQuotes: [] })).toBe(false);
+    assert.equal(shouldSuggestPlus({ ...base, limitsActive: false }), false);
+    assert.equal(shouldSuggestPlus({ ...base, checkoutAvailable: false }), false);
+    assert.equal(shouldSuggestPlus({ ...base, upgradeQuotes: [] }), false);
   });
 });
