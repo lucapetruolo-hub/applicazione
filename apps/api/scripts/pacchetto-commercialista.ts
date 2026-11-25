@@ -4,12 +4,14 @@
  * (docs/changelog/2026-11-02-collaudo-abbonamento.md). Uso:
  * `pnpm --filter @professionisti/api exec tsx scripts/pacchetto-commercialista.ts [cartella]`
  * (default `pacchetto-commercialista/`). Non tocca il database né manda nulla.
+ * Dal 25/11/2026 anche il preventivo (13) e il riepilogo pagamenti del cliente (14).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CourtesyYearSummary, MonthlyStatement, PlatformInvoiceLine, PlatformInvoiceView } from "@professionisti/shared";
 import { renderDocumentPdf, type PdfDocumentModel } from "../src/accounting/document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, statementPdfModel } from "../src/accounting/document-pdf-models";
+import { QuotePdfService } from "../src/accounting/quote-pdf.service";
 import { buildFatturaPaXml, fatturaPaFileName } from "../src/accounting/invoice-xml";
 import { fatturaPaCustomer, fatturaPaIssuer, invoiceTotals, issuerParty, recipientParty, sdiProgressive, xmlLineDescription, type IssuerSnapshot, type RecipientSnapshot } from "../src/accounting/invoice-documents";
 
@@ -183,8 +185,55 @@ const pdfs: [string, PdfDocumentModel][] = [
   ],
 ];
 
+// Preventivo e riepilogo dei pagamenti del cliente: stesso codice del sito
+// (QuotePdfService) con un database finto in memoria. La chiave finta accende
+// solo l'acconto online nel testo, non chiama Stripe.
+process.env.STRIPE_SECRET_KEY ??= "sk_test_finta_solo_per_esempio";
+const quoteStart = new Date("2026-12-10T08:00:00Z");
+const exampleQuote = {
+  id: "esempio",
+  status: "ACCEPTED",
+  createdAt: new Date("2026-12-01T09:30:00Z"),
+  resentAt: null,
+  estimatedStartDate: quoteStart,
+  estimatedEndDate: new Date("2026-12-10T11:00:00Z"),
+  paymentOptions: ["MIXED", "DIRECT"],
+  depositPercent: 30,
+  cancellationNoticeHours: 48,
+  lateCancelKeepsDeposit: false,
+  notes: "Porto io i pezzi di ricambio. Il prezzo finale dipende da quanto è rovinato il tubo.",
+  items: [
+    { name: "Sostituzione rubinetto cucina", priceMinEurCents: 8000, priceMaxEurCents: 8000 },
+    { name: "Riparazione tubo sotto il lavello", priceMinEurCents: 6000, priceMaxEurCents: 9000 },
+    { name: "Uscita e trasporto", priceMinEurCents: 3000, priceMaxEurCents: 3000 },
+  ],
+  guidedRequest: {
+    clientId: "cliente",
+    description: "Il rubinetto della cucina perde e sotto il lavello c'è acqua. (ESEMPIO CON DATI INVENTATI)",
+    city: "Bologna",
+    serviceMode: "HOME",
+    category: { label: "Idraulico" },
+  },
+  professionalProfile: {
+    userId: "professionista",
+    businessName: "Idraulica Rossi (esempio)",
+    city: "Bologna",
+    cancellationNoticeHours: 48,
+    fiscalProfile: { stripePayoutsEnabled: true, entityType: "SOLE_PROPRIETOR", chargesVat: true, businessName: null, fiscalFirstName: "Mario", fiscalLastName: "Rossi", vatNumber: "01234567890", registeredCity: "Bologna", registeredProvince: "BO" },
+  },
+  booking: { createdAt: new Date("2026-12-02T18:10:00Z") },
+};
+const exampleDb = {
+  quote: { findUnique: async () => exampleQuote },
+  booking: { findUniqueOrThrow: async () => ({ scheduledAt: quoteStart, professionalProfile: { businessName: "Idraulica Rossi (esempio)" }, quote: { guidedRequest: { category: { label: "Idraulico" } } } }) },
+};
+const exampleJobDocuments = { forUser: async () => ({ audience: "CLIENT", movements: [{ label: "Acconto online con carta", date: "2026-12-02T18:10:00Z", amountEurCents: -5100 }] }) };
+const quotePdfs = new QuotePdfService(exampleDb as never, exampleJobDocuments as never);
+
 async function main() {
   for (const [name, model] of pdfs) writeFileSync(join(out, `${name}.pdf`), await renderDocumentPdf(model));
+  writeFileSync(join(out, "13-preventivo.pdf"), await renderDocumentPdf((await quotePdfs.forUser("cliente", "esempio")).model));
+  writeFileSync(join(out, "14-riepilogo-pagamenti-del-cliente.pdf"), await renderDocumentPdf((await quotePdfs.paymentsForClient("cliente", "esempio")).model));
 
   invoices.forEach((i, index) => {
     const [series, year, number] = i.view.number.split("/");
@@ -210,7 +259,7 @@ async function main() {
     });
     writeFileSync(join(out, `${String(index + 1).padStart(2, "0")}-${fatturaPaFileName(issuer.vatNumber!, progressive)}`), xml);
   });
-  console.log(`Pacchetto in ${out}/: ${pdfs.length} PDF e ${invoices.length} XML.`);
+  console.log(`Pacchetto in ${out}/: ${pdfs.length + 2} PDF e ${invoices.length} XML.`);
 }
 
 void main();
