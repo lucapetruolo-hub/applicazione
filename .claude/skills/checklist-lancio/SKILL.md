@@ -593,7 +593,17 @@ aperti solo:
     `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`). Le fa un
     thread, sull'anteprima o su una copia del sito, tranne dove scritto:
     - **OWASP ZAP** (scansione base e completa) sull'anteprima Vercel e
-      sull'API: nessuna voce alta.
+      sull'API: nessuna voce alta. Primo giro fatto il 25/11/2026 con ZAP e
+      Nuclei, anche dopo l'accesso con gli account di prova cliente e
+      professionista: nessuna falla grave, correzioni unite
+      (docs/changelog/2026-11-25-correzioni-test-sicurezza.md, rapporto in
+      `/mnt/project-files/analisi/test-sicurezza-attacco-simulato.md`).
+      **Da rifare la settimana del lancio** (decisione di Luca del
+      25/11/2026), sul database nuovo e con le chiavi definitive, come
+      ultimo controllo: stesso giro, anche dopo l'accesso, a frequenza
+      bassa e senza aggirare il firewall di Vercel né Turnstile. Come
+      rifarlo dal container cloud: memoria del progetto
+      `test-sicurezza-25-11`.
     - **Stripe CLI**: webhook ripetuti, fuori ordine e con firma sbagliata;
       importi e rimborsi manomessi.
     - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di

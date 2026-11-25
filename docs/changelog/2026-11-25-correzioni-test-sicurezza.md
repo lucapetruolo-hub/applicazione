@@ -54,3 +54,10 @@ sbagliati alternati tra le due → l'undicesimo e il dodicesimo 429 (prima ne
 servivano 21); `?city=%00` → 400; HSTS presente; `PUT /professionals/me` con
 una foto esterna → 400; `GET /professionals/:id` senza `address` e con
 coordinate `45.07, 7.69`.
+
+**Dopo l'unione** (stesso giorno): ZAP rifatto dopo l'accesso con gli
+account di prova cliente e professionista (49 rotte private in lettura, 156 e
+176 indirizzi provati): nessuna falla. Correzioni provate in linea su Render
+(HSTS, `%00` → 400, ricerca senza indirizzo e con coordinate arrotondate).
+Luca: rifare lo stesso giro la settimana del lancio, sul database nuovo
+(skill `checklist-lancio`, punto 29).
