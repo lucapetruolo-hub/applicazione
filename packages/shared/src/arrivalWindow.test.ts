@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { arrivalTimeChoices, arrivalWindowText } from "./arrivalWindow";
+import { arrivalTimeChoices, arrivalWindowText, arrivalWord } from "./arrivalWindow";
 
 describe("arrivalWindowText", () => {
   it("un'ora dall'arrivo", () => {
@@ -26,5 +26,13 @@ describe("arrivalTimeChoices", () => {
   });
   it("non tiene un orario fuori dalla fascia", () => {
     assert.deepEqual(arrivalTimeChoices("14:00", "17:00", "17:00"), ["14:00", "15:00", "16:00"]);
+  });
+});
+
+describe("arrivalWord", () => {
+  it("a domicilio arriva, online ti contatta", () => {
+    assert.equal(arrivalWord("HOME"), "Arrivo");
+    assert.equal(arrivalWord(null), "Arrivo");
+    assert.equal(arrivalWord("ONLINE"), "Ti contatta");
   });
 });

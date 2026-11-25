@@ -43,3 +43,13 @@ export function arrivalTimeChoices(start: string, end: string, current?: string 
   }
   return choices;
 }
+
+/**
+ * Parola davanti alla finestra di arrivo
+ * (docs/changelog/2026-11-25-orari-di-arrivo-validi.md): a domicilio il
+ * professionista "arriva", online "ti contatta". `"Arrivo tra le 10:00 e le
+ * 11:00"` / `"Ti contatta tra le 10:00 e le 11:00"`.
+ */
+export function arrivalWord(serviceMode: string | null | undefined): "Arrivo" | "Ti contatta" {
+  return serviceMode === "ONLINE" ? "Ti contatta" : "Arrivo";
+}

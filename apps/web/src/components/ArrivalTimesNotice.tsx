@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Clock } from "lucide-react";
-import { arrivalWindowText, jobDayCount, wallClockToday, type ProfessionalBooking } from "@professionisti/shared";
+import { arrivalTimeChoices, arrivalWindowText, arrivalWord, jobDayCount, wallClockToday, type ProfessionalBooking } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
-import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import styles from "./ArrivalTimesNotice.module.css";
 
 // Fascia lunga: da tre ore in su, come il campo del preventivo.
@@ -61,7 +60,7 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
       }
     }
     if (changes.length === 0) {
-      setError("Scrivi almeno un'ora di arrivo.");
+      setError("Scegli almeno un'ora di arrivo.");
       return;
     }
     setSaving(true);
@@ -89,7 +88,7 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
         </p>
       ) : (
         <>
-          <p className={styles.text}>Così non ti aspettano tutto il giorno. Ricevono &quot;Arrivo tra le … e le …&quot;, un&apos;ora dall&apos;orario che scrivi.</p>
+          <p className={styles.text}>Così non ti aspettano tutto il giorno. Ricevono &quot;Arrivo tra le … e le …&quot;, un&apos;ora dall&apos;orario che scegli.</p>
           {shown.map((band) => (
             <div key={band.key} className={styles.band}>
               <span className={styles.bandHead}>
@@ -103,13 +102,27 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
                       <strong>{booking.clientName ?? "Cliente"}</strong>
                       <span>{[booking.city, booking.items[0]?.name].filter(Boolean).join(" · ")}</span>
                     </span>
-                    <ItalianTimeInput
-                      ariaLabel={`Ora di arrivo da ${booking.clientName ?? "cliente"}`}
-                      value={value}
-                      onChange={(next) => setValues((prev) => ({ ...prev, [booking.id]: next }))}
-                      style={{ width: 110, padding: "8px 10px", borderRadius: 10, border: "1px solid #e6d5c3", fontSize: 16, fontFamily: "inherit", color: "#2b2420" }}
-                    />
-                    {/^\d{2}:\d{2}$/.test(value) ? <span className={styles.preview}>{arrivalWindowText(value, booking.scheduledAt, booking.scheduledEndAt)}</span> : null}
+                    {/* Solo gli orari dentro la fascia, uno all'ora (docs/changelog/2026-11-25-orari-di-arrivo-validi.md):
+                        come nel preventivo, niente ora sbagliata da correggere dopo. */}
+                    <div className={`slot-pills ${styles.pills}`} role="radiogroup" aria-label={`Ora di arrivo da ${booking.clientName ?? "cliente"}`}>
+                      {arrivalTimeChoices(band.start, band.end, value).map((time) => (
+                        <button
+                          key={time}
+                          type="button"
+                          role="radio"
+                          aria-checked={value === time}
+                          className={`slot-pill${value === time ? " is-on" : ""}`}
+                          onClick={() => setValues((prev) => ({ ...prev, [booking.id]: value === time ? "" : time }))}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                    {/^\d{2}:\d{2}$/.test(value) ? (
+                      <span className={styles.preview}>
+                        {arrivalWord(booking.serviceMode)} {arrivalWindowText(value, booking.scheduledAt, booking.scheduledEndAt)}
+                      </span>
+                    ) : null}
                   </div>
                 );
               })}

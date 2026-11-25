@@ -253,6 +253,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     // Il lavoro può finire già con un punto ("...della cucina."): mai due punti di fila.
     return { icon: "🥳", message: payment ? `${accepted.replace(/[.!?…\s]+$/u, "")}. ${payment}.` : accepted };
   }
+  // Online "ti contatta" invece di "arriva" (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+  if (type === "BOOKING_ARRIVAL_TIME" && data.serviceMode === "ONLINE") {
+    return { icon: "🕙", message: "Il professionista ti ha detto verso che ora ti contatta: guarda l'appuntamento." };
+  }
   if (type === "JOB_INVOICE_REQUESTED" && data.receipt === true) {
     // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01).
     return { icon: "🧾", message: `Un cliente ti chiede la ricevuta${jobSuffix}: la prepari dalla scheda del lavoro dopo "Lavoro terminato".` };

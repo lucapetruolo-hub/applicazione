@@ -935,9 +935,11 @@ export class BookingsService implements OnModuleInit {
         bookingId,
         guidedRequestId: booking.quote?.guidedRequestId,
         arrivalWindow: arrivalWindowText(arrivalTime, booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString()),
+        // Online "ti contatta" invece di "arriva" (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+        serviceMode: booking.serviceMode ?? null,
       });
       if (booking.quote) {
-        await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", `Ora di arrivo indicata: ${arrivalWindowText(arrivalTime, booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString())}.`);
+        await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", `${booking.serviceMode === "ONLINE" ? "Ora del contatto indicata" : "Ora di arrivo indicata"}: ${arrivalWindowText(arrivalTime, booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString())}.`);
       }
     }
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
@@ -2089,6 +2091,8 @@ export class BookingsService implements OnModuleInit {
       // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
       // professionista — richiesta esplicita dell'utente.
       meetingLink: booking.meetingLink,
+      // A domicilio o online: "Arrivo" o "Ti contatta" davanti all'ora (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+      serviceMode: booking.serviceMode ?? null,
       // Il professionista ha eliminato l'account (soft-delete, simmetrico a
       // clientAccountDeleted lato professionista) — richiesta esplicita
       // dell'utente: "Lavori accettati" deve segnalarlo e offrire

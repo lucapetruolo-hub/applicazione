@@ -34,3 +34,24 @@ cliente, fascia corta senza scelta, ritorno alla fascia lunga senza ora rimasta,
 "Altra data" 09:00-12:30 → 09:00-12:00), verde su telefono e computer. Lint e
 typecheck puliti. Foto prima/dopo in `anteprime/orari-arrivo/` nella cartella
 del progetto.
+
+## Secondo giro (25/11, ok di Luca alle migliorie 1 e 3)
+
+**Richiesta**: "Effettua miglioria 1-3": online "Ti contatta tra le…" al posto
+di "Arrivo tra le…", e le stesse pillole in Oggi.
+
+**Decisione**:
+- Online il cliente legge "Ti contatta tra le 16:00 e le 17:00" (preventivo,
+  riepilogo prima di accettare, appuntamento, email e notifica dell'ora,
+  cronologia "Ora del contatto indicata"); il professionista legge "contatto
+  tra le…". Parola in `arrivalWord` (`packages/shared/src/arrivalWindow.ts`);
+  `serviceMode` aggiunto all'appuntamento del cliente (`ClientBooking`) e al
+  contenuto della notifica `BOOKING_ARRIVAL_TIME`.
+- In Oggi, "Dì ai clienti di domani verso che ora passi": per ogni cliente le
+  pillole con i soli orari della fascia (`arrivalTimeChoices`) al posto del
+  campo ora; sotto, "Arrivo tra le … e le …" (o "Ti contatta" online).
+
+**Verifica**: test di `packages/shared` (272) e dell'API (1789) verdi;
+`e2e/tests/agenda-fasce-ampie.spec.ts` con le pillole in Oggi (08:00-18:00
+nella fascia 08:00-19:00), verde su telefono e computer; typecheck di sito,
+API e app e lint puliti. Foto `oggi-*.png` e `online-cliente-*.png`.

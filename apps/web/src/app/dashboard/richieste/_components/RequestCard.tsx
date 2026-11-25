@@ -491,7 +491,7 @@ export function RequestCard({
   const collapsedDateTime = booking?.scheduledAt
     ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
-      ? { label: "Preventivo per", text: `${formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}${lead.quote.arrivalTime ? `, arrivo ${arrivalWindowText(lead.quote.arrivalTime, lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}` : ""}` }
+      ? { label: "Preventivo per", text: `${formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}${lead.quote.arrivalTime ? `, ${isOnline ? "contatto" : "arrivo"} ${arrivalWindowText(lead.quote.arrivalTime, lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}` : ""}` }
       : gr.preferredDate && gr.preferredTimeSlot
         ? {
             label: "Richiesta per",
@@ -2057,7 +2057,7 @@ export function RequestCard({
                   ) : null}
                   <Text fontSize={13} color={brand.grafite70}>
                     {arrivalTime
-                      ? `Il cliente vede "Arrivo tra le ${arrivalTime} e le ${arrivalWindowEndBefore(arrivalTime, arrivalRange.end)}" e in agenda il lavoro si mette a quell'ora.`
+                      ? `Il cliente vede "${isOnline ? "Ti contatta" : "Arrivo"} tra le ${arrivalTime} e le ${arrivalWindowEndBefore(arrivalTime, arrivalRange.end)}" e in agenda il lavoro si mette a quell'ora.`
                       : `Se non scegli, il cliente vede solo la fascia ${arrivalRange.start}–${arrivalRange.end}.`}
                   </Text>
                 </YStack>

@@ -2424,12 +2424,14 @@ const BUILDERS: Record<string, Builder> = {
   // Ora indicativa di arrivo dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
   BOOKING_ARRIVAL_TIME: (payload, ctx) => {
     const window = typeof payload.arrivalWindow === "string" ? payload.arrivalWindow : null;
+    // Online "ti contatta" invece di "arriva" (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+    const verb = payload.serviceMode === "ONLINE" ? "ti contatta" : "arriva";
     return {
       kind: "notification",
-      subject: window ? `${pro(ctx)} arriva ${window}` : `${pro(ctx)} ti ha detto verso che ora arriva`,
+      subject: window ? `${pro(ctx)} ${verb} ${window}` : `${pro(ctx)} ti ha detto verso che ora ${verb}`,
       greeting: ctx.name,
-      title: "Ora di arrivo",
-      paragraphs: [window ? `**${pro(ctx)}** arriva ${window} per **${job(ctx)}**.` : `**${pro(ctx)}** ti ha detto verso che ora arriva per **${job(ctx)}**.`],
+      title: payload.serviceMode === "ONLINE" ? "Ora del contatto" : "Ora di arrivo",
+      paragraphs: [window ? `**${pro(ctx)}** ${verb} ${window} per **${job(ctx)}**.` : `**${pro(ctx)}** ti ha detto verso che ora ${verb} per **${job(ctx)}**.`],
       details: jobDetails(ctx),
       cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
       after: ["È un orario indicativo: se cambia qualcosa, il professionista ti scrive in chat."],

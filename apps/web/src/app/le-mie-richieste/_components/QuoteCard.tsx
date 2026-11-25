@@ -7,6 +7,7 @@ import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import {
   arrivalWindowText,
+  arrivalWord,
   TAX_BONUS_PAYMENT_NOTE,
   capitalizeItemName,
   cancellationPhase,
@@ -435,7 +436,7 @@ export function QuoteCard({
           {quote.arrivalTime ? (
             // Ora indicativa dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
             <Text fontSize={15} color={brand.grafite70}>
-              Arrivo {arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}
+              {arrivalWord(serviceMode)} {arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}
             </Text>
           ) : null}
         </QuoteFact>
@@ -603,7 +604,7 @@ export function QuoteCard({
                     </Text>
                     <Text fontSize={15} color={brand.grafite}>
                       <Text fontWeight="700">{quote.businessName}</Text> · {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
-                      {quote.arrivalTime ? `, arrivo ${arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}` : ""}
+                      {quote.arrivalTime ? `, ${arrivalWord(serviceMode).toLowerCase()} ${arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}` : ""}
                     </Text>
                   </YStack>
                   <button type="button" className="quote-compare-close" data-dialog-close onClick={() => setChoosingPayment(false)} disabled={isAccepting} aria-label="Chiudi">
