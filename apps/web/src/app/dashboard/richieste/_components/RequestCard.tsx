@@ -7,7 +7,7 @@ import { retryOnNetworkError } from "@professionisti/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  arrivalWindowText, arrivalWindowEndBefore,
+  arrivalWindowText, arrivalWindowEndBefore, arrivalTimeChoices,
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
   formatPhoneForDisplay,
   MAX_DEPOSIT_PERCENT,
@@ -321,6 +321,15 @@ export function RequestCard({
     const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
     return minutes(range.end) - minutes(range.start) >= ARRIVAL_MIN_RANGE_MIN ? range : null;
   })();
+  // Solo orari dentro la fascia, uno all'ora (docs/changelog/2026-11-25-orari-di-arrivo-validi.md):
+  // cambiando fascia o data, un'ora che non ci cade più si toglie da sola.
+  const arrivalChoices = arrivalRange ? arrivalTimeChoices(arrivalRange.start, arrivalRange.end, arrivalTime) : [];
+  const arrivalRangeKey = arrivalRange ? `${arrivalRange.start}-${arrivalRange.end}` : "";
+  const [seenArrivalRangeKey, setSeenArrivalRangeKey] = useState(arrivalRangeKey);
+  if (seenArrivalRangeKey !== arrivalRangeKey) {
+    setSeenArrivalRangeKey(arrivalRangeKey);
+    if (arrivalTime && !arrivalChoices.includes(arrivalTime)) setArrivalTime("");
+  }
 
   const [showCounterForm, setShowCounterForm] = useState(false);
   // "Sposta" su una sola visita di un lavoro ricorrente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
@@ -2024,18 +2033,32 @@ export function RequestCard({
                 // Fascia lunga: ora indicativa di arrivo, facoltativa (scelta di Luca, docs/changelog/2026-11-11-fasce-ampie.md).
                 <YStack gap="1">
                   <Text fontSize={13} fontWeight="700" color={brand.grafite} id={`arrival-${gr.id}`}>
-                    Verso che ora passi? <span style={{ fontWeight: 400, color: brand.grafite70 }}>(facoltativo)</span>
+                    {isOnline ? "Verso che ora ti colleghi?" : "Verso che ora passi?"} <span style={{ fontWeight: 400, color: brand.grafite70 }}>(facoltativo)</span>
                   </Text>
-                  <XStack gap="2" alignItems="center" flexWrap="wrap">
-                    <ItalianTimeInput ariaLabel="Ora indicativa di arrivo (facoltativa)" value={arrivalTime} onChange={setArrivalTime} style={{ ...smallInputStyle, width: 110 }} />
-                    {arrivalTime ? (
-                      <button type="button" className="slot-more" onClick={() => setArrivalTime("")}>
-                        Togli
+                  {/* Pillole con i soli orari validi al posto del campo ora libero: niente errore dopo, un tocco da telefono. */}
+                  <div className="slot-pills" role="radiogroup" aria-labelledby={`arrival-${gr.id}`}>
+                    {arrivalChoices.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        role="radio"
+                        aria-checked={arrivalTime === time}
+                        className={`slot-pill${arrivalTime === time ? " is-on" : ""}`}
+                        onClick={() => setArrivalTime(arrivalTime === time ? "" : time)}
+                      >
+                        {time}
                       </button>
-                    ) : null}
-                  </XStack>
+                    ))}
+                  </div>
+                  {arrivalTime ? (
+                    <button type="button" className="slot-more" style={{ alignSelf: "flex-start" }} onClick={() => setArrivalTime("")}>
+                      Non indicare l&apos;ora
+                    </button>
+                  ) : null}
                   <Text fontSize={13} color={brand.grafite70}>
-                    Il cliente vede &quot;Arrivo tra le {arrivalTime || "…"} e le {/^\d\d:\d\d$/.test(arrivalTime) ? arrivalWindowEndBefore(arrivalTime, arrivalRange.end) : "…"}&quot; e in agenda il lavoro si mette a quell&apos;ora.
+                    {arrivalTime
+                      ? `Il cliente vede "Arrivo tra le ${arrivalTime} e le ${arrivalWindowEndBefore(arrivalTime, arrivalRange.end)}" e in agenda il lavoro si mette a quell'ora.`
+                      : `Se non scegli, il cliente vede solo la fascia ${arrivalRange.start}–${arrivalRange.end}.`}
                   </Text>
                 </YStack>
               ) : null}

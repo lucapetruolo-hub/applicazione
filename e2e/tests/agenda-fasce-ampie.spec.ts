@@ -217,16 +217,31 @@ test("nel preventivo, con una fascia lunga si può dire verso che ora si passa",
   await page.getByText("Il boiler fa rumore", { exact: false }).first().click();
   await page.getByRole("button", { name: "Prepara il preventivo" }).first().click();
 
-  // Fascia 14:00–20:00 (sei ore), già scelta perché chiesta dal cliente: c'è il campo.
-  const arrival = page.getByLabel("Ora indicativa di arrivo (facoltativa)");
+  // Fascia 14:00–20:00 (sei ore), già scelta perché chiesta dal cliente:
+  // solo gli orari dentro la fascia, uno all'ora (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+  const arrival = page.getByRole("radiogroup", { name: /Verso che ora passi/ });
   await expect(arrival).toBeVisible();
-  await arrival.fill("16:30");
-  await expect(page.getByText('Il cliente vede "Arrivo tra le 16:30 e le 17:30"')).toBeVisible();
+  await expect(arrival.getByRole("radio")).toHaveText(["14:00", "15:00", "16:00", "17:00", "18:00", "19:00"]);
+  await expect(page.getByText("Se non scegli, il cliente vede solo la fascia 14:00–20:00.")).toBeVisible();
+  await arrival.getByRole("radio", { name: "16:00" }).click();
+  await expect(arrival.getByRole("radio", { name: "16:00" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByText('Il cliente vede "Arrivo tra le 16:00 e le 17:00"')).toBeVisible();
   await arrival.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("campo-arrivo.png") });
 
-  // Fascia di due ore: niente campo, basta la fascia.
+  // Fascia di due ore: niente scelta, basta la fascia; tornando alla fascia lunga
+  // l'ora di prima non c'è più (cambiando fascia si toglie da sola se non ci cade).
   await page.getByRole("radio", { name: /^08:00–10:00/ }).first().click();
   await expect(arrival).toHaveCount(0);
+  await page.getByRole("radio", { name: /^14:00–20:00/ }).first().click();
+  await expect(arrival.getByRole("radio", { checked: true })).toHaveCount(0);
+
+  // Altra data scritta a mano: le scelte seguono l'ora di inizio e di fine.
+  await page.getByRole("button", { name: "Altra data" }).click();
+  await page.getByLabel("Ora di inizio").fill("09:00");
+  await page.getByLabel("Ora di inizio").press("Tab");
+  await page.getByLabel("Ora di fine (facoltativa)").fill("12:30");
+  await page.getByLabel("Ora di fine (facoltativa)").press("Tab");
+  await expect(arrival.getByRole("radio")).toHaveText(["09:00", "10:00", "11:00", "12:00"]);
   await page.context().close();
 });
