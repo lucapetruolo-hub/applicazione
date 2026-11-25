@@ -3985,6 +3985,20 @@ model RealtimeTicket {
   @@map("realtime_tickets")
 }
 
+// Contatori dei limiti stretti al minuto (accesso, registrazione, recupero
+// password…): nel database perché valgano uguali per tutte le copie
+// dell'API e non ripartano da zero a ogni aggiornamento
+// (docs/changelog/2026-11-25-correzioni-test-sicurezza.md). La chiave è
+// un'impronta di rotta + indirizzo, mai l'indirizzo in chiaro.
+model RateLimitHit {
+  key       String   @id
+  hits      Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_hits")
+}
+
 // Eventi in tempo reale da passare alle altre copie dell'API: ognuna li
 // legge ogni secondo e li manda a chi è collegato da lei. Tenuti pochi
 // minuti (docs/changelog/2026-11-16-traffico-elevato.md).

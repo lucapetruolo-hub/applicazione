@@ -8,6 +8,7 @@ import {
   type OpenDisputeInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { JobPaymentsService } from "./job-payments.service";
 import { RefundsService } from "./refunds.service";
@@ -59,7 +60,7 @@ export class JobPaymentsController {
   /** Spiegazione e foto del professionista su una contestazione in banca (docs/changelog/2026-10-28-stripe-prova.md). */
   @UseGuards(JwtAuthGuard)
   @Patch("bank-dispute-note")
-  saveBankDisputeNote(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string, @Body(new ZodValidationPipe(bankDisputeProNoteSchema)) body: BankDisputeProNoteInput) {
+  saveBankDisputeNote(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string, @Body(new ZodValidationPipe(bankDisputeProNoteSchema), OwnMediaUrlsPipe) body: BankDisputeProNoteInput) {
     return this.bankDisputesService.saveProfessionalNote(req.user.userId, bookingId, body);
   }
 }

@@ -289,7 +289,6 @@ export type ProfessionalSearchResult = {
    */
   categories: { slug: ProfessionalCategorySlug; label: string }[];
   city: string;
-  address: string | null;
   verified: boolean;
   /** Identità verificata da Stripe (KYC/KYB), badge distinto da `verified` (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
@@ -299,6 +298,11 @@ export type ProfessionalSearchResult = {
   reviewCount: number;
   boosted: boolean;
   remoteAvailable: boolean;
+  /**
+   * Posizione approssimata a circa 1 km (`publicCoordinate`): l'indirizzo
+   * preciso non esce mai dalle risposte pubbliche
+   * (docs/changelog/2026-11-25-correzioni-test-sicurezza.md).
+   */
   latitude: number;
   longitude: number;
   imageUrl: string | null;
@@ -498,4 +502,13 @@ export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
  */
 export function formatRating(value: number): string {
   return value.toFixed(1).replace(".", ",");
+}
+
+/**
+ * Coordinata mostrata a tutti: due decimali, circa 1 km
+ * (docs/changelog/2026-11-25-correzioni-test-sicurezza.md). Basta per la
+ * mappa e per "a 3 km"; i calcoli del server usano quella esatta.
+ */
+export function publicCoordinate(value: number): number {
+  return Math.round(value * 100) / 100;
 }

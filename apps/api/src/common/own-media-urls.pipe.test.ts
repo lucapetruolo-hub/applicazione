@@ -19,3 +19,25 @@ describe("OwnMediaUrlsPipe", () => {
     expect(pipe.transform({ photoUrls: ["https://x/a.jpg"] })).toEqual({ photoUrls: ["https://x/a.jpg"] });
   });
 });
+
+describe("OwnMediaUrlsPipe: profilo e segnalazioni (test di sicurezza del 25/11)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const pipe = new OwnMediaUrlsPipe();
+
+  it("controlla anche foto profilo e lavori svolti, e accetta le immagini del sito", () => {
+    vi.stubEnv("CLOUDINARY_CLOUD_NAME", "nostro");
+    vi.stubEnv("FRONTEND_URL", "https://sito.example");
+    expect(() => pipe.transform({ imageUrl: "https://tracker.example/pixel.gif" })).toThrow(BadRequestException);
+    expect(() => pipe.transform({ portfolioUrls: ["https://tracker.example/a.jpg"] })).toThrow(BadRequestException);
+    const ok = { imageUrl: "https://res.cloudinary.com/nostro/image/upload/a.jpg", portfolioUrls: ["https://sito.example/copertine/idraulico.jpg"] };
+    expect(pipe.transform(ok)).toBe(ok);
+    expect(pipe.transform({ imageUrl: undefined, portfolioUrls: [] })).toEqual({ imageUrl: undefined, portfolioUrls: [] });
+  });
+
+  it("un sito che comincia come il nostro non passa", () => {
+    vi.stubEnv("CLOUDINARY_CLOUD_NAME", "nostro");
+    vi.stubEnv("FRONTEND_URL", "https://sito.example");
+    expect(() => pipe.transform({ photoUrls: ["https://sito.example.evil.it/a.jpg"] })).toThrow(BadRequestException);
+    expect(() => pipe.transform({ photoUrls: ["https://res.cloudinary.com/nostroaltro/a.jpg"] })).toThrow(BadRequestException);
+  });
+});

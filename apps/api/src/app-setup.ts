@@ -24,6 +24,8 @@ export function configureApp(app: NestExpressApplication): void {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "no-referrer");
+    // Solo HTTPS anche per l'API, come il sito (test di sicurezza del 25/11).
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
     next();
   });
   // `inflate: false` (docs/CHANGELOG.md §313): nessun client manda corpi
@@ -37,10 +39,28 @@ export function configureApp(app: NestExpressApplication): void {
   // Webhook di WhatsApp (Meta): firma X-Hub-Signature-256 sul body raw.
   app.use("/whatsapp/webhook", express.raw({ type: "application/json", inflate: false }));
   app.use(express.json({ inflate: false }));
+  // Carattere nullo (\0) nell'indirizzo o nel corpo: Postgres non lo accetta
+  // e la richiesta finiva in un errore 500 (e in Sentry). Test di sicurezza
+  // del 25/11, docs/changelog/2026-11-25-correzioni-test-sicurezza.md.
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (/%00/i.test(req.originalUrl) || containsNullCharacter(req.body)) {
+      res.status(400).json({ statusCode: 400, message: "La richiesta contiene un carattere non valido.", error: "Bad Request" });
+      return;
+    }
+    next();
+  });
   // Ristretto a FRONTEND_URL (CTO — audit sicurezza, checklist esterna
   // verificata contro il codice reale): `enableCors()` senza argomenti
   // accetta qualunque origine, un'API con JWT in localStorage letto da
   // qualsiasi sito. Stesso fallback a localhost:3000 già usato altrove
   // nel progetto quando FRONTEND_URL non è impostata (sviluppo locale).
   app.enableCors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000", credentials: true });
+}
+
+/** Un testo con il carattere nullo, anche dentro oggetti e liste (i corpi grezzi dei webhook restano fuori). */
+export function containsNullCharacter(value: unknown, depth = 0): boolean {
+  if (typeof value === "string") return value.includes("\u0000");
+  if (depth > 20 || value === null || typeof value !== "object" || Buffer.isBuffer(value)) return false;
+  if (Array.isArray(value)) return value.some((item) => containsNullCharacter(item, depth + 1));
+  return Object.entries(value).some(([key, item]) => key.includes("\u0000") || containsNullCharacter(item, depth + 1));
 }
