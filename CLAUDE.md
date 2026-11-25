@@ -281,7 +281,8 @@ prima di toccare abbonamenti, pagamenti, fatture o categorie. In breve:
   partenza 3 mesi Base), dal `LAUNCH_DATE`, carta obbligatoria, poi Base
   mensile in automatico. Nessuna pausa senza Stripe attivo o prima del lancio.
 - **Al limite** il profilo resta nella ricerca ma non manda preventivi nuovi
-  (`jobLimitReachedAt`); passaggio di livello con `upgradeFeeEurCents`. I
+  (`jobLimitReachedAt`); passaggio di livello a prezzo intero con mese nuovo
+  da oggi (`paidUpgradeEurCents`). I
   clienti dal link personale `/p/<codice>` non contano nei lavori.
 - **Pagamento dei lavori**: diretto oppure online con Stripe (acconto e
   saldo sul conto del professionista, trattenuta unica 7% + IVA, tetto
