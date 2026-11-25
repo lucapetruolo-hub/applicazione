@@ -33,6 +33,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
+import { PlusSuggestionCard } from "@/components/PlusSuggestionCard";
 import { SkeletonBlock } from "@/components/Skeleton";
 import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 import { downloadBlobFile } from "@/components/admin/adminUi";
@@ -634,6 +635,7 @@ function AbbonamentoContent() {
         ) : null}
 
         {sub ? <SubscriptionPauseBanner sub={sub} showAction={false} /> : null}
+        {sub ? <PlusSuggestionCard sub={sub} showAction={false} /> : null}
 
         {sub && status ? (
           <Surface borderRadius={radiusDoc} padding="5" gap="4">

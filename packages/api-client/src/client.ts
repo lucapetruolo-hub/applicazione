@@ -1,4 +1,6 @@
 import type {
+  AdminMonthlyAccounts,
+  MonthlyCostLine,
   CashbookOverview,
   CashbookSettings,
   ExpenseInput,
@@ -3512,6 +3514,17 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Admin → Numeri → Conti del mese (docs/changelog/2026-11-25-conti-del-mese.md). */
+    adminMonthlyAccounts: (token: string, month?: string) =>
+      request<AdminMonthlyAccounts>(`/admin/monthly-accounts${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSaveMonthlyCosts: (token: string, lines: MonthlyCostLine[]) =>
+      request<MonthlyCostLine[]>("/admin/monthly-accounts/costs", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ lines }),
       }),
 
     adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

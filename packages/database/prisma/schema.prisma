@@ -4136,3 +4136,18 @@ model FreeSpreadsheetSignup {
 
   @@map("free_spreadsheet_signups")
 }
+
+/// Costi fissi al mese della piattaforma, scritti dall'admin in Numeri →
+/// Conti del mese (docs/changelog/2026-11-25-conti-del-mese.md): servono
+/// all'utile stimato del mese e al traguardo dei 12.000 € all'anno.
+model PlatformMonthlyCost {
+  id              String   @id @default(uuid())
+  label           String
+  /// IVA esclusa.
+  monthlyEurCents Int
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("platform_monthly_costs")
+}

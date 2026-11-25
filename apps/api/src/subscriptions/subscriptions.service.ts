@@ -508,6 +508,7 @@ export class SubscriptionsService {
         periodEnd: period.end.toISOString(),
         countsClientsOnce: countsClientsOnce(sub, now),
         ownClientJobs: ownClients.jobs,
+        requests: await this.prisma.lead.count({ where: { professionalProfileId: profile.id, createdAt: { gte: period.start, lt: period.end } } }),
       },
       limitReached,
       limitsActive: pausesActive(now),

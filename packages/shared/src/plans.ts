@@ -289,6 +289,12 @@ export type MySubscription = {
     countsClientsOnce: boolean;
     /** Lavori dei clienti arrivati dal tuo link nel periodo: non contano in `used` (docs/changelog/2026-11-08-canale-del-professionista.md). */
     ownClientJobs: number;
+    /**
+     * Richieste ricevute nel periodo (smistate o dalla bacheca), per proporre
+     * Plus nei mesi gratis a chi ne riceve più di quante Base ne lasci
+     * accettare (docs/changelog/2026-11-25-conti-del-mese.md).
+     */
+    requests: number;
   };
   /**
    * Lavori del periodo esauriti (§362): il profilo resta nella ricerca e
@@ -329,4 +335,27 @@ export type MySubscription = {
 export interface SubscriptionCheckoutResult {
   url: string | null;
   bankConfirmUrl?: string;
+}
+
+/**
+ * Proporre Plus nei mesi gratis (decisione di Luca del 25/11/2026,
+ * docs/changelog/2026-11-25-conti-del-mese.md): a chi riceve più richieste
+ * di quanti lavori Base gli lascia accettare, prima che finisca i lavori
+ * (al limite c'è già l'avviso "Hai esaurito l'abbonamento").
+ */
+export function shouldSuggestPlus(sub: MySubscription): boolean {
+  return (
+    // Con la carta i mesi gratis sono un Base di Stripe con i giorni gratis davanti.
+    sub.state === "ACTIVE" &&
+    sub.tier === "BASE" &&
+    (sub.freeMonths?.currentMonth ?? 0) > 0 &&
+    sub.limitsActive &&
+    sub.checkoutAvailable &&
+    !sub.cardNeeded &&
+    !sub.limitReached &&
+    sub.pausedReason === null &&
+    sub.usage.limit !== null &&
+    sub.usage.requests > sub.usage.limit &&
+    sub.upgradeQuotes.some((quote) => quote.tier === "PLUS")
+  );
 }
