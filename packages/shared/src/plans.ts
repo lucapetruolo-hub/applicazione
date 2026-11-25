@@ -42,28 +42,16 @@ export function tierPeriodPriceEurCents(tier: SubscriptionTier, interval: Billin
 }
 
 /**
- * Passaggio a un livello superiore prima del rinnovo (decisione dell'utente
- * del 26/10/2026): 10 € fissi più la differenza di prezzo per i giorni che
- * restano, maggiorata del 10%. Senza tetto: con quasi tutto il periodo
- * davanti costa più della differenza piena, e spinge a scegliere subito il
- * livello giusto. IVA esclusa.
+ * Passaggio a un livello superiore con un abbonamento già pagato (decisione
+ * di Luca del 25/11/2026, docs/changelog/2026-11-25-passaggio-di-livello.md):
+ * si paga subito il prezzo intero del nuovo livello e da quel giorno parte un
+ * mese nuovo, con i lavori da 0 e il rinnovo spostato a quella data. Niente
+ * giorni scalati: il professionista compra lavori, non giorni. Prima (26/10)
+ * era 10 € più la differenza per i giorni rimasti, + 10%, con i lavori del
+ * mese già contati. IVA esclusa.
  */
-export const UPGRADE_FIXED_FEE_EUR_CENTS = 1000;
-export const UPGRADE_SURCHARGE = 0.1;
-
-export function upgradeFeeEurCents(input: {
-  from: SubscriptionTier;
-  to: SubscriptionTier;
-  interval: BillingInterval;
-  /** Millisecondi da adesso al rinnovo (o alla fine del periodo gratuito in corso). */
-  remainingMs: number;
-  /** Durata dell'intero periodo in millisecondi. */
-  periodMs: number;
-}): number {
-  const difference = Math.max(0, tierPeriodPriceEurCents(input.to, input.interval) - tierPeriodPriceEurCents(input.from, input.interval));
-  if (difference === 0 || input.periodMs <= 0) return 0;
-  const share = Math.min(1, Math.max(0, input.remainingMs / input.periodMs));
-  return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * share * (1 + UPGRADE_SURCHARGE));
+export function paidUpgradeEurCents(to: SubscriptionTier, interval: BillingInterval): number {
+  return tierPeriodPriceEurCents(to, interval);
 }
 
 /**

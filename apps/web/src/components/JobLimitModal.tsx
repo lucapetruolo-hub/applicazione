@@ -19,8 +19,9 @@ function dayMonth(iso: string): string {
  * Finestra al limite dei lavori (decisione dell'utente, docs/CHANGELOG.md
  * §362): si apre quando il professionista prova a mandare un preventivo a
  * una richiesta nuova con i lavori del periodo esauriti. Mostra la richiesta,
- * il livello sopra con una sola cifra (la quota di passaggio, §361) e la
- * data in cui i lavori ripartono. Con un abbonamento pagato il passaggio è
+ * il livello sopra con una sola cifra (prezzo del primo mese: intero con un
+ * abbonamento pagato, meno Base nei mesi gratis; da oggi parte un mese nuovo
+ * con 0 lavori, docs/changelog/2026-11-25-passaggio-di-livello.md). Con un abbonamento pagato il passaggio è
  * immediato e si torna al preventivo; altrimenti si paga su Stripe.
  */
 export function JobLimitModal({
@@ -101,7 +102,7 @@ export function JobLimitModal({
             </Text>
             {nextInfo ? (
               <Text color={brand.grafite70} lineHeight="22px">
-                Passa a {nextInfo.label} per rispondere subito: vale da oggi fino al rinnovo.
+                Passa a {nextInfo.label} per rispondere subito: da oggi parte un mese nuovo, con i lavori da zero.
               </Text>
             ) : null}
           </YStack>
@@ -126,7 +127,7 @@ export function JobLimitModal({
                 </Text>
                 <Text color={brand.grafite70}>
                   {quote && quote.amountEurCents > 0 ? "+ IVA" : "adesso"}
-                  {quote?.until ? ` fino al ${dayMonth(quote.until)}` : ""}
+                  {quote?.until ? ` fino al ${dayMonth(quote.until)}` : quote && quote.amountEurCents > 0 ? " per il primo mese, da oggi" : ""}
                 </Text>
               </XStack>
               <Text fontSize={13} color={brand.grafite70}>

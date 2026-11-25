@@ -104,7 +104,7 @@ function monthsWord(months: number): string {
  */
 function rulesText(sub: MySubscription | null, freeWithCard: boolean): { renewal: string; change: string; cancel: string | null } {
   const base = `${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese`;
-  const paidChange = "Paghi una volta sola la differenza fino al rinnovo, più una piccola quota.";
+  const paidChange = "Paghi oggi il nuovo livello intero e il mese riparte da oggi, con i lavori da zero.";
   const freeChange = `Nei mesi gratis paghi il primo mese del livello meno i ${formatEur(subscriptionTierInfo("BASE").priceEurCents)} di Base.`;
   if (sub?.state === "TRIAL") {
     return {
@@ -828,7 +828,7 @@ function AbbonamentoContent() {
                           </Text>
                         ) : (
                           <>
-                            Paghi una volta{" "}
+                            Paghi oggi{" "}
                             <Text fontWeight="800" color={brand.grafite}>
                               {formatEur(quote.amountEurCents)} + IVA
                             </Text>{" "}
@@ -836,8 +836,13 @@ function AbbonamentoContent() {
                           </>
                         )}
                       </Text>
+                      {/* Mese nuovo da oggi con i lavori da 0 (decisione di Luca del 25/11/2026,
+                          docs/changelog/2026-11-25-passaggio-di-livello.md): detto prima del pulsante,
+                          così chi ha appena rinnovato sa che paga il mese intero. */}
                       <Text color={brand.grafite70} fontSize={15}>
-                        {quote.until ? `Dal ${shortDate(quote.until)}` : "Poi"} {formatEur(periodPrice)} {perLabel(interval)} + IVA.
+                        {quote.until
+                          ? `Dal ${shortDate(quote.until)} ${formatEur(periodPrice)} ${perLabel(interval)} + IVA.`
+                          : `Il mese riparte da oggi con ${tier.monthlyAcceptedJobs === null ? "lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori`}, poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA.`}
                       </Text>
                     </YStack>
                   ) : null}
@@ -916,10 +921,10 @@ function AbbonamentoContent() {
               </Text>
               {feeDetailsOpen ? (
                 <Text color={brand.grafite70} fontSize={15} lineHeight="22px" marginTop="1">
-                  Nei mesi gratis passi a Plus o Pro pagando il primo mese meno il mese Base regalato (Plus 40 € + IVA): da quel giorno parte un mese
-                  nuovo con 0 lavori, e i mesi gratis che restano ti aspettano. Li riprendi tornando a Base. Con un livello già pagato paghi 10 € più la
-                  differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA): da Base a Plus con 7 giorni rimasti su 30 paghi
-                  20,27 € + IVA. Il nuovo livello vale da subito; al rinnovo paghi il nuovo livello intero.
+                  Con un livello già pagato paghi oggi il prezzo intero del nuovo livello (Plus 59 € + IVA, Pro 99 € + IVA): da quel giorno parte un
+                  mese nuovo con i lavori da zero, e il rinnovo si sposta a quella data. I giorni che restavano del livello di prima non si scalano. Nei
+                  mesi gratis paghi il primo mese meno il mese Base regalato (Plus 40 € + IVA): anche lì parte un mese nuovo con 0 lavori, e i mesi
+                  gratis che restano ti aspettano. Li riprendi tornando a Base.
                 </Text>
               ) : null}
             </Surface>
