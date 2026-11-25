@@ -10895,9 +10895,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
    (docs/CHANGELOG.md §378): si stampa solo il documento, senza intestazione
-   del sito, menu né pulsanti. */
+   del sito, menu né pulsanti. Solo nelle pagine che hanno un documento
+   (`body:where(:has(.print-document))`, che pesa come il vecchio `body *` e
+   lascia vincere `.print-document *`): prima la regola valeva ovunque e Termini,
+   Privacy e ogni altra pagina uscivano bianche in stampa
+   (docs/changelog/2026-11-25-stampa-pagine.md). */
 @media print {
-  body * {
+  body:where(:has(.print-document)) * {
     visibility: hidden;
   }
   .print-document,
