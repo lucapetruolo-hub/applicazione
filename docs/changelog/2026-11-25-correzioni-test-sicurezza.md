@@ -40,6 +40,7 @@ codice, ZAP e Nuclei dal vivo solo su Vercel e Render), rapporto in
    chiamata. Se il database non risponde si conta in memoria. Nella chiave
    solo un'impronta, mai l'indirizzo IP.
 6. **HSTS sull'API** (`Strict-Transport-Security`, due anni), come il sito.
+7. **CSP del sito**: gli indirizzi Google (`*.google.com`, `*.googleusercontent.com`) solo in `https://`, prima la regola ammetteva anche http (miglioria approvata da Luca).
 
 **Verifica**: test dell'API (con i nuovi `file-signature.test.ts`,
 `shared-throttler-storage.test.ts`, `app-setup-null.test.ts` e le prove nuove

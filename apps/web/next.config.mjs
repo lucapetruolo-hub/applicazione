@@ -25,13 +25,13 @@ function apiOrigin() {
 // (docs/changelog/2026-11-18-video-che-carica-ancora.md).
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' blob: https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com https://*.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https://res.cloudinary.com",
-  `connect-src 'self' ${apiOrigin()} https://*.googleapis.com *.google.com https://*.gstatic.com https://challenges.cloudflare.com https://res.cloudinary.com https://api.cloudinary.com data: blob:`,
-  "frame-src *.google.com https://challenges.cloudflare.com",
+  `connect-src 'self' ${apiOrigin()} https://*.googleapis.com https://*.google.com https://*.gstatic.com https://challenges.cloudflare.com https://res.cloudinary.com https://api.cloudinary.com data: blob:`,
+  "frame-src https://*.google.com https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "form-action 'self'",
   "frame-ancestors 'none'",
