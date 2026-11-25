@@ -29,7 +29,10 @@ codice, ZAP e Nuclei dal vivo solo su Vercel e Render), rapporto in
    byte) e prende l'estensione dal contenuto, non dal nome scelto da chi
    carica; prima una pagina `.html` dichiarata PDF finiva sul nostro
    Cloudinary. Le immagini che sono testo (SVG, HTML) vengono rifiutate in
-   tutti i caricamenti (`uploadImage`, `uploadMedia`).
+   tutti i caricamenti (`uploadImage`, `uploadMedia`). Seconda difesa,
+   controllata da Cloudinary (miglioria approvata da Luca): `allowed_formats`
+   in ogni caricamento, immagini JPEG/PNG/WebP/GIF/HEIC/AVIF e documenti
+   PDF/Word/Excel; un SVG o un HTML viene rifiutato da Cloudinary stesso.
 4. **Carattere nullo** nell'indirizzo o nel corpo JSON: 400 invece di un
    errore 500 da Postgres, che finiva anche in Sentry (`app-setup.ts`).
 5. **Limiti stretti al minuto nel database** (tabella `rate_limit_hits`,

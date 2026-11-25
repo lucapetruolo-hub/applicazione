@@ -14,6 +14,14 @@ import { MEDIA_VIDEO_MAX_SECONDS } from "@professionisti/shared";
  * (foto e video fino a 50 MB, `MEDIA_UPLOAD_DIR`), altrimenti dalla memoria
  * (docs/changelog/2026-11-16-traffico-elevato.md).
  */
+/**
+ * Seconda difesa, controllata da Cloudinary stesso (test di sicurezza del 25/11,
+ * docs/changelog/2026-11-25-correzioni-test-sicurezza.md): formati accettati
+ * al caricamento. Niente SVG né HTML anche se un controllo nostro sbagliasse.
+ */
+const ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif"] as const;
+const ALLOWED_DOCUMENT_FORMATS = ["pdf", "doc", "docx", "xls", "xlsx"] as const;
+
 const NOT_AN_IMAGE_MESSAGE = "Il file caricato non è una foto (JPEG, PNG, WebP o HEIC).";
 
 function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream, reject: (error: unknown) => void): void {
@@ -126,6 +134,7 @@ export class CloudinaryService {
           {
             folder,
             resource_type: "image",
+            allowed_formats: [...ALLOWED_IMAGE_FORMATS],
             // quality/fetch_format "auto": Cloudinary sceglie la compressione
             // migliore per contenuto e il formato più leggero supportato dal
             // browser che la richiede (es. WebP/AVIF), invece del JPEG fisso
@@ -184,6 +193,7 @@ export class CloudinaryService {
       const result = await cloudinary.uploader.upload(url, {
         folder,
         resource_type: "image",
+        allowed_formats: [...ALLOWED_IMAGE_FORMATS],
         timeout: 5000,
         transformation: [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
       });
@@ -313,6 +323,7 @@ export class CloudinaryService {
           {
             folder,
             resource_type: resourceType,
+            ...(resourceType === "image" ? { allowed_formats: [...ALLOWED_IMAGE_FORMATS] } : resourceType === "raw" ? { allowed_formats: [...ALLOWED_DOCUMENT_FORMATS] } : {}),
             ...(transformation ? { transformation } : {}),
             ...(rawExtension ? { format: rawExtension } : {}),
             ...(rawPublicId ? { public_id: rawPublicId } : {}),
