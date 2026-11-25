@@ -302,6 +302,8 @@ export type ClientBooking = {
   recurring: RecurringVisitInfo | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
+  /** A domicilio o online (docs/changelog/2026-11-25-orari-di-arrivo-validi.md): "Arrivo" o "Ti contatta" davanti all'ora; null per i lavori di prima. */
+  serviceMode: "HOME" | "ONLINE" | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
   professionalAccountDeleted: boolean;
 };

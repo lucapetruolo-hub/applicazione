@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Text, XStack, YStack, brand, radiusSm } from "@professionisti/ui";
 import {
-  arrivalWindowText, appointmentMoment, formatAppointmentDate, formatAppointmentTimeRange, formatJobDays, type AppointmentMoment } from "@professionisti/shared";
+  arrivalWindowText, arrivalWord, appointmentMoment, formatAppointmentDate, formatAppointmentTimeRange, formatJobDays, type AppointmentMoment } from "@professionisti/shared";
 
 /**
  * Momento dell'appuntamento, ricalcolato ogni minuto così la scheda passa
@@ -64,7 +64,7 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
         {booking.arrivalTime ? (
           // Ora indicativa scelta dal professionista dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
           <Text fontSize={16} fontWeight="600" color={canceled ? brand.grafite70 : brand.cianografiaScuro}>
-            Arrivo {arrivalWindowText(booking.arrivalTime, booking.scheduledAt, booking.scheduledEndAt)}
+            {arrivalWord(booking.serviceMode)} {arrivalWindowText(booking.arrivalTime, booking.scheduledAt, booking.scheduledEndAt)}
           </Text>
         ) : null}
         {momentText ? (
