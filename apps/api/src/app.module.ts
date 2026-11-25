@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, DiscoveryModule, Reflector } fr
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ClientIpThrottlerGuard } from "./common/client-ip";
+import { SharedThrottlerStorage } from "./common/shared-throttler-storage";
 import { TemporaryUploadCleanupInterceptor } from "./common/media-upload";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CronRunsService } from "./health/cron-runs.service";
@@ -72,7 +73,12 @@ import { RequestBoardModule } from "./request-board/request-board.module";
     // controller — CLAUDE.md §10/docs/archivio/2026-09-audit-fase0.md §6, punto rimandato alla Fase 6.
     // `RATE_LIMIT_PER_MINUTE` serve solo alle prove nel browser, che fanno
     // tutte le chiamate dallo stesso indirizzo (docs/CHANGELOG.md §311).
-    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 60 }]),
+    // Limiti stretti nel database, condivisi tra le copie dell'API
+    // (docs/changelog/2026-11-25-correzioni-test-sicurezza.md).
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: "default", ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 60 }],
+      storage: new SharedThrottlerStorage(),
+    }),
     // Scadenza/espansione automatica dei Lead e delle richieste guidate
     // (CLAUDE.md §14, GuidedRequestsService.runExpiryCheck): nessuna coda
     // reale nello stack (Redis/BullMQ restano solo nella tabella §2, mai

@@ -216,6 +216,10 @@ delle funzioni in `docs/STATO.md`; le operazioni in `docs/ops/`.
     DAC7 compilati; la verifica KYC/KYB di Stripe serve solo per l'acconto
     online e il bollino "Pagamenti online", `stripeVerified`, prima "Identità verificata da Stripe"); in più un codice fiscale o una partita IVA che Openapi
     dice non validi tolgono il profilo dalla ricerca (§253).
+    Nessuna risposta pubblica contiene l'indirizzo preciso del professionista e
+    le coordinate pubbliche passano da `publicCoordinate` (~1 km); foto e video
+    nei corpi solo con `OwnMediaUrlsPipe`
+    (docs/changelog/2026-11-25-correzioni-test-sicurezza.md).
 12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
     qualunque admin.

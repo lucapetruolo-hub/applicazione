@@ -1,9 +1,9 @@
-import { extname } from "node:path";
 import { createReadStream } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { temporaryUploadPath } from "../common/media-upload";
+import { documentExtension, fileHead, isMarkupImage } from "../common/file-signature";
 import { DailyBudget, sharedBudgetStore } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { v2 as cloudinary } from "cloudinary";
@@ -14,6 +14,8 @@ import { MEDIA_VIDEO_MAX_SECONDS } from "@professionisti/shared";
  * (foto e video fino a 50 MB, `MEDIA_UPLOAD_DIR`), altrimenti dalla memoria
  * (docs/changelog/2026-11-16-traffico-elevato.md).
  */
+const NOT_AN_IMAGE_MESSAGE = "Il file caricato non è una foto (JPEG, PNG, WebP o HEIC).";
+
 function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream, reject: (error: unknown) => void): void {
   const path = temporaryUploadPath(file.path);
   if (path) {
@@ -112,6 +114,10 @@ export class CloudinaryService {
       throw new BadRequestException(
         "Il caricamento immagini non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
       );
+    }
+    if (isMarkupImage(await fileHead(file), file.mimetype)) {
+      await removeTemporaryFile(file);
+      throw new BadRequestException(NOT_AN_IMAGE_MESSAGE);
     }
 
     try {
@@ -275,9 +281,20 @@ export class CloudinaryService {
     // (dove il formato si rileva dal contenuto stesso) — senza questo,
     // `isDocumentUrl`/`documentTypeLabel` lato web (basati sull'estensione
     // dell'URL) non riconoscerebbero mai il file come documento. Ricavata
-    // dal nome originale caricato dal browser (`file.originalname`, sempre
-    // presente su un upload Multer), non da una mappa mimetype→estensione.
-    const rawExtension = resourceType === "raw" ? extname(file.originalname).replace(/^\./, "").toLowerCase() : undefined;
+    // dai primi byte del file (sotto), non dal nome scelto da chi carica.
+    // Test di sicurezza del 25/11 (docs/changelog/2026-11-25-correzioni-test-sicurezza.md):
+    // tipo ed estensione dal contenuto vero, non dal nome scelto da chi carica
+    // (prima una pagina `.html` dichiarata PDF passava). Niente SVG tra le immagini.
+    const head = await fileHead(file);
+    if (isImage && isMarkupImage(head, file.mimetype)) {
+      await removeTemporaryFile(file);
+      throw new BadRequestException(NOT_AN_IMAGE_MESSAGE);
+    }
+    const rawExtension = resourceType === "raw" ? documentExtension(head, file.mimetype) : undefined;
+    if (rawExtension === null) {
+      await removeTemporaryFile(file);
+      throw new BadRequestException("Il file non è un PDF, un documento Word o un foglio Excel.");
+    }
     // `public_id` esplicito solo per un documento "raw" (immagini/video
     // restano su un id auto-generato da Cloudinary, comportamento
     // invariato): incorpora direttamente nel percorso dell'URL restituito

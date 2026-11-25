@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { publicProfessionalKindOf, type ProfessionalSearchResult, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { publicCoordinate, publicProfessionalKindOf, type ProfessionalSearchResult, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { summarizeReviews } from "../reviews/review-summary";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
@@ -57,7 +57,6 @@ export class SavedProfessionalsService {
         categoryLabel: profile.category.label,
         categories: profileCategories(profile),
         city: profile.city,
-        address: profile.address,
         verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
         professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
@@ -65,8 +64,8 @@ export class SavedProfessionalsService {
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
         remoteAvailable: profile.remoteAvailable,
-        latitude: profile.latitude,
-        longitude: profile.longitude,
+        latitude: publicCoordinate(profile.latitude),
+        longitude: publicCoordinate(profile.longitude),
         imageUrl: profile.imageUrl,
         services: profile.services.map((service) => ({
           id: service.id,

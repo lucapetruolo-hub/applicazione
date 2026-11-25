@@ -660,7 +660,9 @@ describe("ricerca leggera: si leggono solo i campi che servono (docs/changelog/2
     // Le schede intere: le 20 della pagina, nell'ordine delle stelle.
     expect(detailCall!.where.id!.in).toHaveLength(20);
     expect(page.results.map((item) => item.id).slice(0, 3)).toEqual(["p30", "p29", "p28"]);
-    expect(page.results[0]).toMatchObject({ address: "Via Roma 1", reviewCount: 29, services: [{ priceMinEurCents: 5000 }] });
+    expect(page.results[0]).toMatchObject({ reviewCount: 29, services: [{ priceMinEurCents: 5000 }] });
+    // L'indirizzo preciso non esce mai dalle risposte pubbliche (docs/changelog/2026-11-25-correzioni-test-sicurezza.md).
+    expect(page.results[0]).not.toHaveProperty("address");
     expect(page.total).toBe(30);
   });
 

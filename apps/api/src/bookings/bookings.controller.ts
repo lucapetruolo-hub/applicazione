@@ -262,7 +262,7 @@ export class BookingsController {
   /** Il cliente segnala un problema sul lavoro: mancata presentazione o lavoro non andato bene (docs/CHANGELOG.md §164). */
   @UseGuards(JwtAuthGuard)
   @Post(":id/issue")
-  reportIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportJobIssueSchema)) body: ReportJobIssueInput) {
+  reportIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportJobIssueSchema), OwnMediaUrlsPipe) body: ReportJobIssueInput) {
     return this.bookingsService.reportIssue(req.user.userId, id, body);
   }
 
@@ -272,7 +272,7 @@ export class BookingsController {
   reportProfessionalProblem(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(reportProfessionalJobProblemSchema)) body: ReportProfessionalJobProblemInput,
+    @Body(new ZodValidationPipe(reportProfessionalJobProblemSchema), OwnMediaUrlsPipe) body: ReportProfessionalJobProblemInput,
   ) {
     return this.bookingsService.reportProblemByProfessional(req.user.userId, id, body);
   }

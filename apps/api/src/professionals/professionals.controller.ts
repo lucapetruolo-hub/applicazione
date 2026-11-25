@@ -53,6 +53,7 @@ import {
   type ResultsBounds,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { VerifiedEmailGuard } from "../auth/verified-email.guard";
@@ -259,7 +260,7 @@ export class ProfessionalsController {
   @Put("me")
   upsertMyProfile(
     @Req() req: AuthenticatedRequest,
-    @Body(new ZodValidationPipe(professionalProfileSelfSchema)) body: ProfessionalProfileSelfInput,
+    @Body(new ZodValidationPipe(professionalProfileSelfSchema), OwnMediaUrlsPipe) body: ProfessionalProfileSelfInput,
   ) {
     return this.professionalsService.upsertMyProfile(req.user.userId, body);
   }
