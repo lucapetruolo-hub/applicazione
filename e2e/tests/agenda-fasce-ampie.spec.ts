@@ -181,15 +181,18 @@ test("in Oggi si dice ai clienti di domani verso che ora passa", async ({ browse
   await page.goto("/dashboard");
   const card = page.getByRole("region", { name: "Dì ai clienti di domani verso che ora passi" });
   await expect(card).toBeVisible();
-  await card.getByLabel("Ora di arrivo da Bianca", { exact: false }).fill("09:00");
-  await card.getByLabel("Ora di arrivo da Carlo", { exact: false }).fill("14:30");
-  await expect(card).toContainText("tra le 14:30 e le 15:30");
+  // Solo gli orari della fascia 08:00–19:00, uno all'ora (docs/changelog/2026-11-25-orari-di-arrivo-validi.md).
+  const bianca = card.getByRole("radiogroup", { name: "Ora di arrivo da Bianca", exact: false });
+  await expect(bianca.getByRole("radio")).toHaveText(["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]);
+  await bianca.getByRole("radio", { name: "09:00" }).click();
+  await card.getByRole("radiogroup", { name: "Ora di arrivo da Carlo", exact: false }).getByRole("radio", { name: "14:00" }).click();
+  await expect(card).toContainText("Arrivo tra le 14:00 e le 15:00");
   await card.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("oggi-ora-arrivo.png") });
   await card.getByRole("button", { name: "Avvisa i clienti" }).click();
   await expect(card).toContainText("Fatto: i clienti hanno ricevuto l'ora di arrivo.");
   const saved = await prisma.booking.findMany({ where: { id: { in: made } }, select: { arrivalTime: true } });
-  expect(saved.map((b) => b.arrivalTime).sort()).toEqual(["09:00", "14:30"]);
+  expect(saved.map((b) => b.arrivalTime).sort()).toEqual(["09:00", "14:00"]);
   const notified = await prisma.notification.count({ where: { type: "BOOKING_ARRIVAL_TIME", payload: { path: ["bookingId"], string_contains: made[0]! } } });
   expect(notified).toBe(1);
   await page.context().close();
