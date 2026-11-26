@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toJobPaymentSummary } from "./onlinePayments";
+import { clientWithholds, toJobPaymentSummary, withholdingPaymentOffer } from "./onlinePayments";
 
 /** Lavoro di 120 € pagato tutto online, chiuso, non ancora sbloccato. */
 function job(overrides: Record<string, unknown> = {}) {
@@ -96,4 +96,21 @@ test("acceptedPaymentForPro: il tipo di pagamento per il professionista, mai la 
   assert.equal(acceptedPaymentForPro("MIXED", range, 20).long, "Acconto di 30,00 € già pagato online con la carta. Il resto (da 120,00 € a 170,00 €) direttamente a te a lavoro finito");
   assert.equal(acceptedPaymentForPro("ONLINE", one, 100).short, "Ha già pagato tutto online con la carta");
   assert.match(acceptedPaymentForPro("ONLINE", range, 100).long, /^150,00 € già pagati online con la carta, il prezzo minimo/);
+});
+
+// Ritenuta del cliente azienda (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+
+test("ritenuta: solo professionista occasionale, fattura a una partita IVA, sostituto d'imposta", () => {
+  assert.equal(clientWithholds(true, { kind: "VAT" }), true);
+  assert.equal(clientWithholds(true, { kind: "VAT", withholdingAgent: null }), true);
+  assert.equal(clientWithholds(true, { kind: "VAT", withholdingAgent: false }), false);
+  assert.equal(clientWithholds(true, { kind: "PERSON" }), false);
+  assert.equal(clientWithholds(false, { kind: "VAT" }), false);
+  assert.equal(clientWithholds(true, null), false);
+});
+
+test("ritenuta: tutto online diventa acconto online fino all'80% e saldo di persona", () => {
+  assert.deepEqual(withholdingPaymentOffer({ paymentOptions: ["ONLINE", "DIRECT"], depositPercent: 100 }), { paymentOptions: ["MIXED", "DIRECT"], depositPercent: 80 });
+  assert.deepEqual(withholdingPaymentOffer({ paymentOptions: ["ONLINE", "MIXED"], depositPercent: 30 }), { paymentOptions: ["MIXED"], depositPercent: 30 });
+  assert.deepEqual(withholdingPaymentOffer({ paymentOptions: ["DIRECT"], depositPercent: 20 }), { paymentOptions: ["DIRECT"], depositPercent: 20 });
 });

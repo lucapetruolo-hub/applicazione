@@ -24,6 +24,8 @@ import {
   paymentChoiceIsOnline,
   quotePaymentOffer,
   quoteDepositEurCents,
+  clientWithholds,
+  withholdingPaymentOffer,
   ONLINE_MIN_CHARGE_EUR_CENTS,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
@@ -251,7 +253,7 @@ export class BookingsService implements OnModuleInit {
     invoiceRequest?: ClientInvoiceRequestInput,
     seen: SeenCancellationTerms = {},
   ): Promise<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }> {
-    const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod);
+    const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod, invoiceRequest ?? null);
     // Data del preventivo già passata (docs/changelog/2026-11-11-fascia-in-corso.md):
     // prima nasceva un appuntamento nel passato. Una fascia in corso va ancora
     // bene finché non è finita, come in tutto il sito. Solo
@@ -319,16 +321,31 @@ export class BookingsService implements OnModuleInit {
   }
 
   /** Il preventivo esiste, è del cliente, si può ancora accettare e offre il modo di pagamento scelto. */
-  private async loadAcceptableQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice) {
-    const quote = await this.prisma.quote.findUnique({
+  private async loadAcceptableQuote(
+    clientId: string,
+    quoteId: string,
+    paymentMethod: JobPaymentChoice,
+    /** Fattura chiesta in questo momento (accettando): conta questa, non quella salvata. */
+    invoiceRequestNow?: ClientInvoiceRequestInput | null,
+  ) {
+    const loaded = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: {
         guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } }, category: { select: { label: true } } } },
         booking: true,
-        professionalProfile: true,
+        professionalProfile: { include: { fiscalProfile: { select: { entityType: true } } } },
         items: { orderBy: { position: "asc" } },
+        invoiceRequest: { select: { kind: true, withholdingAgent: true } },
       },
     });
+    // Cliente azienda che trattiene la ritenuta (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md):
+    // online al massimo l'80% e saldo di persona. Il preventivo resta quello del
+    // professionista; cambia solo l'offerta letta da qui in poi (acconto, lavoro, testi).
+    const request = invoiceRequestNow !== undefined ? invoiceRequestNow : loaded?.invoiceRequest;
+    const quote =
+      loaded && clientWithholds(loaded.professionalProfile.fiscalProfile?.entityType === "PRIVATE_INDIVIDUAL", request)
+        ? { ...loaded, ...withholdingPaymentOffer(quotePaymentOffer(loaded)) }
+        : loaded;
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
     }

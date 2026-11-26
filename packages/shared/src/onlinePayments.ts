@@ -794,3 +794,43 @@ export type AdminUnpaidBalance = {
   client: { userId: string; name: string | null; email: string };
   professional: { userId: string; businessName: string };
 };
+
+/**
+ * Ritenuta d'acconto del cliente azienda (decisione di Luca del 26/11/2026,
+ * docs/changelog/2026-11-26-ritenuta-cliente-azienda.md). Chi lavora in modo
+ * occasionale e lavora per un'azienda o un professionista con partita IVA
+ * (sostituto d'imposta) riceve l'80%: il 20% il cliente lo trattiene e lo
+ * versa allo Stato con l'F24 (codice tributo 1040) entro il 16 del mese dopo.
+ * Online quindi al massimo l'80% del prezzo; il resto lo gestiscono tra loro
+ * di persona. Il saldo è sempre di persona, così l'80% non si supera mai.
+ */
+export const WITHHOLDING_PERCENT = 20;
+export const WITHHOLDING_MAX_ONLINE_PERCENT = 100 - WITHHOLDING_PERCENT;
+
+/** Il cliente trattiene la ritenuta? Professionista occasionale, fattura a una partita IVA, sostituto d'imposta (non detto = sì). */
+export function clientWithholds(
+  professionalIsOccasional: boolean,
+  request: { kind: string; withholdingAgent?: boolean | null } | null | undefined,
+): boolean {
+  return professionalIsOccasional && request?.kind === "VAT" && request.withholdingAgent !== false;
+}
+
+/**
+ * Modi di pagamento con la ritenuta: "tutto online" diventa "acconto online e
+ * saldo di persona", con l'acconto al massimo all'80% (del prezzo minimo,
+ * quindi mai oltre l'80% del prezzo finale). Il pagamento diretto resta.
+ */
+export function withholdingPaymentOffer(offer: { paymentOptions: JobPaymentChoice[]; depositPercent: number }): {
+  paymentOptions: JobPaymentChoice[];
+  depositPercent: number;
+} {
+  const mapped = new Set<JobPaymentChoice>(offer.paymentOptions.map((o) => (o === "ONLINE" ? "MIXED" : o)));
+  return {
+    paymentOptions: jobPaymentChoices.filter((o) => mapped.has(o)),
+    depositPercent: Math.min(offer.depositPercent, WITHHOLDING_MAX_ONLINE_PERCENT),
+  };
+}
+
+/** Riga per il cliente che trattiene la ritenuta, nella scelta del pagamento. */
+export const WITHHOLDING_PAYMENT_NOTE =
+  "Come azienda trattieni il 20% di ritenuta d'acconto e lo versi allo Stato con l'F24 (codice 1040) entro il 16 del mese dopo. Online paghi al massimo l'80%, il resto lo gestite di persona.";

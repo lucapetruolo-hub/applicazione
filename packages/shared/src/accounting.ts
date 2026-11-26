@@ -124,6 +124,8 @@ export type ClientInvoiceRequestView = {
   postalCode: string;
   city: string;
   province: string | null;
+  /** A una partita IVA: trattiene la ritenuta d'acconto. `null` = non detto (vale sì). Facoltativa per un'API non ancora aggiornata. */
+  withholdingAgent?: boolean | null;
   requestedAt: string;
   /** Il professionista l'ha segnata come fatta da Oggi; torna `null` se il cliente cambia i dati. Facoltativa solo per un'API non ancora aggiornata. */
   doneAt?: string | null;
@@ -138,6 +140,9 @@ export function clientInvoiceLines(view: ClientInvoiceRequestView): string[] {
     view.taxCode && (view.kind === "PERSON" || /^\d{11}$/.test(view.taxCode)) ? `Codice fiscale ${view.taxCode}` : null,
     [[view.street, view.houseNumber].filter(Boolean).join(" "), [view.postalCode, view.city, view.province ? `(${view.province})` : null].filter(Boolean).join(" ")].join(", "),
     view.sdiRecipientCode ? `Codice destinatario ${view.sdiRecipientCode}` : view.pecEmail ? `PEC ${view.pecEmail}` : null,
+    // Ricevuta occasionale a una partita IVA: lo dice il cliente (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+    view.kind === "VAT" && view.withholdingAgent === true ? "Trattiene la ritenuta d'acconto del 20%" : null,
+    view.kind === "VAT" && view.withholdingAgent === false ? "Non trattiene la ritenuta d'acconto (regime forfettario)" : null,
   ].filter((line): line is string => !!line);
 }
 

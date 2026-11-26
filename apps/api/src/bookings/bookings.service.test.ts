@@ -211,6 +211,32 @@ describe("BookingsService.createFromQuote — un solo lavoro per richiesta (§34
 });
 
 describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
+  // Cliente azienda e professionista occasionale (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+  const companyInvoice = { kind: "VAT" as const, name: "Ditta Srl", vatNumber: "12345678903", street: "Via Roma", postalCode: "00100", city: "Roma" };
+  const occasionalQuote = () =>
+    baseQuote({ paymentOptions: ["ONLINE", "DIRECT"], depositPercent: 100, professionalProfile: { userId: "pro-user-1", fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL" } } });
+
+  it("con la ritenuta del cliente azienda niente tutto online: online al massimo l'80% e saldo di persona", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(occasionalQuote());
+
+    await expect(service.createFromQuote("client-1", "quote-1", "ONLINE", companyInvoice)).rejects.toBeInstanceOf(BadRequestException);
+    await service.createFromQuote("client-1", "quote-1", "MIXED", companyInvoice);
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "MIXED", amountEurCents: 16000 }));
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("un cliente forfettario (non trattiene) paga come sempre", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(occasionalQuote());
+
+    await service.createFromQuote("client-1", "quote-1", "ONLINE", { ...companyInvoice, withholdingAgent: false });
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "ONLINE", amountEurCents: 20000 }));
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
   it("con l'acconto online apre il pagamento e non crea ancora la prenotazione (§240)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService, notificationsService } = buildService();

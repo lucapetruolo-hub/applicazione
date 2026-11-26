@@ -1345,6 +1345,9 @@ model ClientInvoiceRequest {
   postalCode         String
   city               String
   province           String?
+  /// A una partita IVA: il cliente trattiene la ritenuta d'acconto (sostituto d'imposta). null = non detto, vale sì
+  /// (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+  withholdingAgent   Boolean?
   // Il professionista ha aperto la scheda del lavoro dopo la richiesta.
   professionalSeenAt DateTime?
   createdAt          DateTime  @default(now())

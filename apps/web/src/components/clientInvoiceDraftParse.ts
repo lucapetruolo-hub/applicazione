@@ -23,6 +23,8 @@ export function parseInvoiceDraft(
     postalCode: draft.postalCode,
     city: draft.city,
     province: draft.province.trim() || undefined,
+    // Solo per la ricevuta occasionale a una partita IVA (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+    withholdingAgent: draft.kind === "VAT" && receipt ? draft.withholdingAgent : undefined,
   });
   if (parsed.success) return { ok: true, data: parsed.data };
   const errors: Partial<Record<keyof InvoiceDraft, string>> = {};
