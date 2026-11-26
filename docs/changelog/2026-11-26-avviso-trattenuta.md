@@ -28,3 +28,19 @@ commercialista.
 **Verifica**: test nuovi in `quote-pdf.service.test.ts` e
 `documents-pdf-sdi.test.ts`; test dell'API tutti verdi (1795); typecheck di
 API e sito.
+
+## Pulsante nell'email (26/11, sì di Luca)
+
+**Richiesta**: nelle email "Acconto pagato" e "Saldo pagato" un pulsante che
+apra subito l'avviso di trattenuta, senza doverlo cercare.
+
+**Decisione**: il pulsante principale è "Scarica l'avviso di trattenuta" e
+porta a `/dashboard/richieste?open=<richiesta>&documenti=1`: si apre il
+lavoro con la finestra dei documenti già aperta, dove c'è il pulsante
+dell'avviso ("Apri il lavoro" resta come link sotto). Lato sito,
+`autoOpenDocuments` in `RequestCard`, come già in `/le-mie-richieste`.
+
+**Motivo**: il PDF si scarica solo da collegati (contiene i soldi del
+professionista), quindi niente link diretto al file nell'email.
+
+**Verifica**: typecheck di API e sito, lint del sito, test delle email.

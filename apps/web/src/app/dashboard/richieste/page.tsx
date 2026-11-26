@@ -170,6 +170,8 @@ function RichiesteContent() {
   // sempre `autoOpenChat=false`, a prescindere da quante volte la card
   // esce/rientra dalla lista filtrata.
   const [pendingChatOpenLeadId, setPendingChatOpenLeadId] = useState<string | null>(null);
+  // "Apri i documenti" dall'email del pagamento online (`?documenti=1`, docs/changelog/2026-11-26-avviso-trattenuta.md).
+  const [pendingDocumentsLeadId, setPendingDocumentsLeadId] = useState<string | null>(null);
   useEffect(() => {
     if (!leads) return;
     const targetGuidedRequestId = searchParams.get("open");
@@ -184,6 +186,7 @@ function RichiesteContent() {
     setActiveTab(match.myState.archivedAt ? "archiviate" : "tutte");
     setOpenId(match.id);
     if (searchParams.get("chat")) setPendingChatOpenLeadId(match.id);
+    if (searchParams.get("documenti") === "1") setPendingDocumentsLeadId(match.id);
     // Il DOM della card esiste solo dopo che React ha renderizzato lo stato
     // appena impostato — un breve timeout invece di un secondo effetto
     // dedicato, stesso compromesso pragmatico già in uso altrove nel
@@ -758,6 +761,8 @@ function RichiesteContent() {
                   }
                   autoOpenChat={pendingChatOpenLeadId === lead.id}
                   onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
+                  autoOpenDocuments={pendingDocumentsLeadId === lead.id}
+                  onAutoDocumentsHandled={() => setPendingDocumentsLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
               </div>
             ))}</SearchHighlightProvider>

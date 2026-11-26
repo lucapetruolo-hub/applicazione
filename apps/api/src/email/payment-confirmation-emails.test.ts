@@ -122,3 +122,15 @@ describe("quando partono le conferme di pagamento", () => {
     expect(NOTIFICATION_DIGEST_TYPES.has("JOB_PAYMENT_CONFIRMED")).toBe(false);
   });
 });
+
+describe("Acconto e saldo pagati, al professionista", () => {
+  it("il pulsante apre il lavoro con i documenti, dove c'è l'avviso di trattenuta", () => {
+    for (const type of ["JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID"]) {
+      const email = notificationEmail(type, { guidedRequestId: "gr-1", bookingId: "b-1", amountEurCents: 12000 }, ctx)!;
+      expect(email.cta?.label).toBe("Scarica l'avviso di trattenuta");
+      expect(email.cta?.url).toMatch(/\/dashboard\/richieste\?open=gr-1&documenti=1$/);
+      expect(email.secondaryLink?.label).toBe("Apri il lavoro");
+      expect(email.details).toContainEqual({ label: "Nostra trattenuta (7% + IVA)", value: expect.stringContaining("10,25") });
+    }
+  });
+});

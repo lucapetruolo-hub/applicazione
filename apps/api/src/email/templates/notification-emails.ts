@@ -164,7 +164,12 @@ function quoteTotalDetail(payload: Record<string, unknown>): { label: string; va
  * docs/changelog/2026-11-26-avviso-trattenuta.md): la stessa cifra che Stripe
  * trattiene al pagamento (onlineApplicationFeeHoldEurCents).
  */
-const FEE_NOTICE_LINE = 'L\'avviso di trattenuta in PDF è nel lavoro, alla voce "Documenti". La fattura delle trattenute arriva a inizio mese nel tuo cassetto fiscale.';
+const FEE_NOTICE_LINE = "Con il pulsante qui sotto apri l'avviso di trattenuta in PDF. La fattura delle trattenute arriva a inizio mese nel tuo cassetto fiscale.";
+/** Apre il lavoro con i documenti già aperti, dove c'è "Avviso di trattenuta" (docs/changelog/2026-11-26-avviso-trattenuta.md). */
+const proFeeNoticeLink = (payload: Payload) => ({
+  label: "Scarica l'avviso di trattenuta",
+  url: `${frontendUrl()}/dashboard/richieste${str(payload.guidedRequestId) ? `?open=${encodeURIComponent(str(payload.guidedRequestId)!)}&documenti=1` : ""}`,
+});
 function feeDetail(amountEurCents: number): { label: string; value: string } {
   return { label: "Nostra trattenuta (7% + IVA)", value: formatEur(onlineFeeWithVatEurCents(amountEurCents)) };
 }
@@ -1197,7 +1202,8 @@ const BUILDERS: Record<string, Builder> = {
       FEE_NOTICE_LINE,
     ],
     details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }, feeDetail(payload.amountEurCents)] : []),
-    cta: proRequests("Apri il lavoro"),
+    cta: proFeeNoticeLink(payload),
+    secondaryLink: proRequests("Apri il lavoro"),
   }),
   JOB_BALANCE_PAID: (payload, ctx) => ({
     kind: "notification",
@@ -1210,7 +1216,8 @@ const BUILDERS: Record<string, Builder> = {
       FEE_NOTICE_LINE,
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }, feeDetail(payload.amountEurCents)] : undefined,
-    cta: proRequests("Apri il lavoro"),
+    cta: proFeeNoticeLink(payload),
+    secondaryLink: proRequests("Apri il lavoro"),
   }),
   JOB_BALANCE_DUE: (payload, ctx) =>
     // Prezzo finale sopra il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md): 48 ore per dire di no.
