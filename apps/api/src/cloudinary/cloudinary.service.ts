@@ -53,6 +53,26 @@ export function cloudinaryPublicId(url: string | null | undefined): string | nul
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * Foto o video caricati sul nostro Cloudinary, dal loro indirizzo: tipo e
+ * `public_id` per cancellarli. `null` per tutto il resto (altri siti, un altro
+ * Cloudinary, le copertine pronte del sito, i documenti "raw").
+ */
+export function ownCloudinaryMedia(url: string | null | undefined, cloudName: string | undefined): { resourceType: "image" | "video"; publicId: string } | null {
+  if (!url || !cloudName) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname !== "res.cloudinary.com") return null;
+  // Gli indirizzi salvati sono i `secure_url` di Cloudinary: versione e nome, senza trasformazioni.
+  const match = /^\/([^/]+)\/(image|video)\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i.exec(parsed.pathname);
+  if (!match || match[1] !== cloudName || !match[3]) return null;
+  return { resourceType: match[2]!.toLowerCase() as "image" | "video", publicId: decodeURIComponent(match[3]) };
+}
+
 /** Toglie il file temporaneo dal disco, anche se il caricamento non è riuscito. */
 export async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
   const path = temporaryUploadPath(file.path);
@@ -168,6 +188,38 @@ export class CloudinaryService {
    * Non blocca mai chi la chiama: se Cloudinary non risponde resta il file,
    * non il collegamento.
    */
+  /**
+   * Cancella da Cloudinary foto e video caricati da noi, per la chiusura di un
+   * account (GDPR art. 17, docs/changelog/2026-11-26-foto-cancellate-alla-chiusura.md).
+   * Una chiamata ogni 100 file per tipo. Non blocca mai la chiusura: se
+   * Cloudinary non risponde restano i file, e lo dice il registro.
+   * Restituisce quanti file ha chiesto di cancellare.
+   */
+  async deleteOwnMedia(urls: readonly (string | null | undefined)[]): Promise<number> {
+    if (!this.isConfigured) return 0;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const byType: Record<"image" | "video", Set<string>> = { image: new Set(), video: new Set() };
+    for (const url of urls) {
+      const media = ownCloudinaryMedia(url, cloudName);
+      if (media) byType[media.resourceType].add(media.publicId);
+    }
+    let requested = 0;
+    for (const resourceType of ["image", "video"] as const) {
+      const ids = [...byType[resourceType]];
+      for (let start = 0; start < ids.length; start += 100) {
+        const chunk = ids.slice(start, start + 100);
+        try {
+          await cloudinary.api.delete_resources(chunk, { resource_type: resourceType, type: "upload", invalidate: true });
+          requested += chunk.length;
+        } catch (error) {
+          const message = typeof error === "object" && error !== null && "message" in error ? String((error as { message: unknown }).message) : String(error);
+          console.error(`[CloudinaryService] cancellazione di ${chunk.length} file (${resourceType}) non riuscita: ${message}`);
+        }
+      }
+    }
+    return requested;
+  }
+
   async deleteImageByUrl(url: string | null | undefined): Promise<boolean> {
     const publicId = cloudinaryPublicId(url);
     if (!this.isConfigured || !publicId) return false;
