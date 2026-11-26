@@ -69,6 +69,8 @@ export type AdminOverview = {
   nextBankDisputeDueBy: string | null;
   /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
   sdiRejectedInvoices: number;
+  /** Recessi dall'abbonamento da decidere (docs/changelog/2026-11-26-recesso-abbonamento.md). */
+  pendingSubscriptionWithdrawals: number;
 };
 
 @Injectable()
@@ -1054,7 +1056,7 @@ export class AdminService {
       ]);
     // Da fare in Home (docs/changelog/2026-10-28-stripe-prova.md): contestazioni
     // in banca da rispondere con la scadenza più vicina, fatture scartate dallo SdI.
-    const [bankDisputesToAnswer, nextBankDispute, sdiRejectedInvoices] = await Promise.all([
+    const [bankDisputesToAnswer, nextBankDispute, sdiRejectedInvoices, pendingSubscriptionWithdrawals] = await Promise.all([
       this.prisma.jobPayment.count({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } } }),
       this.prisma.jobPayment.findFirst({
         where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] }, stripeDisputeDueBy: { not: null } },
@@ -1062,6 +1064,7 @@ export class AdminService {
         select: { stripeDisputeDueBy: true },
       }),
       this.prisma.invoice.count({ where: { sdiStatus: "REJECTED" } }),
+      this.prisma.subscriptionWithdrawal.count({ where: { status: "PENDING" } }),
     ]);
     return {
       openReports,
@@ -1085,6 +1088,7 @@ export class AdminService {
       bankDisputesToAnswer,
       nextBankDisputeDueBy: nextBankDispute?.stripeDisputeDueBy?.toISOString() ?? null,
       sdiRejectedInvoices,
+      pendingSubscriptionWithdrawals,
     };
   }
 

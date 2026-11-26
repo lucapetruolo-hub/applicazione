@@ -742,6 +742,8 @@ export type AdminOverview = {
   nextBankDisputeDueBy: string | null;
   /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
   sdiRejectedInvoices: number;
+  /** Recessi dall'abbonamento da decidere (docs/changelog/2026-11-26-recesso-abbonamento.md). */
+  pendingSubscriptionWithdrawals?: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";

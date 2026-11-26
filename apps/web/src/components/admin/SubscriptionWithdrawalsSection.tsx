@@ -5,6 +5,7 @@ import { formatEurCents, type AdminSubscriptionWithdrawal } from "@professionist
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { AdminCard, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 
 const STATUS: Record<AdminSubscriptionWithdrawal["status"], { label: string; tone: "warn" | "ok" | "neutral" }> = {
   PENDING: { label: "Da decidere", tone: "warn" },
@@ -27,6 +28,12 @@ function parseEuro(text: string): number | null {
 export function SubscriptionWithdrawalsSection({ token }: { token: string }) {
   const [rows, setRows] = useState<AdminSubscriptionWithdrawal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Dopo una decisione si aggiorna anche il numero accanto a Pagamenti nel menu.
+  const { refresh } = useAdminOverview();
+  function changed(next: AdminSubscriptionWithdrawal[]) {
+    setRows(next);
+    refresh();
+  }
 
   useEffect(() => {
     let alive = true;
@@ -50,7 +57,7 @@ export function SubscriptionWithdrawalsSection({ token }: { token: string }) {
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows && rows.length === 0 ? <Text color={brand.grafite70}>Nessuna richiesta di recesso.</Text> : null}
-      {rows?.map((row) => <WithdrawalCard key={row.id} row={row} token={token} onChanged={setRows} />)}
+      {rows?.map((row) => <WithdrawalCard key={row.id} row={row} token={token} onChanged={changed} />)}
     </YStack>
   );
 }

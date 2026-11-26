@@ -30,6 +30,9 @@ trattenuto la ritenuta.
   l'abbonamento si chiude subito su Stripe e parte il rimborso sulla carta; la
   nota di credito la fa il webhook `charge.refunded` come per ogni rimborso.
   Doppio tocco protetto (`updateMany` su `PENDING`, chiavi di idempotenza).
+- I recessi da decidere si contano nel numero accanto a "Pagamenti" nel menu
+  Admin (`pendingSubscriptionWithdrawals` nei contatori della home admin), come
+  rimborsi e contestazioni (sì di Luca alla miglioria).
 - Email nuove: `SUBSCRIPTION_WITHDRAWAL_RECEIVED`, `_DONE`, `_REJECTED`
   (Account e sicurezza, non si spengono) e `ADMIN_SUBSCRIPTION_WITHDRAWAL` alla
   Finanza.

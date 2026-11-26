@@ -77,7 +77,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
         label: "Pagamenti e rimborsi",
         icon: "credit-card",
         scope: "FINANCE",
-        badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances + o.bankDisputesToAnswer,
+        badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances + o.bankDisputesToAnswer + (o.pendingSubscriptionWithdrawals ?? 0),
       },
       { href: "/admin/lavori", label: "Lavori chiusi", searchLabel: "Lavori chiusi e importi finali", icon: "check", scope: "ANY" },
       { href: "/admin/documenti-clienti", label: "Documenti ai clienti", icon: "receipt-text", scope: "ANY" },
