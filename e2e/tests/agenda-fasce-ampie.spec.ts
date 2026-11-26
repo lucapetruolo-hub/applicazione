@@ -185,7 +185,11 @@ test("in Oggi si dice ai clienti di domani verso che ora passa", async ({ browse
   const bianca = card.getByRole("radiogroup", { name: "Ora di arrivo da Bianca", exact: false });
   await expect(bianca.getByRole("radio")).toHaveText(["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]);
   await bianca.getByRole("radio", { name: "09:00" }).click();
-  await card.getByRole("radiogroup", { name: "Ora di arrivo da Carlo", exact: false }).getByRole("radio", { name: "14:00" }).click();
+  // Da Carlo, le 09:00 hanno il pallino: già date a Bianca (docs/changelog/2026-11-26-ore-gia-date-in-oggi.md).
+  const carlo = card.getByRole("radiogroup", { name: "Ora di arrivo da Carlo", exact: false });
+  await expect(carlo.getByRole("radio", { name: /^09:00, già data a Bianca/ })).toBeVisible();
+  await expect(card).toContainText("Ora già data a un altro cliente della stessa fascia");
+  await carlo.getByRole("radio", { name: "14:00" }).click();
   await expect(card).toContainText("Arrivo tra le 14:00 e le 15:00");
   await card.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("oggi-ora-arrivo.png") });
@@ -246,5 +250,26 @@ test("nel preventivo, con una fascia lunga si può dire verso che ora si passa",
   await page.getByLabel("Ora di fine (facoltativa)").fill("12:30");
   await page.getByLabel("Ora di fine (facoltativa)").press("Tab");
   await expect(arrival.getByRole("radio")).toHaveText(["09:00", "10:00", "11:00", "12:00"]);
+  await page.context().close();
+});
+
+test("in Oggi, con i soli lavori online di domani si dice verso che ora li contatti", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "telefono-italia", "Basta un telefono.");
+  const pro = await createProfessional(prisma, "Arrivo Online Consulenze");
+  const owner = await prisma.professionalProfile.findUniqueOrThrow({ where: { id: pro.id } });
+  const tomorrow = wallDay(1, "14:00");
+  const end = new Date(tomorrow.getTime() + 6 * 3_600_000);
+  for (const name of ["Elena", "Fabio"]) {
+    const client = await createClient(prisma, name);
+    const request = await prisma.guidedRequest.create({ data: { clientId: client.id, categoryId: owner.categoryId, description: "Consulenza per il bagno.", city: "Latina", serviceMode: "ONLINE" } });
+    const quote = await prisma.quote.create({ data: { guidedRequestId: request.id, professionalProfileId: pro.id, estimatedStartDate: tomorrow, estimatedEndDate: end, status: "ACCEPTED" } });
+    await prisma.booking.create({ data: { clientId: client.id, professionalProfileId: pro.id, quoteId: quote.id, scheduledAt: tomorrow, scheduledEndAt: end, status: "CONFIRMED", serviceMode: "ONLINE" } });
+  }
+  const page = await pageAsClient(browser, owner.userId, COMPUTER);
+  await page.goto("/dashboard");
+  const card = page.getByRole("region", { name: "Dì ai clienti di domani verso che ora li contatti" });
+  await expect(card).toContainText('Ricevono "Ti contatta tra le … e le …"');
+  await card.getByRole("radiogroup", { name: "Ora di arrivo da Elena", exact: false }).getByRole("radio", { name: "16:00" }).click();
+  await expect(card).toContainText("Ti contatta tra le 16:00 e le 17:00");
   await page.context().close();
 });
