@@ -43,8 +43,8 @@ MP08/MP22, REA, capitale, PEC, ritenuta del 20%, frase sul bollo.
 
 **Voci di Claude lasciate fuori**: subtotale e "totale senza IVA" ripetuti,
 due documenti separati (fattura e ricevuta: in Italia basta la fattura),
-"Paga online" (è già pagata), ultime 4 cifre della carta (non le salviamo con
-la fattura: servirebbe una colonna nuova, proposta a parte).
+"Paga online" (è già pagata). Le ultime 4 cifre della carta sono arrivate nel
+secondo giro, qui sotto.
 
 **Verifica**: test dei PDF (`documents-pdf-sdi.test.ts`,
 `job-documents.test.ts` aggiornati ai titoli nuovi), tsc, eslint; pacchetto per
