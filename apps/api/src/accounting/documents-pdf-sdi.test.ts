@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConflictException, NotFoundException } from "@nestjs/common";
-import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
+import { invoicePaymentCardLabel, courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
 import { layout, pdfText, renderDocumentPdf, type PdfBlock } from "./document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
-import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
+import { issuerParty, sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { StatementsService, accountantStatementEmail } from "./statements.service";
@@ -69,6 +69,11 @@ describe("PDF dei documenti", () => {
     } as never);
     expect(invoice.title).toBe("Fattura");
     expect(invoice.footer).toContain("COM/2026/0017");
+    // Dove scriverci, sotto i nostri dati (docs/changelog/2026-11-26-pdf-puliti.md).
+    expect(issuerParty({ companyName: "Prova S.r.l.", vatNumber: "12345678903", taxCode: null, street: "Via Roma", houseNumber: "1", postalCode: "00100", city: "Roma", province: "RM", country: "IT", taxRegime: "RF01", reaOffice: null, reaNumber: null, shareCapital: null, pecEmail: null } as never).lines.at(-1)).toMatch(/^Assistenza \S+@\S+$/);
+    expect(invoicePaymentCardLabel("visa", "4242")).toBe("Carta Visa che finisce con 4242");
+    expect(invoicePaymentCardLabel("link", "1234")).toBe("Carta che finisce con 1234");
+    expect(invoicePaymentCardLabel("visa", null)).toBeNull();
     expect(JSON.stringify(invoice.blocks)).toContain("L'IVA la recuperi nella tua dichiarazione IVA.");
 
     const statement = statementPdfModel(

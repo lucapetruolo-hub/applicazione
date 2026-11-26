@@ -29,6 +29,8 @@ import {
   type PlatformInvoiceView,
   type SdiSandboxTestResult,
   type SubscriptionTier,
+  invoicePaymentCardLabel,
+  type InvoicePaymentCard,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -110,6 +112,8 @@ type NewInvoice = {
   stripeInvoiceId?: string | null;
   stripePaymentIntentId?: string | null;
   feeEntryIds?: string[];
+  /** Carta del pagamento, per la sezione "Pagamento" del PDF. */
+  paymentCard?: InvoicePaymentCard | null;
   issuer: IssuerSnapshot;
 };
 
@@ -306,6 +310,8 @@ export class InvoicesService {
           dedupeKey: input.dedupeKey,
           stripeInvoiceId: input.stripeInvoiceId ?? null,
           stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+          paymentCardBrand: input.paymentCard?.brand ?? null,
+          paymentCardLast4: input.paymentCard?.last4 ?? null,
         },
       });
       if (input.feeEntryIds?.length) {
@@ -456,7 +462,7 @@ export class InvoicesService {
   async issueForStripeInvoice(
     invoice: Stripe.Invoice,
     tierOfPrice: (priceId: string | undefined) => { tier: SubscriptionTier; interval: BillingInterval } | null,
-    options: { alertSkipped?: boolean } = { alertSkipped: true },
+    options: { alertSkipped?: boolean; paymentCard?: InvoicePaymentCard | null } = { alertSkipped: true },
   ): Promise<boolean> {
     if (!invoice.id || (invoice.amount_paid ?? 0) <= 0) return false;
     const paidAt = invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date();
@@ -513,6 +519,7 @@ export class InvoicesService {
         grossEurCents: invoice.amount_paid,
         dedupeKey: `STRIPE:${invoice.id}`,
         stripeInvoiceId: invoice.id,
+        paymentCard: options.paymentCard ?? null,
         issuer,
       });
       return !!created;
@@ -988,6 +995,7 @@ export class InvoicesService {
       relatedNumber: related ? invoiceNumberLabel(related.series, related.year, related.number) : null,
       vatRecoverable: recipient?.chargesVat ?? null,
       onlinePaidEurCents: onlinePaid,
+      paymentCard: invoicePaymentCardLabel(invoice.paymentCardBrand, invoice.paymentCardLast4),
     };
   }
 

@@ -1295,7 +1295,12 @@ export class BillingService implements OnModuleInit {
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
       // Abbonamento, rinnovo o quota di passaggio pagati: la nostra fattura (§378).
-      const invoiceIssued = event.type === "invoice.paid" ? await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId)) : false;
+      // Con la carta dell'abbonamento in quel momento, per "Pagamento" nel PDF (docs/changelog/2026-11-26-pdf-puliti.md).
+      const paymentCard = event.type === "invoice.paid" && (invoice.amount_paid ?? 0) > 0 ? await this.savedCard(typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null), invoiceSubscriptionId(invoice)) : null;
+      const invoiceIssued =
+        event.type === "invoice.paid"
+          ? await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId), { alertSkipped: true, paymentCard: paymentCard ? { brand: paymentCard.brand, last4: paymentCard.last4 } : null })
+          : false;
       const stripeSubscriptionId = invoiceSubscriptionId(invoice);
       const renewal = invoice.billing_reason === "subscription_cycle";
       // Pagamento che non è un rinnovo (livello scelto, quota di passaggio): avviso nella
