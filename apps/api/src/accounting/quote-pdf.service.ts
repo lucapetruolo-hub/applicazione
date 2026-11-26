@@ -195,6 +195,53 @@ export class QuotePdfService {
   }
 
   /**
+   * Avviso di trattenuta per il professionista (commercialista, 25/11/2026,
+   * docs/changelog/2026-11-26-avviso-trattenuta.md): a ogni trattenuta un
+   * documento da scaricare, oltre alla fattura del mese che resta quella
+   * valida per il fisco. Pagamenti online del lavoro e nostre trattenute,
+   * con la fattura in cui finiscono.
+   */
+  async feeNoticeForProfessional(userId: string, bookingId: string): Promise<{ model: PdfDocumentModel; fileName: string }> {
+    const view = await this.jobDocuments.forUser(userId, bookingId);
+    if (view.audience !== "PROFESSIONAL") throw new NotFoundException("Lavoro non trovato.");
+    const fees = view.movements.filter((m) => m.fee);
+    if (fees.length === 0) throw new NotFoundException("Su questo lavoro non ci sono trattenute.");
+    const booking = await this.prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: { scheduledAt: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } } },
+    });
+    const job = [booking.quote?.guidedRequest.category.label, `appuntamento del ${accountingDateLabel(booking.scheduledAt.toISOString())}`].filter(Boolean).join(", ");
+    const online = view.movements.filter((m) => !m.fee && /online/i.test(m.label));
+    const totalFees = -fees.reduce((sum, m) => sum + m.amountEurCents, 0);
+    const blocks: PdfBlock[] = [
+      { type: "highlight", label: "Trattenute su questo lavoro", value: formatEurCents(totalFees), detail: "7% + IVA dei pagamenti online, IVA compresa", badge: null },
+      { type: "heading", text: "Pagamenti online del cliente" },
+      online.length > 0
+        ? { type: "rows", rows: online.map((m) => ({ label: m.label, detail: accountingDateLabel(m.date), value: formatEurCents(m.amountEurCents) })) }
+        : { type: "text", lines: ["Nessun pagamento online."] },
+      { type: "heading", text: "Nostre trattenute" },
+      {
+        type: "rows",
+        rows: fees.map((m) => ({
+          label: m.label,
+          detail: [accountingDateLabel(m.date), m.invoice ? `Fattura ${m.invoice.number}` : m.note].filter(Boolean).join(" · "),
+          value: m.amountEurCents < 0 ? formatEurCents(-m.amountEurCents) : `−${formatEurCents(m.amountEurCents)}`,
+        })),
+      },
+      { type: "totals", rows: [], total: { label: "Totale trattenute", value: formatEurCents(totalFees) } },
+      {
+        type: "text",
+        muted: true,
+        lines: [`Avviso di ${EMAIL_BRAND.name}: non è una fattura. Le trattenute del mese sono nella nostra fattura elettronica, che arriva nel tuo cassetto fiscale ed è quella da dare al commercialista.`],
+      },
+    ];
+    return {
+      model: { title: "Avviso di trattenuta", subtitle: `${booking.professionalProfile.businessName}. ${job.charAt(0).toUpperCase()}${job.slice(1)}.`, blocks },
+      fileName: `avviso-trattenuta-${booking.scheduledAt.toISOString().slice(0, 10)}`,
+    };
+  }
+
+  /**
    * Riepilogo dei pagamenti di un lavoro per il cliente (05/11/2026): nella
    * finestra "Documenti" i pagamenti si vedevano ma non si scaricavano. Non è
    * una fattura né una ricevuta: quella la fa il professionista.

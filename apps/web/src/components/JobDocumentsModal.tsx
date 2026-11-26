@@ -151,6 +151,10 @@ function ProfessionalDocuments({ token, view }: { token: string; view: JobDocume
 
       <Part title="Movimenti">
         <Movements token={token} view={view} />
+        {/* A ogni trattenuta un documento da scaricare (commercialista, docs/changelog/2026-11-26-avviso-trattenuta.md). */}
+        {view.movements.some((m) => m.fee) ? (
+          <PdfButton label="Avviso di trattenuta" fileName="avviso-trattenuta" load={() => apiClient.jobFeesPdf(token, view.bookingId)} />
+        ) : null}
       </Part>
 
       <Part title="Estratti del mese">

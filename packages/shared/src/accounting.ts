@@ -821,6 +821,8 @@ export type JobDocumentMovement = {
   amountEurCents: number;
   /** Fattura delle nostre trattenute che lo contiene (solo per il professionista). */
   invoice: { id: string; number: string } | null;
+  /** Nostra trattenuta (o trattenuta restituita): solo per il professionista. */
+  fee?: true;
   /**
    * Trattenuta non ancora in una fattura: dove andrà, o perché non ne avrà
    * una (docs/changelog/2026-11-19-entrate-e-uscite.md). Come nell'estratto.
@@ -880,8 +882,21 @@ function romeDayIso(iso: string): string {
 }
 
 /** Il riepilogo dell'anno nel foglio di calcolo (come l'estratto: punto e virgola, importi all'italiana). */
+/**
+ * Che codice è quello del cliente (commercialista, 25/11/2026,
+ * docs/changelog/2026-11-26-avviso-trattenuta.md): 11 cifre = partita IVA
+ * (o codice fiscale di una società, che è lo stesso numero), 16 caratteri =
+ * codice fiscale di una persona.
+ */
+export function customerTaxIdKind(taxId: string | null | undefined, hasVatNumber = false): "Partita IVA" | "Codice fiscale" | null {
+  const value = taxId?.replace(/\s+/g, "").toUpperCase() ?? "";
+  if (!value) return null;
+  if (/^\d{11}$/.test(value)) return hasVatNumber ? "Partita IVA" : "Codice fiscale";
+  return "Codice fiscale";
+}
+
 export function courtesyYearCsv(summary: CourtesyYearSummary): string {
-  const header = ["Documento", "Numero", "Data", "Cliente", "Codice fiscale o partita IVA", "Cliente con partita IVA", "Data di incasso", "Lavoro", "Importo", "Ritenuta d'acconto", "Marca da bollo", "Importo di oggi"];
+  const header = ["Documento", "Numero", "Data", "Cliente", "Codice fiscale o partita IVA", "Tipo di codice", "Cliente con partita IVA", "Data di incasso", "Lavoro", "Importo", "Ritenuta d'acconto", "Marca da bollo", "Importo di oggi"];
   const line = (kind: string, r: CourtesyYearRow) =>
     [
       kind,
@@ -889,6 +904,7 @@ export function courtesyYearCsv(summary: CourtesyYearSummary): string {
       romeDayIso(r.date),
       r.customerName ?? "",
       r.customerTaxId ?? "",
+      customerTaxIdKind(r.customerTaxId, r.customerHasVatNumber) ?? "",
       r.customerHasVatNumber ? "Sì" : "No",
       r.paidAt ? romeDayIso(r.paidAt) : "",
       r.jobLabel ?? "",

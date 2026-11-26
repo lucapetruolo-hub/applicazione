@@ -385,11 +385,13 @@ describe("riepilogo dell'anno per il commercialista", () => {
 
     const csv = courtesyYearCsv(summary);
     const lines = csv.replace(/^\ufeff/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("Documento;Numero;Data;Cliente;Codice fiscale o partita IVA;Cliente con partita IVA;Data di incasso;Lavoro;Importo;Ritenuta d'acconto;Marca da bollo;Importo di oggi");
-    expect(lines[2]).toBe("Ricevuta per prestazione occasionale;2/2026;2026-06-02;Bar Sport S.r.l.;12345678903;Sì;2026-06-02;Elettricista;100,00;20,00;Sì;");
+    expect(lines[0]).toBe("Documento;Numero;Data;Cliente;Codice fiscale o partita IVA;Tipo di codice;Cliente con partita IVA;Data di incasso;Lavoro;Importo;Ritenuta d'acconto;Marca da bollo;Importo di oggi");
+    expect(lines[2]).toBe("Ricevuta per prestazione occasionale;2/2026;2026-06-02;Bar Sport S.r.l.;12345678903;Partita IVA;Sì;2026-06-02;Elettricista;100,00;20,00;Sì;");
 
     const model = courtesyYearPdfModel(summary, new Date("2027-01-15T10:00:00Z"));
     const texts = JSON.stringify(model.blocks);
+    // Il tipo del codice del cliente davanti al codice (commercialista, 25/11/2026).
+    expect(texts).toContain("P.IVA 12345678903");
     expect(model.title).toBe("Ricevute del 2026");
     expect(texts).toContain("Totale ricevute");
     expect(texts.replace(/\u00a0|\u202f/g, " ")).toMatch(/Ritenute d'acconto trattenute dai clienti con partita IVA: 20,00\s€/);

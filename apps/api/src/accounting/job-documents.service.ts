@@ -95,8 +95,8 @@ export class JobDocumentsService {
         : { label: courtesyDocumentLabel(doc), kind: "RECEIPT" as const, amountChanged: pro && amountChanged };
 
     const movements: JobDocumentMovement[] = [];
-    const push = (date: Date | null, label: string, amountEurCents: number, invoice: JobDocumentMovement["invoice"] = null, note: string | null = null) => {
-      if (date && amountEurCents !== 0) movements.push({ date: date.toISOString(), label, amountEurCents, invoice, ...(note ? { note } : {}) });
+    const push = (date: Date | null, label: string, amountEurCents: number, invoice: JobDocumentMovement["invoice"] = null, note: string | null = null, fee = false) => {
+      if (date && amountEurCents !== 0) movements.push({ date: date.toISOString(), label, amountEurCents, invoice, ...(note ? { note } : {}), ...(fee ? { fee: true as const } : {}) });
     };
     const feeNotes = new Map<string, boolean>();
     if (jp) {
@@ -114,7 +114,7 @@ export class JobDocumentsService {
         for (const entry of jp.feeEntries) {
           const invoice = entry.invoice ? { id: entry.invoice.id, number: invoiceNumberLabel(entry.invoice.series, entry.invoice.year, entry.invoice.number) } : null;
           const note = invoice ? null : await this.feeNote(entry.occurredAt, feeNotes);
-          push(entry.occurredAt, entry.kind === "HOLD" ? "Nostra trattenuta (IVA compresa)" : entry.description, -entry.grossEurCents, invoice, note);
+          push(entry.occurredAt, entry.kind === "HOLD" ? "Nostra trattenuta (IVA compresa)" : entry.description, -entry.grossEurCents, invoice, note, true);
         }
         push(jp.payoutPaidAt, "Bonifico arrivato in banca", jp.payoutSentEurCents);
       }
