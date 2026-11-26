@@ -18,6 +18,7 @@ import {
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
   withVatEurCents,
+  subscriptionPriceLabel,
   type BillingInterval,
   type MySubscription,
   type SubscriptionTier,
@@ -39,6 +40,7 @@ import { JourneyProgress, useSetupJourney } from "@/components/verification/Setu
 import { downloadBlobFile } from "@/components/admin/adminUi";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 import { PageLoading } from "@/components/PageLoading";
+import { SubscriptionWithdrawalCard } from "@/components/SubscriptionWithdrawalCard";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -104,9 +106,10 @@ function monthsWord(months: number): string {
  * pagato" anche a chi aveva annullato o non aveva mai pagato.
  */
 function rulesText(sub: MySubscription | null, freeWithCard: boolean): { renewal: string; change: string; cancel: string | null } {
-  const base = `${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese`;
+  const withVat = Boolean(sub?.pricesWithVat);
+  const base = `${subscriptionPriceLabel(subscriptionTierInfo("BASE").priceEurCents, withVat)} al mese`;
   const paidChange = "Paghi oggi il nuovo livello intero e il mese riparte da oggi, con i lavori da zero.";
-  const freeChange = `Nei mesi gratis paghi il primo mese del livello meno i ${formatEur(subscriptionTierInfo("BASE").priceEurCents)} di Base.`;
+  const freeChange = `Nei mesi gratis paghi il primo mese del livello meno i ${formatEur(withVat ? withVatEurCents(subscriptionTierInfo("BASE").priceEurCents) : subscriptionTierInfo("BASE").priceEurCents)} di Base.`;
   if (sub?.state === "TRIAL") {
     return {
       renewal: `Nei mesi gratis non paghi nulla. Con la carta data, dopo parte Base a ${base}, ogni mese in automatico.`,
@@ -146,7 +149,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
   const tierLabel = sub.tier ? subscriptionTierInfo(sub.tier).label : null;
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
   const months = sub.freeMonths?.months ?? 0;
-  const basePrice = `${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese`;
+  const basePrice = `${subscriptionPriceLabel(subscriptionTierInfo("BASE").priceEurCents, Boolean(sub.pricesWithVat))} al mese`;
   switch (sub.state) {
     case "TRIAL":
       if (!months) {
@@ -560,6 +563,7 @@ function AbbonamentoContent() {
   // Solo mensile per ora; chi aveva già l'annuale lo vede com'è.
   const interval: BillingInterval = paidActive ? (sub?.billingInterval ?? "MONTH") : "MONTH";
   const rules = rulesText(sub, freeWithCard);
+  const withVat = Boolean(sub?.pricesWithVat);
 
   const heading = (
     <YStack gap="1">
@@ -780,7 +784,7 @@ function AbbonamentoContent() {
                       {freeNow ? (
                         <>
                           <Text fontFamily="heading" fontSize="6" color={brand.grafite70} textDecorationLine="line-through">
-                            {formatEur(shownMonthly)}
+                            {formatEur(withVat ? withVatEurCents(shownMonthly) : shownMonthly)}
                           </Text>
                           <Text fontFamily="heading" fontWeight="800" fontSize="9" color={brand.cianografiaScuro}>
                             Gratis
@@ -789,16 +793,18 @@ function AbbonamentoContent() {
                       ) : (
                         <>
                           <Text fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
-                            {formatEur(shownMonthly)}
+                            {formatEur(withVat ? withVatEurCents(shownMonthly) : shownMonthly)}
                           </Text>
-                          <Text color={brand.grafite70}>al mese + IVA</Text>
+                          <Text color={brand.grafite70}>{withVat ? "al mese IVA inclusa" : "al mese + IVA"}</Text>
                         </>
                       )}
                     </XStack>
                     <Text color={brand.grafite70} fontSize={15}>
                       {freeNow
-                        ? `${sub?.trialEndsAt ? `fino al ${formatDate(sub.trialEndsAt)}, ` : "per i mesi gratis, "}poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA`
-                        : `${interval === "YEAR" ? `${formatEur(periodPrice)} all'anno + IVA · ` : ""}IVA inclusa ${formatEur(withVatEurCents(periodPrice))}`}
+                        ? `${sub?.trialEndsAt ? `fino al ${formatDate(sub.trialEndsAt)}, ` : "per i mesi gratis, "}poi ${formatEur(withVat ? withVatEurCents(periodPrice) : periodPrice)} ${perLabel(interval)}${withVat ? " IVA inclusa" : " + IVA"}`
+                        : withVat
+                          ? `${formatEur(periodPrice)} + IVA ${perLabel(interval)}`
+                          : `${interval === "YEAR" ? `${formatEur(periodPrice)} all'anno + IVA · ` : ""}IVA inclusa ${formatEur(withVatEurCents(periodPrice))}`}
                     </Text>
                   </YStack>
                   <XStack alignItems="center" gap="2">
@@ -832,9 +838,10 @@ function AbbonamentoContent() {
                           <>
                             Paghi oggi{" "}
                             <Text fontWeight="800" color={brand.grafite}>
-                              {formatEur(quote.amountEurCents)} + IVA
-                            </Text>{" "}
-                            ({formatEur(withVatEurCents(quote.amountEurCents))} IVA inclusa){quote.until ? "" : " per il primo mese"}.
+                              {subscriptionPriceLabel(quote.amountEurCents, withVat)}
+                            </Text>
+                            {withVat ? "" : ` (${formatEur(withVatEurCents(quote.amountEurCents))} IVA inclusa)`}
+                            {quote.until ? "" : " per il primo mese"}.
                           </>
                         )}
                       </Text>
@@ -843,8 +850,8 @@ function AbbonamentoContent() {
                           così chi ha appena rinnovato sa che paga il mese intero. */}
                       <Text color={brand.grafite70} fontSize={15}>
                         {quote.until
-                          ? `Dal ${shortDate(quote.until)} ${formatEur(periodPrice)} ${perLabel(interval)} + IVA.`
-                          : `Il mese riparte da oggi con ${tier.monthlyAcceptedJobs === null ? "lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori`}, poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA.`}
+                          ? `Dal ${shortDate(quote.until)} ${subscriptionPriceLabel(periodPrice, withVat)} ${perLabel(interval)}.`
+                          : `Il mese riparte da oggi con ${tier.monthlyAcceptedJobs === null ? "lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori`}, poi ${subscriptionPriceLabel(periodPrice, withVat)} ${perLabel(interval)}.`}
                       </Text>
                     </YStack>
                   ) : null}
@@ -856,7 +863,7 @@ function AbbonamentoContent() {
                   {!current && inTrial && tier.tier === "BASE" && sub?.freeMonths ? (
                     // Va detto quando si attivano i mesi gratis (decisione di Luca del 29/10/2026).
                     <Text color={brand.grafite70} fontSize={15}>
-                      Aggiungi la carta: oggi 0 €. Dopo i mesi gratis parte Base a {formatEur(periodPrice)} + IVA al mese, in automatico. Annulli quando vuoi.
+                      Aggiungi la carta: oggi 0 €. Dopo i mesi gratis parte Base a {subscriptionPriceLabel(periodPrice, withVat)} al mese, in automatico. Annulli quando vuoi.
                     </Text>
                   ) : null}
                   <YStack flex={1} />
@@ -923,9 +930,11 @@ function AbbonamentoContent() {
               </Text>
               {feeDetailsOpen ? (
                 <Text color={brand.grafite70} fontSize={15} lineHeight="22px" marginTop="1">
-                  Con un livello già pagato paghi oggi il prezzo intero del nuovo livello (Plus 59 € + IVA, Pro 99 € + IVA): da quel giorno parte un
+                  Con un livello già pagato paghi oggi il prezzo intero del nuovo livello (Plus {subscriptionPriceLabel(subscriptionTierInfo("PLUS").priceEurCents, withVat)}, Pro{" "}
+                  {subscriptionPriceLabel(subscriptionTierInfo("PRO").priceEurCents, withVat)}): da quel giorno parte un
                   mese nuovo con i lavori da zero, e il rinnovo si sposta a quella data. I giorni che restavano del livello di prima non si scalano. Nei
-                  mesi gratis paghi il primo mese meno il mese Base regalato (Plus 40 € + IVA): anche lì parte un mese nuovo con 0 lavori, e i mesi
+                  mesi gratis paghi il primo mese meno il mese Base regalato (Plus{" "}
+                  {subscriptionPriceLabel(subscriptionTierInfo("PLUS").priceEurCents - subscriptionTierInfo("BASE").priceEurCents, withVat)}): anche lì parte un mese nuovo con 0 lavori, e i mesi
                   gratis che restano ti aspettano. Li riprendi tornando a Base.
                 </Text>
               ) : null}
@@ -1005,8 +1014,8 @@ function AbbonamentoContent() {
                 <Text color={brand.grafite70}>
                   {sub.currentPeriodEnd && sub.tier
                     ? sub.returnToBase
-                      ? `Il ${formatDate(sub.currentPeriodEnd)} torni a Base${sub.freeMonthsWaiting ? `: ${monthsWord(sub.freeMonthsWaiting)} gratis, poi ${formatEur(tierPeriodPriceEurCents("BASE", "MONTH"))} + IVA al mese` : ` a ${formatEur(tierPeriodPriceEurCents("BASE", "MONTH"))} + IVA al mese`}.`
-                      : `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${formatEur(tierPeriodPriceEurCents(freeWithCard ? "BASE" : sub.tier, interval))} + IVA.`
+                      ? `Il ${formatDate(sub.currentPeriodEnd)} torni a Base${sub.freeMonthsWaiting ? `: ${monthsWord(sub.freeMonthsWaiting)} gratis, poi ${subscriptionPriceLabel(tierPeriodPriceEurCents("BASE", "MONTH"), withVat)} al mese` : ` a ${subscriptionPriceLabel(tierPeriodPriceEurCents("BASE", "MONTH"), withVat)} al mese`}.`
+                      : `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${subscriptionPriceLabel(tierPeriodPriceEurCents(freeWithCard ? "BASE" : sub.tier, interval), withVat)}.`
                     : interval === "YEAR"
                       ? "Si rinnova ogni anno."
                       : "Si rinnova ogni mese."}{" "}
@@ -1032,6 +1041,7 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
+        {paidActive && sub?.pricesWithVat ? <SubscriptionWithdrawalCard token={token} onRequested={load} /> : null}
       </YStack>
       <style jsx>{`
         .usage-track {

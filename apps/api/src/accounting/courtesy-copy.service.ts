@@ -342,6 +342,63 @@ export class CourtesyCopyService {
     return sent;
   }
 
+  /**
+   * Il 15 gennaio alle 9 (risposta del commercialista, docs/changelog/2026-11-26-recesso-abbonamento.md):
+   * al professionista senza partita IVA l'elenco delle aziende che l'anno prima hanno trattenuto la
+   * ritenuta d'acconto, così chiede la Certificazione Unica (entro il 16 marzo) se non arriva.
+   * Stessa regola del riepilogo dell'anno: vale la spunta del professionista, poi quello che ha detto il cliente.
+   */
+  @ScheduledJob("0 9 15 1 *", { timeZone: "Europe/Rome", catchUpWithinMs: 5 * 24 * 60 * 60_000 })
+  async remindWithholdingCertificates(now: Date = new Date()): Promise<number> {
+    const year = Number(romeMonthOf(now).slice(0, 4)) - 1;
+    const range = { gte: romeMonthRange(`${year}-01`).start, lt: romeMonthRange(`${year}-12`).end };
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        status: "COMPLETED",
+        professionalProfile: { user: { deletedAt: null }, fiscalProfile: { is: { entityType: "PRIVATE_INDIVIDUAL" } } },
+        quote: { invoiceRequest: { is: { kind: "VAT" } } },
+        OR: [{ professionalCompletedAt: range }, { professionalCompletedAt: null, scheduledAt: range }],
+      },
+      select: {
+        professionalProfileId: true,
+        professionalCompletedAt: true,
+        scheduledAt: true,
+        professionalProfile: { select: { userId: true } },
+        jobPayment: { select: { ...COURTESY_BOOKING_FIELDS.jobPayment.select, balancePaidAt: true, depositPaidAt: true, directReportedAt: true } },
+        courtesyDocument: { select: { withholding: true, pdfTotalEurCents: true } },
+        quote: { select: { invoiceRequest: { select: { name: true, vatNumber: true, withholdingAgent: true } } } },
+      },
+    });
+    type Customer = { name: string; taxId: string | null; withholdingEurCents: number };
+    const byProfile = new Map<string, { userId: string; customers: Map<string, Customer> }>();
+    for (const booking of bookings) {
+      const request = booking.quote?.invoiceRequest;
+      if (!request || yearOf(courtesyDateOf(booking)) !== year) continue;
+      if (!(booking.courtesyDocument?.withholding ?? request.withholdingAgent !== false)) continue;
+      // L'importo della ricevuta data al cliente, o quanto risulta dal pagamento; senza, la riga resta senza cifra.
+      const total = booking.courtesyDocument?.pdfTotalEurCents ?? (booking.jobPayment?.grossAmountEurCents || null);
+      const entry = byProfile.get(booking.professionalProfileId) ?? { userId: booking.professionalProfile.userId, customers: new Map<string, Customer>() };
+      const key = request.vatNumber ?? request.name.trim().toLowerCase();
+      const customer = entry.customers.get(key) ?? { name: request.name, taxId: request.vatNumber, withholdingEurCents: 0 };
+      customer.withholdingEurCents += total !== null ? withholdingOf(total) : 0;
+      entry.customers.set(key, customer);
+      byProfile.set(booking.professionalProfileId, entry);
+    }
+    let sent = 0;
+    for (const [profileId, entry] of byProfile) {
+      try {
+        await this.notificationsService.notify(entry.userId, "WITHHOLDING_CERTIFICATES_REMINDER", {
+          year,
+          customers: [...entry.customers.values()].map((c) => ({ ...c, withholdingEurCents: c.withholdingEurCents || undefined })),
+        });
+        sent += 1;
+      } catch (err) {
+        this.logger.error(`Promemoria della Certificazione Unica non mandato (${profileId}): ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return sent;
+  }
+
   /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, e resta nel registro azioni. */
   async forAdmin(bookingId: string, adminUserId: string): Promise<CourtesyCopyView> {
     const [booking, saved] = await Promise.all([this.loadBooking(bookingId), this.prisma.courtesyDocument.findUnique({ where: { bookingId }, select: { kind: true } })]);

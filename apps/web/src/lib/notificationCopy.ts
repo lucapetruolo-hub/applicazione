@@ -138,6 +138,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },
   ADMIN_JOB_REFUND_FAILED: { icon: "⚠️", message: "Un rimborso al cliente non è riuscito: controllalo dalla Dashboard Stripe." },
   ADMIN_JOB_REFUND_OUTSIDE: { icon: "↩️", message: "Un lavoro è stato rimborsato fuori dal sito, dalla Dashboard Stripe: l'abbiamo registrato, controllalo." },
+  ADMIN_SUBSCRIPTION_WITHDRAWAL: { icon: "↩️", message: "Un professionista ha chiesto il recesso dall'abbonamento: approvalo o rifiutalo in Pagamenti." },
   ADMIN_SUBSCRIPTION_DUPLICATE: { icon: "⚠️", message: "Un professionista ha pagato l'abbonamento due volte: il secondo è annullato. Controlla in Finanza rimborso e nota di credito." },
   ADMIN_STRIPE_UNKNOWN_PAYMENT: { icon: "⚠️", message: "Su Stripe è arrivato un pagamento per un preventivo che il sito non conosce: non l'abbiamo rimborsato, controllalo." },
   ONLINE_LIMIT_LIFTED: { icon: "✅", message: "Limite tolto: nei preventivi puoi chiedere online qualsiasi importo." },
@@ -182,6 +183,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   SUBSCRIPTION_RENEWING: { icon: "🔁", message: "Il tuo abbonamento si rinnova automaticamente tra pochi giorni." },
   SUBSCRIPTION_RENEWED: { icon: "✅", message: "Abbonamento rinnovato, grazie. La fattura è in Fatture e documenti." },
   SUBSCRIPTION_PAID: { icon: "✅", message: "Pagamento dell'abbonamento ricevuto, grazie. La fattura è in Fatture e documenti." },
+  SUBSCRIPTION_WITHDRAWAL_RECEIVED: { icon: "📩", message: "Abbiamo ricevuto la tua richiesta di recesso dall'abbonamento: ti scriviamo appena la guardiamo." },
+  SUBSCRIPTION_WITHDRAWAL_DONE: { icon: "✅", message: "Recesso fatto: l'abbonamento è chiuso e il rimborso arriva sulla carta in pochi giorni." },
+  SUBSCRIPTION_WITHDRAWAL_REJECTED: { icon: "ℹ️", message: "La tua richiesta di recesso non è stata accolta: trovi il motivo nell'email." },
   SUBSCRIPTION_ENDING: { icon: "⏳", message: "Il tuo abbonamento annullato finisce tra pochi giorni: puoi riattivarlo quando vuoi." },
   SUBSCRIPTION_PAYMENT_FAILED: { icon: "⚠️", message: "Pagamento dell'abbonamento non riuscito: controlla il metodo di pagamento." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
@@ -189,6 +193,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_INVOICE_REQUESTED: { icon: "🧾", message: "Un cliente ti chiede la fattura: trovi i dati nella scheda del lavoro." },
   MONTHLY_DOCUMENTS_READY: { icon: "🧾", message: "I documenti del mese sono pronti in Fatture e documenti." },
   // Il 15 dicembre (§391).
+  WITHHOLDING_CERTIFICATES_REMINDER: { icon: "🧾", message: "Chiedi la Certificazione Unica alle aziende che ti hanno trattenuto la ritenuta l'anno scorso." },
   CLIENT_DOCUMENTS_TO_FIX: { icon: "🧾", message: "Hai documenti dati ai clienti da sistemare prima del riepilogo dell'anno." },
   // Al cliente, copia della ricevuta o della fattura (§387): il testo dipende dal payload, vedi sotto.
   JOB_DOCUMENT_READY: { icon: "🧾", message: "Il professionista ha preparato il documento del lavoro: trovi una copia nei documenti della richiesta." },

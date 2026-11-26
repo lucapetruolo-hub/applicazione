@@ -670,6 +670,47 @@ describe("documenti da sistemare a dicembre", () => {
   });
 });
 
+describe("promemoria della Certificazione Unica a gennaio", () => {
+  const booking = (professionalProfileId: string, userId: string, name: string, vatNumber: string, withholdingAgent: boolean | null, withholding: boolean | null, completedAt: string) => ({
+    professionalProfileId,
+    professionalCompletedAt: new Date(completedAt),
+    scheduledAt: new Date(completedAt),
+    professionalProfile: { userId },
+    jobPayment: { paymentMethod: "DIRECT", balanceDirect: false, paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents: 10000, balancePaidAt: null, depositPaidAt: null, directReportedAt: null },
+    courtesyDocument: withholding === null ? null : { withholding, pdfTotalEurCents: 20000 },
+    quote: { invoiceRequest: { name, vatNumber, withholdingAgent } },
+  });
+
+  it("il 15 gennaio elenca al professionista senza partita IVA le aziende che hanno trattenuto la ritenuta l'anno prima", async () => {
+    const prisma = {
+      booking: {
+        findMany: vi.fn().mockResolvedValue([
+          booking("p1", "u1", "Rossi Srl", "01234567890", null, null, "2026-05-10T09:00:00Z"),
+          booking("p1", "u1", "Rossi Srl", "01234567890", true, true, "2026-09-10T09:00:00Z"),
+          // Forfettario: non trattiene.
+          booking("p1", "u1", "Verdi Studio", "09876543210", false, null, "2026-06-10T09:00:00Z"),
+          // Il professionista ha tolto la spunta sulla ricevuta.
+          booking("p2", "u2", "Neri Spa", "11111111111", true, false, "2026-06-10T09:00:00Z"),
+        ]),
+      },
+    };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    const service = new CourtesyCopyService(prisma as never, {} as never, {} as never, notifications as never);
+
+    expect(await service.remindWithholdingCertificates(new Date("2027-01-15T08:00:00Z"))).toBe(1);
+    expect(prisma.booking.findMany.mock.calls[0]![0].where).toMatchObject({
+      status: "COMPLETED",
+      professionalProfile: { fiscalProfile: { is: { entityType: "PRIVATE_INDIVIDUAL" } } },
+      quote: { invoiceRequest: { is: { kind: "VAT" } } },
+    });
+    // 20% di 100 € (dal pagamento) + 20% di 200 € (dalla ricevuta).
+    expect(notifications.notify).toHaveBeenCalledWith("u1", "WITHHOLDING_CERTIFICATES_REMINDER", {
+      year: 2026,
+      customers: [{ name: "Rossi Srl", taxId: "01234567890", withholdingEurCents: 6000 }],
+    });
+  });
+});
+
 describe("invio allo SdI con Openapi", () => {
   afterEach(() => vi.unstubAllGlobals());
 

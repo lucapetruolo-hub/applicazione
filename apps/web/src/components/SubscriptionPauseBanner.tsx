@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PAST_DUE_GRACE_DAYS, formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { PAST_DUE_GRACE_DAYS, subscriptionPriceLabel, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
@@ -12,9 +12,6 @@ import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti
  * riuscito, che non mettono in pausa.
  */
 
-function formatEur(cents: number): string {
-  return formatEurShared(cents);
-}
 
 /** Livello successivo per chi ha esaurito i lavori (il mese gratuito vale come Base). */
 export function nextTierOf(sub: MySubscription): SubscriptionTier | null {
@@ -37,14 +34,15 @@ export function upgradeQuoteOf(sub: MySubscription, to: SubscriptionTier) {
 export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): string {
   const quote = upgradeQuoteOf(sub, to);
   const interval = sub.billingInterval ?? "MONTH";
-  const then = `${formatEur(tierPeriodPriceEurCents(to, interval))} ${interval === "YEAR" ? "all'anno" : "al mese"} + IVA`;
+  const withVat = Boolean(sub.pricesWithVat);
+  const then = `${subscriptionPriceLabel(tierPeriodPriceEurCents(to, interval), withVat)} ${interval === "YEAR" ? "all'anno" : "al mese"}`;
   if (!quote || quote.amountEurCents === 0) return `Nessun costo adesso, poi ${then}.`;
   // Abbonamento pagato: prezzo intero, mese nuovo da oggi (docs/changelog/2026-11-25-passaggio-di-livello.md).
   if (!quote.until && quote.amountEurCents === tierPeriodPriceEurCents(to, interval)) {
-    return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA: il mese riparte da oggi, con i lavori da zero.`;
+    return `Paghi ora ${subscriptionPriceLabel(quote.amountEurCents, withVat)}: il mese riparte da oggi, con i lavori da zero.`;
   }
   // Nei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): il primo mese meno Base, da oggi.
-  return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : " per il primo mese"}, poi ${then}.`;
+  return `Paghi ora ${subscriptionPriceLabel(quote.amountEurCents, withVat)}${quote.until ? ` fino al ${shortDate(quote.until)}` : " per il primo mese"}, poi ${then}.`;
 }
 
 /**
@@ -70,7 +68,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
   } else if (sub.pausedReason === "CARD_NEEDED") {
     // Dal lancio i mesi gratis valgono solo con la carta (decisione di Luca del 29/10/2026).
     title = "Aggiungi la carta per i mesi gratis";
-    body = `Finché non la aggiungi il profilo non compare nelle ricerche e non ricevi nuove richieste. Oggi non paghi nulla: dopo i mesi gratis parte Base a ${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese, e annulli quando vuoi.`;
+    body = `Finché non la aggiungi il profilo non compare nelle ricerche e non ricevi nuove richieste. Oggi non paghi nulla: dopo i mesi gratis parte Base a ${subscriptionPriceLabel(subscriptionTierInfo("BASE").priceEurCents, Boolean(sub.pricesWithVat))} al mese, e annulli quando vuoi.`;
     action = "Attiva i mesi gratis";
   } else if (sub.pausedReason === "TRIAL_ENDED") {
     title = sub.freeMonths ? "I tuoi mesi gratis sono finiti" : "Scegli il tuo livello";

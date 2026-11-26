@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useDialogFocus } from "@/lib/useDialogFocus";
-import { formatEur, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription } from "@professionisti/shared";
+import { formatEur, subscriptionPriceLabel, subscriptionTierInfo, tierPeriodPriceEurCents, withVatEurCents, type MySubscription } from "@professionisti/shared";
 import { Button, ButtonArrow, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -123,15 +123,15 @@ export function JobLimitModal({
               </Text>
               <XStack alignItems="baseline" gap="2" flexWrap="wrap" marginTop="1">
                 <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
-                  {quote && quote.amountEurCents > 0 ? formatEur(quote.amountEurCents) : "Nessun costo"}
+                  {quote && quote.amountEurCents > 0 ? formatEur(sub.pricesWithVat ? withVatEurCents(quote.amountEurCents) : quote.amountEurCents) : "Nessun costo"}
                 </Text>
                 <Text color={brand.grafite70}>
-                  {quote && quote.amountEurCents > 0 ? "+ IVA" : "adesso"}
+                  {quote && quote.amountEurCents > 0 ? (sub.pricesWithVat ? "IVA inclusa" : "+ IVA") : "adesso"}
                   {quote?.until ? ` fino al ${dayMonth(quote.until)}` : quote && quote.amountEurCents > 0 ? " per il primo mese, da oggi" : ""}
                 </Text>
               </XStack>
               <Text fontSize={13} color={brand.grafite70}>
-                Poi {formatEur(tierPeriodPriceEurCents(next, interval))} {interval === "YEAR" ? "all'anno" : "al mese"} + IVA.
+                Poi {subscriptionPriceLabel(tierPeriodPriceEurCents(next, interval), Boolean(sub.pricesWithVat))} {interval === "YEAR" ? "all'anno" : "al mese"}.
               </Text>
             </YStack>
           ) : null}

@@ -153,6 +153,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_STRIPE_UNKNOWN_PAYMENT",
       // Secondo abbonamento dello stesso professionista annullato, con un addebito da rimborsare (collaudo dell'8/11/2026, E3-01).
       "ADMIN_SUBSCRIPTION_DUPLICATE",
+      // Richiesta di recesso dall'abbonamento da approvare in Pagamenti (docs/changelog/2026-11-26-recesso-abbonamento.md).
+      "ADMIN_SUBSCRIPTION_WITHDRAWAL",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       // Tetto ai pagamenti online tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
@@ -213,6 +215,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_DOCUMENT_READY",
       // Il 15 dicembre: documenti dati ai clienti da sistemare prima del riepilogo dell'anno (docs/CHANGELOG.md §391).
       "CLIENT_DOCUMENTS_TO_FIX",
+      // Il 15 gennaio, al professionista senza partita IVA: chiedere la Certificazione Unica alle aziende
+      // che hanno trattenuto la ritenuta (docs/changelog/2026-11-26-recesso-abbonamento.md).
+      "WITHHOLDING_CERTIFICATES_REMINDER",
       // Trattenute del mese che non tornano con Stripe (docs/CHANGELOG.md §378).
       "ADMIN_FEE_RECONCILIATION",
     ],
@@ -299,6 +304,10 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "SUBSCRIPTION_PAID",
       "SUBSCRIPTION_ENDING",
       "SUBSCRIPTION_PAYMENT_FAILED",
+      // Recesso entro 14 giorni: richiesta ricevuta, fatto col rimborso o non accolto (docs/changelog/2026-11-26-recesso-abbonamento.md).
+      "SUBSCRIPTION_WITHDRAWAL_RECEIVED",
+      "SUBSCRIPTION_WITHDRAWAL_DONE",
+      "SUBSCRIPTION_WITHDRAWAL_REJECTED",
       // Fattura del mese e estratto pronti in "Fatture e documenti" (docs/CHANGELOG.md §378).
       "MONTHLY_DOCUMENTS_READY",
     ],
@@ -534,8 +543,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.documenti",
     topic: "lavori",
-    types: ["JOB_INVOICE_REQUESTED", "CLIENT_DOCUMENTS_TO_FIX", "JOB_DOCUMENT_READY"],
-    professional: { label: "Fatture chieste dai clienti", description: "E i documenti da sistemare prima del riepilogo dell'anno." },
+    types: ["JOB_INVOICE_REQUESTED", "CLIENT_DOCUMENTS_TO_FIX", "WITHHOLDING_CERTIFICATES_REMINDER", "JOB_DOCUMENT_READY"],
+    professional: { label: "Fatture chieste dai clienti", description: "E i documenti da sistemare prima del riepilogo dell'anno, con le Certificazioni Uniche da chiedere." },
     client: { label: "Ricevute e fatture", description: "Quando la copia è pronta o aggiornata." },
   },
   {
@@ -551,6 +560,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_REFUND_OUTSIDE",
       "ADMIN_STRIPE_UNKNOWN_PAYMENT",
       "ADMIN_SUBSCRIPTION_DUPLICATE",
+      "ADMIN_SUBSCRIPTION_WITHDRAWAL",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",
       "ADMIN_DAC7_DUE",

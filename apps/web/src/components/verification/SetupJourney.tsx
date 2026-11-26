@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "@/components/IntentLink";
-import { formatEur, subscriptionTierInfo, taxIdCheckMessage, type MySubscription, type MyVerificationStatus } from "@professionisti/shared";
+import { subscriptionPriceLabel, subscriptionTierInfo, taxIdCheckMessage, type MySubscription, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { loadMyProfessionalProfile, loadMySubscription, loadMyVerificationStatus } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
@@ -43,7 +43,7 @@ function planStep(sub: MySubscription): JourneyStep | null {
   const baseInfo = subscriptionTierInfo("BASE");
   if (sub.state === "ACTIVE" || sub.state === "PAST_DUE") {
     const free = sub.freeMonths?.currentMonth != null;
-    return { ...base, state: "done", text: free ? `Mesi gratis attivi, poi Base a ${formatEur(baseInfo.priceEurCents)} + IVA al mese.` : `Livello ${subscriptionTierInfo(sub.tier ?? "BASE").label} attivo.` };
+    return { ...base, state: "done", text: free ? `Mesi gratis attivi, poi Base a ${subscriptionPriceLabel(baseInfo.priceEurCents, Boolean(sub.pricesWithVat))} al mese.` : `Livello ${subscriptionTierInfo(sub.tier ?? "BASE").label} attivo.` };
   }
   // Prima del lancio senza data, o senza Stripe: la carta non si può ancora dare.
   const available = sub.checkoutAvailable && (sub.state !== "TRIAL" || sub.trialEndsAt !== null);
@@ -53,7 +53,7 @@ function planStep(sub: MySubscription): JourneyStep | null {
     return {
       ...base,
       state: "current",
-      text: `${months} Base gratis, oggi 0 €. Poi Base a ${formatEur(baseInfo.priceEurCents)} + IVA al mese, annulli quando vuoi.`,
+      text: `${months} Base gratis, oggi 0 €. Poi Base a ${subscriptionPriceLabel(baseInfo.priceEurCents, Boolean(sub.pricesWithVat))} al mese, annulli quando vuoi.`,
       action: { href: PLAN_HREF, label: "Attiva i mesi gratis" },
     };
   }

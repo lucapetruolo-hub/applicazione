@@ -1,3 +1,5 @@
+import { formatEur } from "./professionals";
+
 /**
  * Abbonamento unico a livelli per il professionista (decisione dell'utente
  * del 28/09/2026, CLAUDE.md §6, docs/CHANGELOG.md §161): tutte le funzioni
@@ -33,6 +35,15 @@ export const VAT_RATE = 0.22;
 
 export function withVatEurCents(cents: number): number {
   return Math.round(cents * (1 + VAT_RATE));
+}
+
+/**
+ * Prezzo dell'abbonamento come lo legge il professionista: chi lavora senza
+ * partita IVA è un consumatore e vede sempre il prezzo finale con l'IVA
+ * (docs/changelog/2026-11-26-recesso-abbonamento.md). "19 € + IVA" o "23,18 € IVA inclusa".
+ */
+export function subscriptionPriceLabel(cents: number, withVat: boolean): string {
+  return withVat ? `${formatEur(withVatEurCents(cents))} IVA inclusa` : `${formatEur(cents)} + IVA`;
 }
 
 /** Prezzo del livello per un periodo intero (un mese o un anno), IVA esclusa. */
@@ -312,6 +323,64 @@ export type MySubscription = {
   fiscalDataNeeded: boolean;
   /** Deve verificare l'identità prima di inviare preventivi (docs/CHANGELOG.md §253). */
   identityVerificationNeeded: boolean;
+  /**
+   * Lavora senza partita IVA (consumatore): prezzi mostrati IVA inclusa e
+   * recesso entro 14 giorni (docs/changelog/2026-11-26-recesso-abbonamento.md).
+   * Facoltativa per un'API non ancora aggiornata.
+   */
+  pricesWithVat?: boolean;
+};
+
+/**
+ * Recesso dall'abbonamento entro 14 giorni (decisione di Luca del 26/11/2026,
+ * docs/changelog/2026-11-26-recesso-abbonamento.md, come fa Anthropic con
+ * Claude): solo per chi lavora senza partita IVA (consumatore, Codice del
+ * consumo art. 52), su richiesta dal sito, entro 14 giorni dal primo
+ * pagamento di un livello (dopo i mesi gratis, o passando a un livello
+ * superiore). Nei mesi gratis non c'è nulla da rimborsare: basta annullare.
+ * Rimborso in proporzione a quanto è stato usato: per Base e Plus conta il
+ * più alto tra la parte di periodo passata e la parte di lavori usati; per
+ * Pro (lavori senza limite) solo i giorni. I rinnovi non si rimborsano.
+ */
+export const SUBSCRIPTION_WITHDRAWAL_DAYS = 14;
+
+export type SubscriptionWithdrawalOption =
+  | { state: "AVAILABLE"; until: string; paidEurCents: number; estimatedRefundEurCents: number; tierLabel: string }
+  | { state: "REQUESTED"; requestedAt: string };
+
+/** Rimborso del recesso: quanto pagato meno la parte usata (giorni o lavori, la più alta). */
+export function subscriptionWithdrawalRefundEurCents(input: {
+  paidEurCents: number;
+  daysUsed: number;
+  periodDays: number;
+  jobsUsed: number;
+  /** null = lavori senza limite (Pro): contano solo i giorni. */
+  jobsLimit: number | null;
+}): number {
+  const days = input.periodDays > 0 ? Math.min(1, Math.max(0, input.daysUsed) / input.periodDays) : 1;
+  const jobs = input.jobsLimit ? Math.min(1, Math.max(0, input.jobsUsed) / input.jobsLimit) : 0;
+  return Math.max(0, Math.round(input.paidEurCents * (1 - Math.max(days, jobs))));
+}
+
+/** Richiesta di recesso vista dall'admin, con il rimborso già calcolato. */
+export type AdminSubscriptionWithdrawal = {
+  id: string;
+  professionalProfileId: string;
+  businessName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reason: string | null;
+  requestedAt: string;
+  tierLabel: string;
+  paidEurCents: number;
+  paidAt: string;
+  daysUsed: number;
+  periodDays: number;
+  jobsUsed: number;
+  jobsLimit: number | null;
+  proposedRefundEurCents: number;
+  refundEurCents: number | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
 };
 
 /**

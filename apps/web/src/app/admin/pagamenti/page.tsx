@@ -27,6 +27,7 @@ import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } 
 import { PdfButton } from "@/app/dashboard/documenti/_components/DocumentParts";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { WaitBarSignal } from "@/components/WaitBar";
+import { SubscriptionWithdrawalsSection } from "@/components/admin/SubscriptionWithdrawalsSection";
 
 const REFUND_STATUS: Record<AdminRefund["status"], { label: string; tone: "warn" | "ok" | "neutral" | "danger" }> = {
   REQUESTED: { label: "Da decidere", tone: "warn" },
@@ -141,6 +142,8 @@ export default function AdminPagamentiPage() {
         {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessuno deve ancora pagare il resto.</Text> : null}
         {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} advice={advice.get("UNPAID_BALANCE", row.jobPaymentId)} token={token ?? ""} onChanged={() => { reload(); advice.reload(); }} />)}
       </YStack>
+
+      {token ? <SubscriptionWithdrawalsSection token={token} /> : null}
 
       <YStack gap="3">
         <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>

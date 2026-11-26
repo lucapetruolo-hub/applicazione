@@ -271,6 +271,9 @@ const selfProfessional = [
   "GET /professionals/me/revenue-analytics",
   "GET /professionals/me/stats",
   "GET /professionals/me/subscription",
+  // Recesso entro 14 giorni dall'abbonamento (docs/changelog/2026-11-26-recesso-abbonamento.md).
+  "GET /professionals/me/subscription/withdrawal",
+  "POST /professionals/me/subscription/withdrawal",
   "GET /professionals/me/verification",
   "POST /professionals/me/verification/identity",
   "POST /professionals/me/verification/representative-link",

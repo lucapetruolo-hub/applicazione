@@ -119,6 +119,19 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Risposte del commercialista (docs/changelog/2026-11-26-recesso-abbonamento.md e
+    // 2026-11-26-ritenuta-cliente-azienda.md).
+    version: "2026-11-26",
+    publishedAt: "2026-11-26",
+    effectiveAt: "2026-11-26",
+    summary: [
+      "Chi lavora senza partita IVA vede i prezzi dell'abbonamento con l'IVA inclusa e può recedere entro 14 giorni dal primo pagamento di un livello, con il rimborso di quanto pagato meno la parte già usata.",
+      "Se il professionista lavora senza partita IVA e il cliente è un'impresa che trattiene la ritenuta d'acconto, online si paga al massimo l'80% del preventivo e il resto si regola di persona.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

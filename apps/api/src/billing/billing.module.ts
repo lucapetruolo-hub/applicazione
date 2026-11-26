@@ -8,6 +8,11 @@ import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { SiteCountsModule } from "../site-counts/site-counts.module";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
+import { SubscriptionWithdrawalService } from "./subscription-withdrawal.service";
+import { AdminSubscriptionWithdrawalController, SubscriptionWithdrawalController } from "./subscription-withdrawal.controller";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { AuditLogModule } from "../audit-log/audit-log.module";
+import { AdminModule } from "../admin/admin.module";
 
 @Module({
   // JobPaymentsModule/ProfessionalFiscalModule: lo stesso webhook Stripe
@@ -16,8 +21,8 @@ import { BillingService } from "./billing.service";
   // dello stato Stripe Connect (CLAUDE.md §88) — un solo endpoint webhook,
   // mai due paralleli sullo stesso account Stripe.
   // AccountingModule: le nostre fatture per abbonamenti, passaggi e visibilità (§378).
-  imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule, SiteCountsModule, AccountingModule],
-  controllers: [BillingController],
-  providers: [BillingService],
+  imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule, SiteCountsModule, AccountingModule, NotificationsModule, AuditLogModule, AdminModule],
+  controllers: [BillingController, SubscriptionWithdrawalController, AdminSubscriptionWithdrawalController],
+  providers: [BillingService, SubscriptionWithdrawalService],
 })
 export class BillingModule {}
