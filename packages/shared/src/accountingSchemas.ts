@@ -22,6 +22,8 @@ export const clientInvoiceRequestSchema = z
     postalCode: z.string().trim().regex(/^\d{5}$/, "Il CAP ha 5 cifre."),
     city: z.string().trim().min(2, "Scrivi il comune.").max(120),
     province: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "La provincia è la sigla di 2 lettere, es. RM.").optional(),
+    /** A una partita IVA: trattiene la ritenuta d'acconto (sostituto d'imposta). Non detto = sì (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md). */
+    withholdingAgent: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.kind === "PERSON" && !isValidCodiceFiscale(value.taxCode ?? "")) {

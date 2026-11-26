@@ -20,6 +20,9 @@ import {
   formatJobDays,
   formatServicePriceRange,
   paymentChoiceIsOnline,
+  clientWithholds,
+  withholdingPaymentOffer,
+  WITHHOLDING_PAYMENT_NOTE,
   professionalPath,
   quotePriceTaxNote,
   quotePriceTotals,
@@ -148,7 +151,7 @@ export function QuoteCard({
   const [choosingPayment, setChoosingPayment] = useState(false);
   // Con più modi nessuno è scelto di serie: decide il cliente (regole sulle
   // scelte guidate, DSA art. 25; docs/changelog/2026-11-08-prova-persone-simulate.md).
-  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice | null>(null);
+  const [chosenPaymentMethod, setPaymentMethod] = useState<JobPaymentChoice | null>(null);
   // Senza Stripe attivo si offre solo il pagamento diretto (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   const [confirmingReject, setConfirmingReject] = useState(false);
@@ -181,14 +184,20 @@ export function QuoteCard({
 
   // Modi che il cliente può davvero usare: con uno solo si accetta subito,
   // senza il passaggio della scelta (docs/CHANGELOG.md §339).
-  const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
+  // Cliente azienda che trattiene la ritenuta (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md):
+  // online al massimo l'80% e saldo di persona. Lo stesso calcolo lo rifà il server.
+  const withholds = invoiceWanted && clientWithholds(quote.professionalKind === "PRIVATE", invoiceDraft);
+  const offer = withholds ? withholdingPaymentOffer({ paymentOptions: quote.paymentOptions, depositPercent: quote.depositPercent }) : { paymentOptions: quote.paymentOptions, depositPercent: quote.depositPercent };
+  const offerQuote = withholds ? { ...quote, ...offer } : quote;
+  const paymentMethod = withholds && chosenPaymentMethod === "ONLINE" ? "MIXED" : chosenPaymentMethod;
+  const selectablePayments = selectablePaymentChoices(offer.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
   // Data del preventivo già finita (docs/changelog/2026-11-11-fascia-in-corso.md):
   // al posto di "Accetta" si propone subito un'altra data. Il server la rifiuta comunque.
   const datePassed = quote.status === "SENT" && !appointmentStillAhead(quote.estimatedStartDate, quote.estimatedEndDate);
   const hasPrice = priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0;
   // Il pulsante dice la cifra che si paga ora (05/11/2026).
-  const acceptSplit = paymentMethod ? paymentSplit(paymentMethod, priceTotals, quote.depositPercent) : null;
+  const acceptSplit = paymentMethod ? paymentSplit(paymentMethod, priceTotals, offer.depositPercent) : null;
   const acceptLabel = !paymentMethod
     ? "Scegli come pagare"
     : acceptSplit
@@ -209,8 +218,10 @@ export function QuoteCard({
   }
 
   /** `emailJustVerified`: appena confermata, l'utente in memoria può essere ancora quello di prima (il server controlla comunque). */
-  async function handleAccept(method: JobPaymentChoice | null = paymentMethod, emailJustVerified = false) {
+  async function handleAccept(chosen: JobPaymentChoice | null = paymentMethod, emailJustVerified = false) {
     setError(null);
+    // Con la ritenuta "tutto online" diventa "acconto online e saldo di persona" (sopra).
+    const method = withholds && chosen === "ONLINE" ? "MIXED" : chosen;
     if (!method) return;
     if (!emailJustVerified && user?.emailVerificationRequired && !user.emailVerified) {
       setNeedsEmail(true);
@@ -619,8 +630,8 @@ export function QuoteCard({
                       quoteMinEurCents={priceTotals.totalMinEurCents}
                       quoteMaxEurCents={priceTotals.totalMaxEurCents}
                       onlineAvailable={onlinePayments}
-                      offered={quote.paymentOptions}
-                      depositPercent={quote.depositPercent}
+                      offered={offer.paymentOptions}
+                      depositPercent={offer.depositPercent}
                     />
                     {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): accanto alla scelta, dove serve (§378). */}
                     {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some((choice) => !paymentChoiceIsOnline(choice)) ? (
@@ -638,11 +649,16 @@ export function QuoteCard({
                   </YStack>
                 ) : null}
                 {paymentMethod ? (
-                  <QuoteAcceptSummary quote={quote} priceTotals={priceTotals} payment={paymentMethod} onlinePayments={onlinePayments} now={now}>
+                  <QuoteAcceptSummary quote={offerQuote} priceTotals={priceTotals} payment={paymentMethod} onlinePayments={onlinePayments} now={now}>
                     {/* Fattura chiesta al professionista, non a noi (§378): qui, quando si è deciso (05/11/2026). */}
                     <YStack gap="3">
                       <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
                       {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
+                      {withholds ? (
+                        <Text fontSize={13} color={brand.grafite70}>
+                          {WITHHOLDING_PAYMENT_NOTE}
+                        </Text>
+                      ) : null}
                     </YStack>
                   </QuoteAcceptSummary>
                 ) : null}

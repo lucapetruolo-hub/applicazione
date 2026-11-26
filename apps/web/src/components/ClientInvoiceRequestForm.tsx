@@ -32,10 +32,12 @@ export type InvoiceDraft = {
   postalCode: string;
   city: string;
   province: string;
+  /** A una partita IVA, per la ricevuta di chi lavora in modo occasionale: trattiene la ritenuta d'acconto (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md). */
+  withholdingAgent: boolean;
 };
 
 export function emptyInvoiceDraft(defaults: Partial<InvoiceDraft> = {}): InvoiceDraft {
-  return { kind: "PERSON", name: "", taxCode: "", vatNumber: "", recipient: "", street: "", houseNumber: "", postalCode: "", city: "", province: "", ...defaults };
+  return { kind: "PERSON", name: "", taxCode: "", vatNumber: "", recipient: "", street: "", houseNumber: "", postalCode: "", city: "", province: "", withholdingAgent: true, ...defaults };
 }
 
 export function invoiceDraftFromView(view: ClientInvoiceRequestView): InvoiceDraft {
@@ -50,6 +52,7 @@ export function invoiceDraftFromView(view: ClientInvoiceRequestView): InvoiceDra
     postalCode: view.postalCode,
     city: view.city,
     province: view.province ?? "",
+    withholdingAgent: view.withholdingAgent !== false,
   };
 }
 
@@ -112,6 +115,40 @@ export function InvoiceRequestToggle({ professionalName, checked, onToggle, rece
   );
 }
 
+/**
+ * Ricevuta di chi lavora in modo occasionale a una partita IVA: il cliente
+ * trattiene la ritenuta d'acconto? Di serie sì, come quasi tutte le aziende;
+ * no per chi è forfettario (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+ */
+function WithholdingToggle({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  return (
+    <XStack alignItems="flex-start" gap="2" cursor="pointer" onPress={onToggle} onKeyDown={keyActivate(onToggle)} role="checkbox" aria-checked={checked} aria-label="Trattengo la ritenuta d'acconto del 20%" tabIndex={0}>
+      <YStack
+        width={20}
+        height={20}
+        marginTop={1}
+        borderRadius="1"
+        borderWidth={2}
+        borderColor={checked ? brand.cianografia : brand.filetto}
+        backgroundColor={checked ? brand.cianografia : brand.calce}
+        alignItems="center"
+        justifyContent="center"
+        flexShrink={0}
+      >
+        {checked ? <Icon name="check" size={13} strokeWidth={2.5} color="white" /> : null}
+      </YStack>
+      <YStack flex={1} gap={2}>
+        <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+          Trattengo la ritenuta d'acconto del 20%
+        </Text>
+        <Text fontSize={13} color={brand.grafite70}>
+          La trattengono quasi tutte le aziende. Togli la spunta se sei in regime forfettario.
+        </Text>
+      </YStack>
+    </XStack>
+  );
+}
+
 /** Campi della fattura: a nome proprio (codice fiscale) o a una partita IVA. */
 export function InvoiceRequestFields({
   draft,
@@ -148,6 +185,7 @@ export function InvoiceRequestFields({
       {vat ? (
         <>
           <Field label="Partita IVA" aria-label="Partita IVA per la fattura" value={draft.vatNumber} onChangeText={(v) => set("vatNumber", v)} inputMode="numeric" error={errors?.vatNumber} />
+          {receipt ? <WithholdingToggle checked={draft.withholdingAgent} onToggle={() => onChange({ ...draft, withholdingAgent: !draft.withholdingAgent })} /> : null}
           {receipt ? null : (
             <Field
               label="Codice destinatario o PEC (facoltativo)"

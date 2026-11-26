@@ -226,7 +226,8 @@ export class CourtesyCopyService {
       // L'importo del PDF dato al cliente; quello di oggi a parte, se è cambiato (G-10).
       const total = doc.pdfTotalEurCents ?? summary.totalEurCents;
       const request = booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null;
-      const withholding = request?.kind === "VAT" && doc.withholding !== false && total !== null ? withholdingOf(total) : null;
+      // Di serie quello che ha detto il cliente (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md), poi la spunta del professionista.
+      const withholding = request?.kind === "VAT" && (doc.withholding ?? request.withholdingAgent !== false) && total !== null ? withholdingOf(total) : null;
       const paidAt = paidAtOf(booking);
       const row: CourtesyYearRow = {
         number: doc.receiptNumber,
@@ -478,7 +479,9 @@ export class CourtesyCopyService {
         ? items.map((item) => ({ description: item.name, amountEurCents: item.priceEurCents }))
         : [{ description: category ? `Lavoro: ${category}` : "Lavoro", amountEurCents: total ?? 0 }];
 
-    const withholdingApplies = request?.kind === "VAT" ? saved?.withholding !== false : null;
+    // Di serie quello che ha detto il cliente (sostituto d'imposta o no), poi la spunta del professionista
+    // (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+    const withholdingApplies = request?.kind === "VAT" ? (saved?.withholding ?? request.withholdingAgent !== false) : null;
     const withholding =
       withholdingApplies === null || total === null
         ? null
@@ -491,7 +494,11 @@ export class CourtesyCopyService {
     const hints: string[] = [];
     if (audience === "professional" && withholding) {
       hints.push(
-        "Il cliente ha la partita IVA: se è un'azienda, di solito trattiene il 20% di ritenuta d'acconto, la versa per te e a inizio anno ti manda la Certificazione Unica. Se non la trattiene, togli la spunta.",
+        request?.withholdingAgent === false
+          ? "Il cliente ha detto che non trattiene la ritenuta d'acconto (per esempio è in regime forfettario). Se invece la trattiene, metti la spunta."
+          : request?.withholdingAgent === true
+            ? "Il cliente ha la partita IVA e ha detto che trattiene il 20% di ritenuta d'acconto: la versa per te e a inizio anno ti manda la Certificazione Unica. Se non la trattiene, togli la spunta."
+            : "Il cliente ha la partita IVA: se è un'azienda, di solito trattiene il 20% di ritenuta d'acconto, la versa per te e a inizio anno ti manda la Certificazione Unica. Se non la trattiene, togli la spunta.",
       );
     }
 

@@ -23,6 +23,7 @@ type InvoiceRequestRow = {
   postalCode: string;
   city: string;
   province: string | null;
+  withholdingAgent?: boolean | null;
   updatedAt: Date;
   professionalSeenAt?: Date | null;
 };
@@ -40,6 +41,7 @@ export function invoiceRequestView(row: InvoiceRequestRow): ClientInvoiceRequest
     postalCode: row.postalCode,
     city: row.city,
     province: row.province,
+    withholdingAgent: row.kind === "VAT" ? (row.withholdingAgent ?? null) : null,
     requestedAt: row.updatedAt.toISOString(),
     // "Fatta" del professionista in Oggi (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
     // la colonna `professionalSeenAt` torna vuota quando il cliente cambia i dati.
@@ -65,6 +67,8 @@ function rowData(input: ClientInvoiceRequestInput) {
     postalCode: input.postalCode,
     city: input.city,
     province: input.province || null,
+    // Ritenuta d'acconto: solo a una partita IVA (docs/changelog/2026-11-26-ritenuta-cliente-azienda.md).
+    withholdingAgent: input.kind === "VAT" ? (input.withholdingAgent ?? null) : null,
   };
 }
 
