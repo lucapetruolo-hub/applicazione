@@ -134,6 +134,8 @@ export function RequestCard({
   unreadCount,
   autoOpenChat,
   onChatAutoOpenHandled,
+  autoOpenDocuments,
+  onAutoDocumentsHandled,
   onMarkedRead,
   myServices = [],
   similarQuote = null,
@@ -175,6 +177,10 @@ export function RequestCard({
   autoOpenChat?: boolean;
   /** Richiamata subito dopo aver aperto la chat per `autoOpenChat` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
   onChatAutoOpenHandled?: () => void;
+  /** Arriva dall'email del pagamento online (`?documenti=1`, docs/changelog/2026-11-26-avviso-trattenuta.md): apre subito i documenti del lavoro, dove c'è l'avviso di trattenuta. */
+  autoOpenDocuments?: boolean;
+  /** Richiamata dopo aver gestito `autoOpenDocuments`. */
+  onAutoDocumentsHandled?: () => void;
   /** "Segna come letta" dal menu: azzera subito i pallini locali del genitore. */
   onMarkedRead: () => void;
   /** Prestazioni del profilo, da aggiungere al preventivo con un tocco (docs/changelog/2026-11-08-preventivo-in-30-secondi.md). */
@@ -428,6 +434,13 @@ export function RequestCard({
       onChatAutoOpenHandled?.();
     }
   }, [autoOpenChat, onChatAutoOpenHandled]);
+  // Stesso principio per i documenti (link dell'email del pagamento online).
+  useEffect(() => {
+    if (!autoOpenDocuments) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowDocuments(true);
+    onAutoDocumentsHandled?.();
+  }, [autoOpenDocuments, onAutoDocumentsHandled]);
   function openTimeline() {
     setShowTimeline(true);
     dismissUnread();
