@@ -141,7 +141,8 @@ describe("copia per il cliente", () => {
     // Il consiglio sulla ritenuta è per il professionista.
     expect(copy.notes.some((note) => note.includes("ritenuta"))).toBe(false);
     const model = courtesyPdfModel(copy, "client");
-    expect(model.title).toBe("Copia della ricevuta per prestazione occasionale");
+    expect(model.title).toBe("Copia della ricevuta");
+    expect(model.subtitle).toBe("Prestazione occasionale");
     expect(JSON.stringify(model.blocks)).toContain("te la dà il professionista");
     expect(JSON.stringify(model.blocks)).not.toContain("signature");
 

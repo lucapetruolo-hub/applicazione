@@ -108,7 +108,6 @@ export class QuotePdfService {
     const request = quote.guidedRequest;
 
     const blocks: PdfBlock[] = [];
-    if (hasPrice) blocks.push({ type: "highlight", label: "Totale", value: formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents), detail: taxNote, badge: STATUS_LABEL[quote.status] ?? null });
     blocks.push({
       type: "meta",
       items: [
@@ -118,6 +117,8 @@ export class QuotePdfService {
         ...(hasPrice ? [] : [{ label: "Stato", value: STATUS_LABEL[quote.status] ?? quote.status }]),
       ],
     });
+    // Prima i dati in colonna, poi la cifra (come nelle fatture, docs/changelog/2026-11-26-pdf-puliti.md).
+    if (hasPrice) blocks.push({ type: "highlight", label: "Totale", value: formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents), detail: taxNote, badge: STATUS_LABEL[quote.status] ?? null });
     blocks.push({
       type: "parties",
       parties: [
