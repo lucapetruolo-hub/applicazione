@@ -1,5 +1,7 @@
 import {
   DAC7_QUARTER_LABEL,
+  INVOICE_SOURCE_LABEL,
+  STAMP_DUTY_THRESHOLD_EUR_CENTS,
   accountingDateLabel,
   accountingMonthLabel,
   courtesyYearPart,
@@ -21,7 +23,7 @@ import {
   type PlatformInvoiceView,
   customerTaxIdKind,
 } from "@professionisti/shared";
-import type { PdfBlock, PdfDocumentModel, PdfRow } from "./document-pdf";
+import type { PdfBlock, PdfDocumentModel } from "./document-pdf";
 
 /**
  * Contenuto dei PDF (docs/CHANGELOG.md §379): le stesse parti e le stesse
@@ -31,60 +33,121 @@ import type { PdfBlock, PdfDocumentModel, PdfRow } from "./document-pdf";
 
 const eur = (cents: number) => formatEurCents(cents);
 
-/** Una nostra fattura (o nota di credito) al professionista. */
+/**
+ * Una nostra fattura (o nota di credito) al professionista. Dal 26/11/2026
+ * (docs/changelog/2026-11-26-pdf-puliti.md) come le fatture di Claude Max:
+ * dati in colonna, cifra in una frase, tabella con l'IVA, totali a destra e
+ * sezione "Pagamento".
+ */
 export function invoicePdfModel(invoice: PlatformInvoiceView): PdfDocumentModel {
   const jobFees = invoice.source === "JOB_FEES";
+  const total = eur(invoice.totalEurCents);
+  const date = accountingDateLabel(invoice.issuedAt);
+  const month = invoice.periodMonth ? accountingMonthLabel(invoice.periodMonth) : null;
   const percent = jobFees && !invoice.creditNote && invoice.onlinePaidEurCents ? (invoice.totalEurCents / invoice.onlinePaidEurCents) * 100 : null;
   const hasRecipientCode = invoice.recipient.lines.some((line) => line.startsWith("Codice destinatario") || line.startsWith("PEC"));
 
-  const rows: PdfRow[] = [];
+  const sentence = invoice.creditNote
+    ? jobFees
+      ? `${total} di trattenute restituite`
+      : `${total} rimborsati sulla carta`
+    : jobFees
+      ? `${total} già trattenuti dai pagamenti online`
+      : `${total} pagati il ${date}`;
+  const detail = invoice.creditNote
+    ? platformInvoiceNote({ ...invoice, vatRecoverable: null })
+    : jobFees
+      ? `${percent !== null && invoice.onlinePaidEurCents ? `Su ${eur(invoice.onlinePaidEurCents)} pagati online dai clienti (${percent.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%). ` : ""}Non devi pagare nulla.`
+      : null;
+
+  const tableRows: ({ cells: string[]; details?: (string | null)[] } | { group: string })[] = [];
   let group: string | null = null;
   for (const line of invoice.lines) {
-    if (line.group && line.group !== group) rows.push({ group: line.group });
+    if (line.group && line.group !== group) tableRows.push({ group: line.group });
     group = line.group ?? null;
-    rows.push({ label: line.description, detail: line.detail, value: eur(line.taxableEurCents) });
+    tableRows.push({ cells: [line.description, `${invoice.vatRatePercent}%`, eur(line.taxableEurCents)], details: [line.detail ?? null, null, null] });
   }
-
-  const recoverable = platformInvoiceVatNote(invoice);
-  const noteLines = [
-    recoverable,
-    jobFees && invoice.periodMonth ? `Le stesse cifre le trovi, lavoro per lavoro, nell'estratto di ${accountingMonthLabel(invoice.periodMonth)}.` : null,
-    // Mancata consegna (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md): la fattura è emessa, va detto dove trovarla.
-    invoice.sdiUndelivered
-      ? "Il fisco non è riuscito a consegnare la fattura elettronica al tuo codice destinatario o alla tua PEC: l'originale lo trovi nel tuo cassetto fiscale, in Fatture e corrispettivi. Questo PDF è una copia di cortesia."
-      : null,
-  ].filter((line): line is string => !!line);
 
   const blocks: PdfBlock[] = [
     {
-      type: "highlight",
-      label: invoice.creditNote ? "Totale restituito" : jobFees ? "Totale trattenuto" : "Totale pagato",
-      value: eur(invoice.totalEurCents),
-      badge: invoice.creditNote ? "Nota di credito" : jobFees ? "Già trattenuta" : "Già pagata",
-      detail: `${percent !== null && invoice.onlinePaidEurCents ? `Su ${eur(invoice.onlinePaidEurCents)} pagati online dai clienti (${percent.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%). ` : ""}${platformInvoiceNote({ ...invoice, vatRecoverable: null })}`,
+      type: "meta",
+      items: [
+        { label: "Numero", value: invoice.number },
+        { label: "Data di emissione", value: date },
+        ...(jobFees && month ? [{ label: "Mese", value: month }] : []),
+        ...(invoice.relatedNumber ? [{ label: "Riferita alla fattura", value: invoice.relatedNumber }] : []),
+        ...(!jobFees && !invoice.creditNote ? [{ label: "Pagata il", value: date }] : []),
+      ],
     },
     {
       type: "parties",
       parties: [
         { label: "Da", ...invoice.issuer },
-        { label: "Per", ...invoice.recipient },
+        { label: "Intestata a", ...invoice.recipient },
       ],
     },
-    { type: "rows", rows },
+    { type: "amount", text: sentence, detail },
+    {
+      type: "table",
+      columns: [
+        { label: "Descrizione", width: 64 },
+        { label: "IVA", width: 12, align: "right" },
+        { label: "Importo", width: 24, align: "right" },
+      ],
+      rows: tableRows,
+    },
     {
       type: "totals",
       rows: [
         { label: "Imponibile", value: eur(invoice.taxableEurCents) },
-        { label: `IVA ${invoice.vatRatePercent}%`, value: eur(invoice.vatEurCents) },
+        { label: `IVA ${invoice.vatRatePercent}% su ${eur(invoice.taxableEurCents)}`, value: eur(invoice.vatEurCents) },
         ...(invoice.roundingEurCents !== 0 ? [{ label: "Arrotondamento", value: eur(invoice.roundingEurCents) }] : []),
       ],
-      total: { label: "Totale", value: eur(invoice.totalEurCents) },
+      total: { label: invoice.creditNote ? "Totale restituito" : jobFees ? "Totale trattenuto" : "Totale pagato", value: total },
     },
   ];
-  if (noteLines.length > 0) blocks.push({ type: "note", tone: "green", lines: noteLines });
-  blocks.push({ type: "text", muted: true, lines: [...platformInvoiceTechnicalNotes(invoice), `Copia di cortesia in PDF. ${platformInvoiceOriginalNote(hasRecipientCode)}`] });
+  if (!invoice.creditNote) {
+    blocks.push(
+      { type: "heading", text: "Pagamento" },
+      {
+        type: "table",
+        columns: [
+          { label: "Metodo", width: 44 },
+          { label: "Data", width: 30 },
+          { label: "Importo", width: 26, align: "right" },
+        ],
+        rows: [{ cells: [jobFees ? "Trattenuto dai pagamenti online" : "Carta", date, total] }],
+      },
+    );
+  }
+  // Mancata consegna (docs/changelog/2026-11-24-scadenze-fiscali-attivita.md): la fattura è emessa, va detto dove trovarla.
+  if (invoice.sdiUndelivered) {
+    blocks.push({
+      type: "note",
+      tone: "sand",
+      lines: ["Il fisco non è riuscito a consegnare la fattura elettronica al tuo codice destinatario o alla tua PEC: l'originale lo trovi nel tuo cassetto fiscale, in Fatture e corrispettivi. Questo PDF è una copia di cortesia."],
+    });
+  }
+  const recoverable = platformInvoiceVatNote(invoice);
+  blocks.push({
+    type: "text",
+    muted: true,
+    lines: [
+      ...(recoverable ? [recoverable] : []),
+      ...(jobFees && month ? [`Le stesse cifre le trovi, lavoro per lavoro, nell'estratto di ${month}.`] : []),
+      ...platformInvoiceTechnicalNotes(invoice),
+      `Copia di cortesia in PDF. ${platformInvoiceOriginalNote(hasRecipientCode)}`,
+    ],
+  });
 
-  return { title: `${invoice.creditNote ? "Nota di credito" : "Fattura"} n. ${invoice.number}`, subtitle: platformInvoiceSubtitle(invoice), blocks };
+  const kind = invoice.creditNote ? "Nota di credito" : "Fattura";
+  return {
+    title: kind,
+    // La data è già tra i dati in colonna: sotto il titolo solo di cosa è.
+    subtitle: jobFees ? platformInvoiceSubtitle(invoice) : `${invoice.creditNote ? "Rimborso: " : ""}${invoice.creditNote ? INVOICE_SOURCE_LABEL[invoice.source].toLowerCase() : INVOICE_SOURCE_LABEL[invoice.source]}.`,
+    blocks,
+    footer: `${kind} ${invoice.number} · ${total} · Copia di cortesia`,
+  };
 }
 
 function shortDate(iso: string): string {
@@ -142,12 +205,14 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
 /** Ricevuta per prestazione occasionale da dare al cliente (docs/changelog/2026-10-30-documenti-snelli.md). */
 export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional" | "client" = "professional"): PdfDocumentModel {
   const total = copy.totalEurCents !== null ? eur(copy.totalEurCents) : "______";
+  const withholding = copy.withholding?.applies ? copy.withholding : null;
+  const date = accountingDateLabel(copy.date);
   const blocks: PdfBlock[] = [
     {
       type: "meta",
       items: [
         { label: "Numero", value: copy.number ?? "______" },
-        { label: "Data", value: accountingDateLabel(copy.date) },
+        { label: "Data", value: date },
       ],
     },
     {
@@ -158,9 +223,19 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       ],
     },
   ];
+  // La cifra in una frase (docs/changelog/2026-11-26-pdf-puliti.md): con la ritenuta è il netto che il professionista riceve.
+  if (copy.totalEurCents !== null) {
+    blocks.push({ type: "amount", text: `${withholding ? eur(withholding.netEurCents) : total} ricevuti il ${date}`, detail: copy.paidHow });
+  }
   const lineValue = (cents: number) => (copy.totalEurCents !== null ? eur(cents) : "______");
-  blocks.push({ type: "rows", rows: copy.lines.map((line) => ({ label: line.description, value: lineValue(line.amountEurCents) })) });
-  const withholding = copy.withholding?.applies ? copy.withholding : null;
+  blocks.push({
+    type: "table",
+    columns: [
+      { label: "Descrizione", width: 70 },
+      { label: "Importo", width: 30, align: "right" },
+    ],
+    rows: copy.lines.map((line) => ({ cells: [line.description, lineValue(line.amountEurCents)] })),
+  });
   if (withholding) {
     // Ricevuta a una partita IVA con la ritenuta (collaudo C-04): lordo, ritenuta e netto.
     blocks.push({
@@ -169,21 +244,24 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
         { label: "Compenso lordo", value: total },
         { label: "Ritenuta d'acconto 20% (art. 25 DPR 600/1973)", value: `−${eur(withholding.amountEurCents)}` },
       ],
-      total: { label: "Netto pagato", value: eur(withholding.netEurCents), detail: copy.paidHow },
+      total: { label: "Netto pagato", value: eur(withholding.netEurCents) },
     });
   } else {
-    blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total, detail: copy.paidHow } });
+    blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total } });
   }
   if (copy.notes.length > 0) blocks.push({ type: "text", muted: true, lines: copy.notes });
   // Al cliente (§386) la ricevuta è una copia: l'originale firmato glielo dà il professionista.
   if (audience === "client") blocks.push({ type: "text", muted: true, lines: ["Copia: la ricevuta originale firmata, con la marca da bollo quando serve, te la dà il professionista."] });
-  else blocks.push({ type: "signature", label: "Firma" });
+  // Oltre 77,47 € il riquadro dove incollare la marca da bollo, accanto alla firma (decisione di Luca del 26/11/2026).
+  else blocks.push({ type: "signature", label: "Firma", stamp: copy.totalEurCents !== null && copy.totalEurCents > STAMP_DUTY_THRESHOLD_EUR_CENTS });
 
   return {
-    title: audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale",
+    title: audience === "client" ? "Copia della ricevuta" : "Ricevuta",
+    subtitle: "Prestazione occasionale",
     blocks,
     // Lo emette il professionista: in alto il suo nome, non il sito (G-11).
     issuedBy: copy.issuer.name || null,
+    footer: `Ricevuta ${copy.number ?? "senza numero"} · ${total}`,
   };
 }
 

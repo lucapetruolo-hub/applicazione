@@ -67,7 +67,8 @@ describe("PDF dei documenti", () => {
       vatRecoverable: true,
       onlinePaidEurCents: 10000,
     } as never);
-    expect(invoice.title).toBe("Fattura n. COM/2026/0017");
+    expect(invoice.title).toBe("Fattura");
+    expect(invoice.footer).toContain("COM/2026/0017");
     expect(JSON.stringify(invoice.blocks)).toContain("L'IVA la recuperi nella tua dichiarazione IVA.");
 
     const statement = statementPdfModel(

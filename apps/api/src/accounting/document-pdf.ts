@@ -10,6 +10,11 @@ import { EMAIL_BRAND, frontendUrl } from "../email/email-brand";
  * a blocchi (totale grande, "Da" e "Per", righe, totali, tabella, riquadri)
  * con gli stessi colori delle pagine di "Fatture e documenti". Caratteri
  * standard del PDF (Helvetica): niente file di font da portarsi dietro.
+ *
+ * Dal 26/11/2026 (docs/changelog/2026-11-26-pdf-puliti.md, spunto dalle
+ * fatture di Claude Max) un aspetto più pulito: titolo corto con il marchio a
+ * destra, dati in colonna, "Da" e "Intestata a" senza riquadri, cifra in una
+ * frase, totali a destra e piede con riferimento e "Pagina 1 di 1".
  */
 
 export type PdfParty = { label: string; name: string; lines: string[] };
@@ -18,15 +23,18 @@ export type PdfRow = { label: string; detail?: string | null; value: string } | 
 export type PdfBlock =
   | { type: "heading"; text: string }
   | { type: "highlight"; label: string; value: string; detail?: string | null; badge?: string | null }
+  /** La cifra in una frase sola, come "71,98 € pagati il 15 novembre 2026" (fatture e ricevute). */
+  | { type: "amount"; text: string; detail?: string | null }
   | { type: "meta"; items: { label: string; value: string }[] }
   | { type: "parties"; parties: PdfParty[] }
   | { type: "tiles"; tiles: { label: string; value: string }[] }
   | { type: "rows"; rows: PdfRow[] }
   | { type: "totals"; rows: { label: string; value: string }[]; total: { label: string; value: string; detail?: string | null } }
-  | { type: "table"; columns: { label: string; width: number; align?: "left" | "right" }[]; rows: { cells: string[]; details?: (string | null)[] }[] }
+  | { type: "table"; columns: { label: string; width: number; align?: "left" | "right" }[]; rows: ({ cells: string[]; details?: (string | null)[] } | { group: string })[] }
   | { type: "note"; lines: string[]; tone: "green" | "sand" }
   | { type: "text"; lines: string[]; muted?: boolean }
-  | { type: "signature"; label: string }
+  /** `stamp`: accanto alla firma il riquadro tratteggiato dove incollare la marca da bollo da 2 €. */
+  | { type: "signature"; label: string; stamp?: boolean }
   /** Foto (JPEG o PNG già scaricate), due per riga con la didascalia sotto. */
   | { type: "images"; images: { data: Buffer; caption?: string | null }[] }
   /** Codice QR di un indirizzo, disegnato a vettori, con l'indirizzo scritto accanto (scheda per i partner). */
@@ -35,8 +43,10 @@ export type PdfBlock =
 /**
  * `issuedBy`: il documento lo emette il professionista (ricevuta, copia della
  * fattura): in alto il suo nome, il sito solo in piccolo nel piede (collaudo G-11).
+ * `footer`: il riferimento nel piede di ogni pagina (es. "ABB/2026/0001 · 71,98 €
+ * pagati il 15 novembre 2026"), per ritrovare il documento da una pagina stampata.
  */
-export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks: PdfBlock[]; issuedBy?: string | null };
+export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks: PdfBlock[]; issuedBy?: string | null; footer?: string | null };
 
 const COLORS = {
   text: EMAIL_BRAND.colors.text,
@@ -56,7 +66,7 @@ const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 48;
 const CONTENT_WIDTH = PAGE.width - MARGIN * 2;
 /** Fin dove si scrive: sotto resta il numero di pagina. */
-const BOTTOM = PAGE.height - 64;
+const BOTTOM = PAGE.height - 70;
 const GAP = 16;
 /** Spazio tra i blocchi quando con quello normale l'ultima pagina avrebbe solo poche righe. */
 const COMPACT_GAP = 8;
@@ -106,12 +116,22 @@ class Writer {
       lang: "it-IT",
       info: { Title: pdfText(title), Author: pdfText(top), Creator: EMAIL_BRAND.name },
     });
-    this.header();
+    this.y = MARGIN;
   }
 
+  /** Nome di chi emette il documento, in alto a destra in un riquadro verde chiaro (al posto del logo, non ancora deciso). */
+  brand(): number {
+    const label = pdfText(this.top);
+    const width = Math.min(200, this.doc.font(BOLD).fontSize(11).widthOfString(label) + 32);
+    this.box(MARGIN + CONTENT_WIDTH - width, MARGIN - 4, width, 30, COLORS.greenTint);
+    this.write(this.top, MARGIN + CONTENT_WIDTH - width, MARGIN + 5, width, { font: BOLD, size: 11, color: COLORS.green, align: "center" });
+    return width;
+  }
+
+  /** Dalla seconda pagina: solo il nome, piccolo, in alto. */
   private header(): void {
-    this.doc.font(BOLD).fontSize(12).fillColor(COLORS.green).text(pdfText(this.top), MARGIN, MARGIN, { width: CONTENT_WIDTH, lineBreak: false });
-    this.y = MARGIN + 30;
+    this.doc.font(BOLD).fontSize(10).fillColor(COLORS.green).text(pdfText(this.top), MARGIN, MARGIN, { width: CONTENT_WIDTH, lineBreak: false });
+    this.y = MARGIN + 26;
   }
 
   /** Porta su una pagina nuova se quello che segue non ci sta. */
@@ -151,20 +171,30 @@ function caps(text: string): string {
 
 function titleBlock(w: Writer, model: PdfDocumentModel): void {
   const size = w.dense ? 20 : 22;
-  const titleHeight = w.height(model.title, BOLD, size, CONTENT_WIDTH);
-  w.write(model.title, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size, color: COLORS.heading });
-  w.y += titleHeight + 4;
+  const titleWidth = CONTENT_WIDTH - w.brand() - 16;
+  const titleHeight = w.height(model.title, BOLD, size, titleWidth);
+  w.write(model.title, MARGIN, w.y, titleWidth, { font: BOLD, size, color: COLORS.heading });
+  w.y += Math.max(titleHeight, 26) + 4;
   if (model.subtitle) {
-    w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 11, color: COLORS.muted });
+    w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 10.5, color: COLORS.muted });
   }
-  w.y += w.gap + 4;
+  w.y += w.gap;
 }
 
 /** Titolo di una parte del documento (es. "Ricevute" e "Copie delle fatture" nel riepilogo dell'anno). */
 function heading(w: Writer, block: Extract<PdfBlock, { type: "heading" }>): void {
   // Il titolo non resta da solo in fondo alla pagina: con sé almeno una riga.
   w.ensure(60);
-  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 12.5 : 14 }) + (w.dense ? 5 : 8);
+  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 12 : 13, color: COLORS.heading }) + (w.dense ? 5 : 8);
+}
+
+function amount(w: Writer, block: Extract<PdfBlock, { type: "amount" }>): void {
+  const size = w.dense ? 15 : 16;
+  const height = w.height(block.text, BOLD, size, CONTENT_WIDTH) + (block.detail ? w.height(block.detail, FONT, 9.5, CONTENT_WIDTH) + 4 : 0);
+  w.ensure(height);
+  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size, color: COLORS.heading }) + 4;
+  if (block.detail) w.y += w.write(block.detail, MARGIN, w.y, CONTENT_WIDTH, { size: 9.5, color: COLORS.muted });
+  w.y += w.gap + 2;
 }
 
 function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): void {
@@ -178,40 +208,42 @@ function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): 
     w.write(badge, MARGIN + CONTENT_WIDTH - width, w.y + 1, width, { font: BOLD, size: 8.5, color: COLORS.green, align: "center" });
   }
   w.y += 16;
-  w.write(block.value, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 24 : 28 });
-  w.y += w.dense ? 31 : 36;
+  w.write(block.value, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 22 : 24, color: COLORS.heading });
+  w.y += w.dense ? 28 : 31;
   if (block.detail) w.y += w.write(block.detail, MARGIN, w.y, CONTENT_WIDTH, { size: 10.5, color: COLORS.muted }) + 6;
   w.y += w.gap - 6;
 }
 
+/** Dati del documento in colonna, etichetta e valore: "Numero  ABB/2026/0001". */
 function meta(w: Writer, block: Extract<PdfBlock, { type: "meta" }>): void {
-  w.ensure(34);
-  const width = CONTENT_WIDTH / Math.max(1, block.items.length);
+  const labelWidth = 120;
+  const valueWidth = CONTENT_WIDTH - labelWidth;
+  const heights = block.items.map((item) => Math.max(w.height(item.label, BOLD, 10, labelWidth - 8), w.height(item.value, FONT, 10, valueWidth)) + 3);
+  w.ensure(heights.reduce((sum, h) => sum + h, 0));
   block.items.forEach((item, index) => {
-    const align = index === block.items.length - 1 && block.items.length > 1 ? "right" : "left";
-    w.write(caps(item.label), MARGIN + width * index, w.y, width, { font: BOLD, size: 8.5, color: COLORS.muted, align });
-    w.write(item.value, MARGIN + width * index, w.y + 13, width, { font: BOLD, size: 12, align });
+    w.write(item.label, MARGIN, w.y, labelWidth - 8, { font: BOLD, size: 10 });
+    w.write(item.value, MARGIN + labelWidth, w.y, valueWidth, { size: 10 });
+    w.y += heights[index]!;
   });
-  w.y += 30 + w.gap;
+  w.y += w.gap + 2;
 }
 
+/** "Da" e "Intestata a" affiancati, senza riquadri. */
 function parties(w: Writer, block: Extract<PdfBlock, { type: "parties" }>): void {
-  const gap = 12;
+  const gap = 24;
   const width = (CONTENT_WIDTH - gap * (block.parties.length - 1)) / block.parties.length;
-  const inner = width - 20;
-  const heights = block.parties.map((p) => 10 + 14 + w.height(p.name || "—", BOLD, 11, inner) + p.lines.reduce((sum, line) => sum + w.height(line, FONT, 10, inner), 0) + 10);
+  const heights = block.parties.map((p) => 13 + w.height(p.name || "—", BOLD, 10.5, width) + 2 + p.lines.reduce((sum, line) => sum + w.height(line, FONT, 10, width) + 1, 0));
   const height = Math.max(...heights);
   w.ensure(height);
   block.parties.forEach((party, index) => {
     const x = MARGIN + (width + gap) * index;
-    w.box(x, w.y, width, height, COLORS.panel);
-    let y = w.y + 10;
-    w.write(caps(party.label), x + 10, y, inner, { font: BOLD, size: 8.5, color: COLORS.muted });
-    y += 14;
-    y += w.write(party.name || "—", x + 10, y, inner, { font: BOLD, size: 11 });
-    for (const line of party.lines) y += w.write(line, x + 10, y, inner, { size: 10 });
+    let y = w.y;
+    w.write(caps(party.label), x, y, width, { font: BOLD, size: 8, color: COLORS.muted });
+    y += 13;
+    y += w.write(party.name || "—", x, y, width, { font: BOLD, size: 10.5 }) + 2;
+    for (const line of party.lines) y += w.write(line, x, y, width, { size: 10 }) + 1;
   });
-  w.y += height + w.gap;
+  w.y += height + w.gap + 4;
 }
 
 function tiles(w: Writer, block: Extract<PdfBlock, { type: "tiles" }>): void {
@@ -229,17 +261,17 @@ function tiles(w: Writer, block: Extract<PdfBlock, { type: "tiles" }>): void {
 }
 
 /** Una riga con l'importo a destra. */
-function amountRow(w: Writer, row: { label: string; detail?: string | null; value: string }, opts: { divider: boolean; strong?: boolean; large?: boolean }): void {
-  const size = opts.large ? 13 : 10.5;
+function amountRow(w: Writer, row: { label: string; detail?: string | null; value: string }, opts: { divider: boolean }): void {
+  const size = 10.5;
   const valueWidth = 120;
   const labelWidth = CONTENT_WIDTH - valueWidth - 12;
-  const labelFont = opts.strong ? BOLD : FONT;
+  const labelFont = FONT;
   const height = 7 + Math.max(w.height(row.label, labelFont, size, labelWidth) + (row.detail ? w.height(row.detail, FONT, 9, labelWidth) + 2 : 0), size + 3) + 7;
   w.ensure(height);
   let y = w.y + 7;
   y += w.write(row.label, MARGIN, y, labelWidth, { font: labelFont, size });
   if (row.detail) w.write(row.detail, MARGIN, y + 2, labelWidth, { size: 9, color: COLORS.muted });
-  w.write(row.value, MARGIN + CONTENT_WIDTH - valueWidth, w.y + 7, valueWidth, { font: BOLD, size, align: "right" });
+  w.write(row.value, MARGIN + CONTENT_WIDTH - valueWidth, w.y + 7, valueWidth, { size, align: "right" });
   w.y += height;
   if (opts.divider) w.line(w.y, COLORS.border);
 }
@@ -259,14 +291,29 @@ function rows(w: Writer, block: Extract<PdfBlock, { type: "rows" }>): void {
   w.y += 6;
 }
 
+/** Totali nella metà destra, una riga sottile tra l'uno e l'altro e il totale in grassetto. */
 function totals(w: Writer, block: Extract<PdfBlock, { type: "totals" }>): void {
+  const x = MARGIN + CONTENT_WIDTH / 2;
+  const width = CONTENT_WIDTH / 2;
+  const valueWidth = 100;
+  const labelWidth = width - valueWidth - 8;
+  const rowHeight = (label: string, font: string, size: number) => w.height(label, font, size, labelWidth) + 9;
+  const detailHeight = block.total.detail ? w.height(block.total.detail, FONT, 9, width) + 4 : 0;
   // Totali e linea del totale restano insieme sulla stessa pagina.
-  w.ensure(block.rows.length * 26 + 44);
-  for (const row of block.rows) amountRow(w, row, { divider: false });
+  w.ensure(block.rows.reduce((sum, row) => sum + rowHeight(row.label, FONT, 10), 0) + rowHeight(block.total.label, BOLD, 11.5) + detailHeight + 8);
   w.y += 4;
-  w.line(w.y, COLORS.text, 1.5);
-  amountRow(w, block.total, { divider: false, strong: true, large: true });
-  w.y += w.gap - 4;
+  for (const row of block.rows) {
+    w.doc.moveTo(x, w.y).lineTo(x + width, w.y).lineWidth(0.75).strokeColor(COLORS.border).stroke();
+    w.write(row.label, x, w.y + 5, labelWidth, { size: 10 });
+    w.write(row.value, x + width - valueWidth, w.y + 5, valueWidth, { size: 10, align: "right" });
+    w.y += rowHeight(row.label, FONT, 10);
+  }
+  w.doc.moveTo(x, w.y).lineTo(x + width, w.y).lineWidth(1.2).strokeColor(COLORS.text).stroke();
+  w.write(block.total.label, x, w.y + 6, labelWidth, { font: BOLD, size: 11.5 });
+  w.write(block.total.value, x + width - valueWidth, w.y + 6, valueWidth, { font: BOLD, size: 11.5, align: "right" });
+  w.y += rowHeight(block.total.label, BOLD, 11.5) + 2;
+  if (block.total.detail) w.y += w.write(block.total.detail, x, w.y, width, { size: 9, color: COLORS.muted }) + 4;
+  w.y += w.gap;
 }
 
 function table(w: Writer, block: Extract<PdfBlock, { type: "table" }>): void {
@@ -276,12 +323,23 @@ function table(w: Writer, block: Extract<PdfBlock, { type: "table" }>): void {
   const xs = widths.map((_, index) => MARGIN + widths.slice(0, index).reduce((sum, width) => sum + width + gap, 0));
   const head = () => {
     w.ensure(22);
-    block.columns.forEach((column, index) => w.write(caps(column.label), xs[index]!, w.y, widths[index]!, { font: BOLD, size: 8, color: COLORS.muted, align: column.align ?? "left" }));
+    block.columns.forEach((column, index) => w.write(column.label, xs[index]!, w.y, widths[index]!, { size: 8.5, color: COLORS.muted, align: column.align ?? "left" }));
     w.y += 14;
-    w.line(w.y, COLORS.border, 1.5);
+    w.line(w.y, COLORS.text, 1);
   };
   head();
   for (const row of block.rows) {
+    if ("group" in row) {
+      // Titolo di un gruppo di righe (es. il lavoro nella fattura delle trattenute).
+      const height = w.height(row.group, BOLD, 10, CONTENT_WIDTH);
+      if (w.y + height + 40 > BOTTOM) {
+        w.ensure(height + 40);
+        head();
+      }
+      w.y += 8;
+      w.y += w.write(row.group, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 10 });
+      continue;
+    }
     const cellHeight = (index: number) => w.height(row.cells[index] ?? "", FONT, 9.5, widths[index]!) + (row.details?.[index] ? w.height(row.details[index]!, FONT, 8.5, widths[index]!) + 1 : 0);
     const height = 6 + Math.max(...block.columns.map((_, index) => cellHeight(index))) + 6;
     if (w.y + height > BOTTOM) {
@@ -323,13 +381,26 @@ function text(w: Writer, block: Extract<PdfBlock, { type: "text" }>): void {
   w.y += w.gap - 4;
 }
 
+const STAMP = { width: 92, height: 72 };
+
 function signature(w: Writer, block: Extract<PdfBlock, { type: "signature" }>): void {
-  w.ensure(60);
-  w.y += 24;
-  w.write(block.label, MARGIN, w.y, 60, { size: 10.5 });
+  w.ensure(block.stamp ? STAMP.height + 24 : 60);
+  w.y += block.stamp ? 8 : 24;
+  let x = MARGIN;
+  if (block.stamp) {
+    // Spazio per la marca da bollo, tratteggiato: la si incolla sull'originale.
+    w.doc.save();
+    w.doc.roundedRect(MARGIN, w.y, STAMP.width, STAMP.height, 6).dash(3, { space: 3 }).lineWidth(0.75).strokeColor(COLORS.muted).stroke();
+    w.doc.restore();
+    w.doc.undash();
+    w.write("Marca da bollo\n2 €", MARGIN, w.y + STAMP.height / 2 - 11, STAMP.width, { size: 8.5, color: COLORS.muted, align: "center" });
+    x = MARGIN + STAMP.width + 40;
+    w.y += STAMP.height - 18;
+  }
+  w.write(block.label, x, w.y, 60, { size: 10.5 });
   w.doc
-    .moveTo(MARGIN + 50, w.y + 12)
-    .lineTo(MARGIN + 260, w.y + 12)
+    .moveTo(x + 40, w.y + 12)
+    .lineTo(x + 250, w.y + 12)
     .lineWidth(0.75)
     .strokeColor(COLORS.text)
     .stroke();
@@ -395,7 +466,7 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
   // Se non basta, anche titoli e totale in evidenza un po' più piccoli.
   let w = layout(model, GAP);
   const pages = w.doc.bufferedPageRange().count;
-  if (pages > 1 && w.y - (MARGIN + 30) <= SHORT_LAST_PAGE) {
+  if (pages > 1 && w.y - (MARGIN + 26) <= SHORT_LAST_PAGE) {
     for (const dense of [false, true]) {
       const compact = layout(model, COMPACT_GAP, dense);
       if (compact.doc.bufferedPageRange().count < pages) {
@@ -411,15 +482,17 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
     w.doc.on("error", reject);
   });
 
-  // Piede: il sito e, se le pagine sono più di una, "Pagina 1 di 2".
+  // Piede su ogni pagina: riferimento del documento e sito a sinistra, "Pagina 1 di 2" a destra.
   const range = w.doc.bufferedPageRange();
   const url = frontendUrl().replace(/^https?:\/\//, "");
   const site = model.issuedBy ? `Preparato con ${EMAIL_BRAND.name} (${url})` : url;
+  const left = [model.footer, site].filter(Boolean).join(" · ");
   for (let index = 0; index < range.count; index += 1) {
     w.doc.switchToPage(range.start + index);
-    const y = PAGE.height - 40;
-    w.write(site, MARGIN, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted });
-    if (range.count > 1) w.write(`Pagina ${index + 1} di ${range.count}`, MARGIN + CONTENT_WIDTH / 2, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted, align: "right" });
+    const y = PAGE.height - 44;
+    w.line(y - 8, COLORS.border);
+    w.write(left, MARGIN, y, CONTENT_WIDTH - 90, { size: 8, color: COLORS.muted });
+    w.write(`Pagina ${index + 1} di ${range.count}`, MARGIN + CONTENT_WIDTH - 90, y, 90, { size: 8, color: COLORS.muted, align: "right" });
   }
   w.doc.end();
   return done;
@@ -432,6 +505,7 @@ export function layout(model: PdfDocumentModel, gap: number, dense = false): Wri
   for (const block of model.blocks) {
     if (block.type === "heading") heading(w, block);
     else if (block.type === "highlight") highlight(w, block);
+    else if (block.type === "amount") amount(w, block);
     else if (block.type === "meta") meta(w, block);
     else if (block.type === "parties") parties(w, block);
     else if (block.type === "tiles") tiles(w, block);
