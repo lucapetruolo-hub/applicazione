@@ -88,6 +88,10 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
   await expect(page.getByText("Abbonati che pagano oggi")).toBeVisible();
   await expect(page.getByText(/Traguardo: 12\.000/)).toBeVisible();
 
+  // Richieste agli abbonati del mese (26/11): nessuna richiesta finta, quindi chi non ne ha.
+  await expect(page.getByText("Richieste agli abbonati")).toBeVisible();
+  await expect(page.getByText(/nessuna richiesta/)).toBeVisible();
+
   // Traguardo scritto dall'admin: resta dopo il ricaricamento.
   await page.getByRole("button", { name: "Cambia il traguardo" }).click();
   await page.getByRole("textbox", { name: "Utile all'anno, in euro" }).fill("20000");

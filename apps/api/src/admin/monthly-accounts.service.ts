@@ -49,6 +49,7 @@ export class MonthlyAccountsService {
       this.prisma.subscription.findMany({
         where: { professionalProfile: COUNTED_PROFILE },
         select: {
+          professionalProfileId: true,
           plan: true,
           status: true,
           trialEndsAt: true,
@@ -90,6 +91,7 @@ export class MonthlyAccountsService {
     let inFreeMonths = 0;
     let freeMonthsEnded = 0;
     let stayed = 0;
+    const subscriberIds: string[] = [];
     for (const sub of subscriptions) {
       const state = subscriptionState(sub, now);
       const tier = tierOfPlan(sub.plan);
@@ -101,13 +103,26 @@ export class MonthlyAccountsService {
         byTier.set(tier, (byTier.get(tier) ?? 0) + 1);
         recurring += monthlyPriceEurCents(tier, sub.billingInterval);
       }
-      if (free && (state === "ACTIVE" || state === "PAST_DUE") && sub.stripeSubscriptionId) inFreeMonths += 1;
+      const freeWithCard = free && (state === "ACTIVE" || state === "PAST_DUE") && Boolean(sub.stripeSubscriptionId);
+      if (freeWithCard) inFreeMonths += 1;
+      if (isPaying || freeWithCard) subscriberIds.push(sub.professionalProfileId);
       const ended = sub.cardAddedAt && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime() && (!from || sub.trialEndsAt.getTime() >= from.getTime());
       if (ended) {
         freeMonthsEnded += 1;
         if (isPaying) stayed += 1;
       }
     }
+
+    // Richieste arrivate nel mese agli abbonati di oggi (dal lancio, §395).
+    const requestsFrom = from && from.getTime() > range.from.getTime() ? from : range.from;
+    const leadsBySubscriber = subscriberIds.length
+      ? await this.prisma.lead.groupBy({
+          by: ["professionalProfileId"],
+          where: { professionalProfileId: { in: subscriberIds }, createdAt: { gte: requestsFrom, lt: range.to } },
+          _count: { _all: true },
+        })
+      : [];
+    const requestsTotal = leadsBySubscriber.reduce((sum, row) => sum + row._count._all, 0);
 
     // Ricavi del mese, IVA esclusa.
     const excludedIds = new Set(excluded.map((p) => p.id));
@@ -146,6 +161,7 @@ export class MonthlyAccountsService {
         stayedAfterFreeMonths: stayed,
       },
       canceledInMonth,
+      requests: { subscribers: subscriberIds.length, total: requestsTotal, withoutRequests: subscriberIds.length - leadsBySubscriber.length },
       revenue: { subscriptionsEurCents, visibilityEurCents, jobFeesEurCents, totalEurCents: revenueTotal },
       variableCosts: { jobCardEurCents, connectEurCents, subscriptionStripeEurCents, invoicesEurCents, whatsappEurCents, totalEurCents: variableTotal },
       fixedCosts: { lines, totalEurCents: fixedTotal },

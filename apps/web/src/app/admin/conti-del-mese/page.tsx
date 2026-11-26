@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ESTIMATED_MONTHLY_COSTS,
   MONTHLY_COST_LINES_MAX,
+  STAYED_RELIABLE_FROM,
   formatEurCents,
   monthLabelIt,
   subscriptionTierInfo,
@@ -145,9 +146,11 @@ function Accounts({
         <div className="admin-kpi">
           <span className="admin-kpi-value">{percent(today.stayedAfterFreeMonths, today.freeMonthsEnded)}</span>
           <span className="admin-kpi-label">
-            {today.freeMonthsEnded > 0
-              ? `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}`
-              : "Restano dopo i mesi gratis · ancora nessuno li ha finiti"}
+            {today.freeMonthsEnded === 0
+              ? "Restano dopo i mesi gratis · ancora nessuno li ha finiti"
+              : today.freeMonthsEnded < STAYED_RELIABLE_FROM
+                ? `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}, troppo pochi per fidarsi`
+                : `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}`}
           </span>
         </div>
         <div className={`admin-kpi${data.profitEurCents < 0 ? " is-urgent" : ""}`}>
@@ -196,6 +199,8 @@ function Accounts({
           </Text>
         </YStack>
       </AdminCard>
+
+      <RequestsCard data={data} />
 
       <ShowNumbers>
         <YStack gap="4">
@@ -299,6 +304,41 @@ function Accounts({
 
       <CostsEditor key={fixedCosts.lines.map((l) => `${l.label}:${l.monthlyEurCents}`).join("|")} lines={fixedCosts.lines} token={token} saved={saved} onSaved={onSaved} />
     </>
+  );
+}
+
+/**
+ * Richieste agli abbonati nel mese (decisione di Luca del 26/11): un
+ * professionista senza richieste è il primo che non rinnova.
+ */
+function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
+  const { subscribers, total, withoutRequests } = data.requests;
+  const month = monthLabelIt(data.month);
+  return (
+    <AdminCard>
+      <YStack gap="2">
+        <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
+          Richieste agli abbonati
+        </Text>
+        {subscribers === 0 ? (
+          <Text color={brand.grafite70}>Ancora nessun abbonato.</Text>
+        ) : (
+          <>
+            <Text color={brand.grafite}>
+              {`In ${month} ogni abbonato ha ricevuto in media ${(total / subscribers).toLocaleString("it-IT", { maximumFractionDigits: 1 })} richieste (${total} in tutto, ${subscribers} abbonati).`}
+            </Text>
+            <Text color={withoutRequests > 0 ? brand.urgenza : brand.verificato}>
+              {withoutRequests > 0
+                ? `${withoutRequests} ${withoutRequests === 1 ? "abbonato non ha ricevuto" : "abbonati non hanno ricevuto"} nessuna richiesta: ${withoutRequests === 1 ? "è il primo" : "sono i primi"} che rischiano di non rinnovare.`
+                : "Tutti gli abbonati hanno ricevuto almeno una richiesta."}
+            </Text>
+          </>
+        )}
+        <Text fontSize={14} color={brand.grafite70}>
+          Contano gli abbonati di oggi, paganti e nei mesi gratis con la carta.
+        </Text>
+      </YStack>
+    </AdminCard>
   );
 }
 

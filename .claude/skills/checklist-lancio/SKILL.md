@@ -144,7 +144,12 @@ produzione):
    account collegati, per mandare le prove da Admin → Pagamenti
    (docs/changelog/2026-10-28-stripe-prova.md). In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
-   Connect → profilo piattaforma) e attivare Radar for Platforms. In
+   Connect → profilo piattaforma) e attivare Radar for Platforms. Per i
+   conti collegati scegliere Radar Lite, gratis: con le perdite a carico di
+   Stripe serve Radar acceso, e Radar Standard per le piattaforme costa
+   0,05 € a pagamento più 1 € al mese per conto attivo. Chiedere al supporto
+   di Stripe se Lite basta per la protezione dalle perdite
+   (docs/changelog/2026-11-26-conti-cose-tralasciate.md). In
    Impostazioni Connect → Dashboard Express → Funzionalità spegnere la
    modifica della pianificazione dei bonifici e i bonifici manuali/istantanei
    da parte dei professionisti: altrimenti potrebbero mandarsi in banca i

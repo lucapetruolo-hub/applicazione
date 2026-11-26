@@ -64,6 +64,16 @@ export type AdminMonthlyAccounts = {
   };
   /** Abbonamenti chiusi nel mese scelto. */
   canceledInMonth: number;
+  /**
+   * Richieste arrivate nel mese agli abbonati di oggi (paganti e nei mesi
+   * gratis): chi non ne riceve è il primo che se ne va (decisione di Luca del 26/11).
+   */
+  requests: {
+    subscribers: number;
+    total: number;
+    /** Abbonati senza nessuna richiesta nel mese. */
+    withoutRequests: number;
+  };
   revenue: {
     subscriptionsEurCents: number;
     visibilityEurCents: number;
@@ -123,3 +133,10 @@ export function monthLabelIt(month: string): string {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 15));
   return date.toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "UTC" });
 }
+
+/**
+ * Sotto questi abbonati con i mesi gratis finiti la percentuale di chi resta
+ * cambia troppo da un professionista all'altro per fidarsi: prima di spendere
+ * in pubblicità si aspettano almeno 20 professionisti (decisione di Luca del 26/11).
+ */
+export const STAYED_RELIABLE_FROM = 20;
