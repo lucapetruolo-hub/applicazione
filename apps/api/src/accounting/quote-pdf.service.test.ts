@@ -121,7 +121,7 @@ describe("Avviso di trattenuta per il professionista (docs/changelog/2026-11-26-
       { date: "2026-12-11T10:00:00Z", label: "Nostra trattenuta (IVA compresa)", amountEurCents: -1196, invoice: { id: "i1", number: "COM/2026/0004" }, fee: true },
     ]);
     const { model, fileName } = await new QuotePdfService(prisma as never, jobDocuments as never).feeNoticeForProfessional("p1", "b1");
-    const texts = JSON.stringify(model.blocks).replace(/ | /g, " ");
+    const texts = JSON.stringify(model.blocks).replace(/\u00a0|\u202f/g, " ");
     expect(model.title).toBe("Avviso di trattenuta");
     expect(fileName).toBe("avviso-trattenuta-2026-12-10");
     expect(texts).toContain("Fattura COM/2026/0004");
