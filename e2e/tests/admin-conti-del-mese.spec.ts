@@ -117,6 +117,7 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
   // Elenco completo aperto: lo controllano anche axe e la foto.
   await page.getByRole("button", { name: /^Vedi (i \d+ abbonati|l'abbonato)$/ }).click();
   await expect(page.getByRole("table", { name: /^Abbonati e richieste di / })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /^Base, gratis fino al \d{2}\/\d{2}\/\d{4}$/ }).first()).toBeVisible();
 
   await page.evaluate(() => document.querySelectorAll("*").forEach((el) => ((el as HTMLElement).style.transition = "none")));
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

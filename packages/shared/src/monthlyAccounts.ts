@@ -31,6 +31,8 @@ export type MonthlyAccountsSubscriberRow = {
   tier: "BASE" | "PLUS" | "PRO";
   /** Nei mesi gratis con la carta. */
   free: boolean;
+  /** Ultimo istante dei mesi gratis (ISO), solo se free. */
+  freeUntil: string | null;
   requests: number;
 };
 

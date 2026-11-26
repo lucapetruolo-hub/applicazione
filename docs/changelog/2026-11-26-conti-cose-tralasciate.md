@@ -35,3 +35,8 @@ richieste" apre solo quelli a zero. Ogni riga ha nome e città (link alla scheda
 utente), telefono, livello (con "mesi gratis") e richieste del mese, dai meno
 seguiti in su, così si sa chi chiamare. Verifica: prova e2e con l'elenco aperto
 (axe senza errori), foto in anteprime/conti-del-mese/elenco-abbonati-*.png.
+
+**Poi (26/11, Luca):** chi è nei mesi gratis mostra "gratis fino al GG/MM/AAAA" e,
+a parità di richieste, viene prima chi scade prima. L'elenco mostra 20 righe per
+volta con il pulsante "Mostra altri" (con centinaia di abbonati la pagina resta
+corta).

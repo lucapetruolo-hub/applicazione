@@ -111,7 +111,7 @@ export class MonthlyAccountsService {
       if ((isPaying || freeWithCard) && tier) {
         subscriberIds.push(sub.professionalProfileId);
         const profile = sub.professionalProfile;
-        subscriberRows.push({ userId: profile.userId, businessName: profile.businessName, city: profile.city, phone: profile.user.phone, tier, free: freeWithCard });
+        subscriberRows.push({ userId: profile.userId, businessName: profile.businessName, city: profile.city, phone: profile.user.phone, tier, free: freeWithCard, freeUntil: freeWithCard && sub.trialEndsAt ? sub.trialEndsAt.toISOString() : null });
       }
       const ended = sub.cardAddedAt && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime() && (!from || sub.trialEndsAt.getTime() >= from.getTime());
       if (ended) {
@@ -133,7 +133,7 @@ export class MonthlyAccountsService {
     const requestsOf = new Map(leadsBySubscriber.map((row) => [row.professionalProfileId, row._count._all]));
     const subscriberList: MonthlyAccountsSubscriberRow[] = subscriberRows
       .map((row, index) => ({ ...row, requests: requestsOf.get(subscriberIds[index]!) ?? 0 }))
-      .sort((a, b) => a.requests - b.requests || a.businessName.localeCompare(b.businessName, "it"));
+      .sort((a, b) => a.requests - b.requests || byFreeUntil(a.freeUntil, b.freeUntil) || a.businessName.localeCompare(b.businessName, "it"));
 
     // Ricavi del mese, IVA esclusa.
     const excludedIds = new Set(excluded.map((p) => p.id));
@@ -222,4 +222,12 @@ export class MonthlyAccountsService {
     });
     return { yearEurCents: input.yearEurCents };
   }
+}
+
+/** Prima chi finisce prima i mesi gratis, poi chi già paga. */
+function byFreeUntil(a: string | null, b: string | null): number {
+  if (a === b) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a < b ? -1 : 1;
 }

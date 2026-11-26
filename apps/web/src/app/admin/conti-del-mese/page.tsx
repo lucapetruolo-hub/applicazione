@@ -10,6 +10,7 @@ import {
   monthLabelIt,
   subscriptionTierInfo,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -312,13 +313,31 @@ function Accounts({
  * Richieste agli abbonati nel mese (decisione di Luca del 26/11): un
  * professionista senza richieste è il primo che non rinnova.
  */
+/** Righe dell'elenco abbonati mostrate per volta. */
+const LIST_PAGE = 20;
+
+/** "Base", oppure "Base, gratis fino al 12/02/2027" nei mesi gratis. */
+function tierLabel(row: MonthlyAccountsSubscriberRow): string {
+  const label = subscriptionTierInfo(row.tier).label;
+  if (!row.free) return label;
+  if (!row.freeUntil) return `${label}, mesi gratis`;
+  const day = new Date(row.freeUntil).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
+  return `${label}, gratis fino al ${day}`;
+}
+
 function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
   const { subscribers, total, withoutRequests, list } = data.requests;
   const month = monthLabelIt(data.month);
   // Un clic sui numeri apre l'elenco di chi c'è dietro (richiesta di Luca del 26/11).
   const [open, setOpen] = useState<"none" | "all" | null>(null);
-  const rows = open === "none" ? list.filter((row) => row.requests === 0) : open === "all" ? list : [];
-  const toggle = (which: "none" | "all") => setOpen((current) => (current === which ? null : which));
+  const [shown, setShown] = useState(LIST_PAGE);
+  const allRows = open === "none" ? list.filter((row) => row.requests === 0) : open === "all" ? list : [];
+  const rows = allRows.slice(0, shown);
+  const hidden = allRows.length - rows.length;
+  const toggle = (which: "none" | "all") => {
+    setShown(LIST_PAGE);
+    setOpen((current) => (current === which ? null : which));
+  };
   const average = subscribers > 0 ? (total / subscribers).toLocaleString("it-IT", { maximumFractionDigits: 1 }) : "0";
 
   return (
@@ -376,13 +395,20 @@ function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
                       ) : null}
                     </td>
                     <td data-label="Telefono">{row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : "—"}</td>
-                    <td data-label="Livello">{row.free ? `${subscriptionTierInfo(row.tier).label}, mesi gratis` : subscriptionTierInfo(row.tier).label}</td>
+                    <td data-label="Livello">{tierLabel(row)}</td>
                     <td data-label="Richieste">{row.requests}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        ) : null}
+        {hidden > 0 ? (
+          <XStack>
+            <Button variant="secondary" size="3" onPress={() => setShown((n) => n + LIST_PAGE)}>
+              {`Mostra altri ${Math.min(hidden, LIST_PAGE)} (ne restano ${hidden})`}
+            </Button>
+          </XStack>
         ) : null}
         <Text fontSize={14} color={brand.grafite70}>
           Contano gli abbonati di oggi, paganti e nei mesi gratis con la carta.
