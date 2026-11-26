@@ -137,6 +137,15 @@ describe("controlli in più (02/11/2026)", () => {
     expect(messageHasContacts("passo il 12.11.2026 alle 9, costo 1.250 euro")).toBe(false);
     expect(messageHasContacts("vengo il 12.11.2026 10.30")).toBe(false);
     expect(messageHasContacts(`${"+".repeat(50_000)}@`)).toBe(false);
+    // Numero dettato a parole (decisione di Luca del 26/11/2026).
+    expect(messageHasContacts("tre tre tre uno due tre quattro cinque sei sette")).toBe(true);
+    expect(messageHasContacts("il mio è 333, uno-due-tre, quarantacinque sessantasette")).toBe(true);
+    expect(messageHasContacts("Trentatré trentatré dodici trentaquattro cinquantasei")).toBe(true);
+    expect(messageHasContacts("vengo alle tre, porto due scale e sei metri di tubo")).toBe(false);
+    expect(messageHasContacts("uno due tre quattro cinque sei sette otto")).toBe(false);
+    expect(messageHasContacts("tre stanze, vengo il 12.11.2026 10.30 con due persone")).toBe(false);
+    expect(messageHasContacts(`${"tre ".repeat(20_000)}`)).toBe(true);
+    expect(messageHasContacts(`tre${"!".repeat(50_000)}x`)).toBe(false);
   });
 
   it("contatti in chat: un segnale per persona con quanti messaggi; per il professionista Da guardare, per il cliente niente", () => {

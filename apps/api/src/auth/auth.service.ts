@@ -850,7 +850,7 @@ export class AuthService {
   }
 
   async deleteAccount(userId: string, reason?: ChurnReason): Promise<void> {
-    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, role: true } });
+    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, role: true, imageUrl: true } });
     // Mai con qualcosa che dopo nessuno potrebbe più chiudere (collaudo P-06).
     const check = await this.accountClosureCheck(userId);
     if (check.blockers.length > 0) {
@@ -862,7 +862,12 @@ export class AuthService {
       await this.siteCounts?.recordChurnReason(before.role === "PROFESSIONAL" ? "PRO_ACCOUNT" : "CLIENT_ACCOUNT", reason).catch(() => undefined);
     }
     if (professionalProfile) {
-      await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
+      // Foto del profilo, copertina e lavori fatti: tolte anche dal database,
+      // poi cancellate da Cloudinary qui sotto (docs/changelog/2026-11-26-foto-cancellate-alla-chiusura.md).
+      await this.prisma.professionalProfile.update({
+        where: { id: professionalProfile.id },
+        data: { deletedAt: new Date(), imageUrl: null, coverImageUrl: null, portfolioUrls: [] },
+      });
       // I lavori futuri si annullano da soli e i clienti lo sanno subito (docs/CHANGELOG.md §348);
       // l'abbonamento di Stripe si annulla subito (collaudo dell'8/11/2026, E1-01).
       for (const handler of this.professionalClosedHandlers) {
@@ -917,8 +922,33 @@ export class AuthService {
     });
     // Messaggi WhatsApp in attesa: non partono più.
     await this.prisma.outboundMessage.updateMany({ where: { userId, status: "QUEUED" }, data: { status: "SKIPPED", skipReason: "ACCOUNT_DELETED", params: {} } });
+    await this.deleteClosedAccountMedia(userId, [before?.imageUrl, professionalProfile?.imageUrl, professionalProfile?.coverImageUrl, ...(professionalProfile?.portfolioUrls ?? [])]);
     // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).
     if (before?.email) await this.emailService.send({ to: before.email, ...accountDeletedEmail(before.name) });
+  }
+
+  /**
+   * Chiusura dell'account (GDPR art. 17, test di sicurezza del 25/11,
+   * docs/changelog/2026-11-26-foto-cancellate-alla-chiusura.md): prima il
+   * collegamento si toglieva dal database ma il file restava su Cloudinary, a
+   * un indirizzo pubblico. Si cancellano le foto del profilo e le foto e i
+   * video delle richieste che non sono diventate un lavoro. Quelle di un lavoro
+   * restano per le contestazioni (domanda A40 per l'avvocato). Non blocca mai
+   * la chiusura.
+   */
+  private async deleteClosedAccountMedia(userId: string, profileUrls: readonly (string | null | undefined)[]): Promise<void> {
+    try {
+      const requests = await this.prisma.guidedRequest.findMany({
+        where: { clientId: userId, quotes: { none: { booking: { isNot: null } } }, NOT: { photoUrls: { isEmpty: true } } },
+        select: { id: true, photoUrls: true },
+      });
+      if (requests.length > 0) {
+        await this.prisma.guidedRequest.updateMany({ where: { id: { in: requests.map((r) => r.id) } }, data: { photoUrls: [] } });
+      }
+      await this.cloudinaryService.deleteOwnMedia([...profileUrls, ...requests.flatMap((r) => r.photoUrls)]);
+    } catch (error) {
+      this.logger.error(`Foto dell'account ${userId} non cancellate da Cloudinary: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
