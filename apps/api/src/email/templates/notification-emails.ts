@@ -34,6 +34,7 @@ import {
   TERMS_CHANGES,
   findTermsChange,
   formatTermsDate,
+  onlineFeeWithVatEurCents,
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent, EmailDetail } from "../email-layout";
@@ -158,6 +159,16 @@ function quoteTotalDetail(payload: Record<string, unknown>): { label: string; va
 }
 
 /** Il professionista non vede il proprio nome nel riquadro. */
+/**
+ * Trattenuta sul pagamento online e dove trovare l'avviso (commercialista,
+ * docs/changelog/2026-11-26-avviso-trattenuta.md): la stessa cifra che Stripe
+ * trattiene al pagamento (onlineApplicationFeeHoldEurCents).
+ */
+const FEE_NOTICE_LINE = 'L\'avviso di trattenuta in PDF è nel lavoro, alla voce "Documenti". La fattura delle trattenute arriva a inizio mese nel tuo cassetto fiscale.';
+function feeDetail(amountEurCents: number): { label: string; value: string } {
+  return { label: "Nostra trattenuta (7% + IVA)", value: formatEur(onlineFeeWithVatEurCents(amountEurCents)) };
+}
+
 function proJobDetails(ctx: NotificationEmailContext, extra: { label: string; value: string }[] = []) {
   return jobDetails({ ...ctx, businessName: null }, extra);
 }
@@ -1183,8 +1194,9 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `Il cliente ha pagato online l'acconto per il lavoro **${job(ctx)}**.`,
       "Lo ricevi in banca quando il cliente conferma il lavoro.",
+      FEE_NOTICE_LINE,
     ],
-    details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }] : []),
+    details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }, feeDetail(payload.amountEurCents)] : []),
     cta: proRequests("Apri il lavoro"),
   }),
   JOB_BALANCE_PAID: (payload, ctx) => ({
@@ -1195,8 +1207,9 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `Il cliente ha pagato online il saldo per il lavoro **${job(ctx)}**.`,
       "Lo ricevi in banca quando il cliente conferma il lavoro.",
+      FEE_NOTICE_LINE,
     ],
-    details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }] : undefined,
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }, feeDetail(payload.amountEurCents)] : undefined,
     cta: proRequests("Apri il lavoro"),
   }),
   JOB_BALANCE_DUE: (payload, ctx) =>

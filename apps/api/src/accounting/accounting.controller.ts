@@ -36,6 +36,13 @@ export class AccountingController {
     return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
   }
 
+  /** Avviso di trattenuta del lavoro, per il professionista (26/11/2026). */
+  @Get("jobs/:bookingId/fees/pdf")
+  async jobFeesPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
+    const { model, fileName } = await this.quotePdfService.feeNoticeForProfessional(req.user.userId, bookingId);
+    return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
+  }
+
   /** I documenti di un lavoro, dal menu della richiesta: del professionista o del cliente (§386). */
   @Get("jobs/:bookingId")
   jobDocuments(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {

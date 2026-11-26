@@ -19,6 +19,7 @@ import {
   type Dac7YearSummary,
   type MonthlyStatement,
   type PlatformInvoiceView,
+  customerTaxIdKind,
 } from "@professionisti/shared";
 import type { PdfBlock, PdfDocumentModel, PdfRow } from "./document-pdf";
 
@@ -265,7 +266,12 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
       details: [
         null,
         row.paidAt && accountingShortDate(row.paidAt) !== accountingShortDate(row.date) ? `pagato il ${accountingShortDate(row.paidAt)}` : null,
-        [row.customerTaxId, row.customerHasVatNumber && !row.customerTaxId ? "Con partita IVA" : null].filter(Boolean).join(" · ") || null,
+        // Con il tipo del codice davanti (commercialista, 25/11/2026).
+        row.customerTaxId
+          ? `${customerTaxIdKind(row.customerTaxId, row.customerHasVatNumber) === "Partita IVA" ? "P.IVA" : "C.F."} ${row.customerTaxId}`
+          : row.customerHasVatNumber
+            ? "Con partita IVA"
+            : null,
         row.amountChanged ? `Oggi ${row.currentEurCents !== null ? eur(row.currentEurCents) : "senza importo"}: serve un nuovo documento` : null,
         // Una ricevuta a una partita IVA sopra 77,47 € ha sia la ritenuta sia il bollo.
         [row.withholdingEurCents ? `ritenuta ${eur(row.withholdingEurCents)}` : null, row.stampDuty ? "bollo 2 €" : null].filter(Boolean).join(" · ") || null,

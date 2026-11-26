@@ -2261,6 +2261,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     jobDocumentCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/copy/pdf`, token),
     /** Riepilogo dei pagamenti del lavoro, per il cliente (docs/changelog/2026-11-05-scheda-preventivo-semplice.md). */
     jobPaymentsPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/payments/pdf`, token),
+    jobFeesPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/fees/pdf`, token),
     /** Il preventivo in PDF, per il cliente e per il professionista che l'ha mandato. */
     quotePdf: (token: string, quoteId: string) => downloadFile(`/documents/quotes/${encodeURIComponent(quoteId)}/pdf`, token),
 

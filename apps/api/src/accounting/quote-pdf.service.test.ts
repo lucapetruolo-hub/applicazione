@@ -106,3 +106,32 @@ describe("PDF del riepilogo dei pagamenti per il cliente", () => {
     expect(text).toContain("16,00 €");
   });
 });
+
+describe("Avviso di trattenuta per il professionista (docs/changelog/2026-11-26-avviso-trattenuta.md)", () => {
+  const prisma = {
+    booking: { findUniqueOrThrow: async () => ({ scheduledAt: new Date("2026-12-10T08:00:00Z"), professionalProfile: { businessName: "Idraulica Rossi" }, quote: { guidedRequest: { category: { label: "Idraulico" } } } }) },
+  };
+  const view = (movements: unknown[], audience = "PROFESSIONAL") => ({ forUser: async () => ({ audience, movements }) });
+
+  it("pagamenti online, trattenute con la fattura o la nota del mese e la scritta che non è una fattura", async () => {
+    const jobDocuments = view([
+      { date: "2026-12-02T10:00:00Z", label: "Acconto pagato online dal cliente", amountEurCents: 6000, invoice: null },
+      { date: "2026-12-02T10:00:00Z", label: "Nostra trattenuta (IVA compresa)", amountEurCents: -512, invoice: null, note: "Va nella fattura delle trattenute di dicembre 2026, pronta il 1° del mese dopo.", fee: true },
+      { date: "2026-12-11T10:00:00Z", label: "Saldo pagato online dal cliente", amountEurCents: 14000, invoice: null },
+      { date: "2026-12-11T10:00:00Z", label: "Nostra trattenuta (IVA compresa)", amountEurCents: -1196, invoice: { id: "i1", number: "COM/2026/0004" }, fee: true },
+    ]);
+    const { model, fileName } = await new QuotePdfService(prisma as never, jobDocuments as never).feeNoticeForProfessional("p1", "b1");
+    const texts = JSON.stringify(model.blocks).replace(/\u00a0|\u202f/g, " ");
+    expect(model.title).toBe("Avviso di trattenuta");
+    expect(fileName).toBe("avviso-trattenuta-2026-12-10");
+    expect(texts).toContain("Fattura COM/2026/0004");
+    expect(texts).toContain("Va nella fattura delle trattenute di dicembre 2026");
+    expect(texts).toMatch(/17,08\s€/);
+    expect(texts).toContain("non è una fattura");
+  });
+
+  it("niente avviso per il cliente o senza trattenute", async () => {
+    await expect(new QuotePdfService(prisma as never, view([], "CLIENT") as never).feeNoticeForProfessional("c1", "b1")).rejects.toThrow("Lavoro non trovato.");
+    await expect(new QuotePdfService(prisma as never, view([{ date: "2026-12-02T10:00:00Z", label: "Pagamento diretto del cliente", amountEurCents: 6000, invoice: null }]) as never).feeNoticeForProfessional("p1", "b1")).rejects.toThrow("non ci sono trattenute");
+  });
+});
