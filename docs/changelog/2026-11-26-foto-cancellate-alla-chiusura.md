@@ -28,3 +28,19 @@ delle password comuni.
 separati, un errore di Cloudinary non ferma nulla). La query delle richieste
 senza lavoro è provata su un Postgres locale. Typecheck e lint dell'API sono
 verdi.
+
+## Numeri di telefono scritti in lettere in chat
+
+**Richiesta**: nelle stesse prove un numero dettato a parole ("tre tre tre uno
+due tre…") passava in chat prima dell'accettazione. Luca: "sì" a bloccarlo
+(26/11), §5 punto 9 di `CLAUDE.md`.
+
+**Decisione**: `chatContactKind` (`packages/shared/src/adminSignals.ts`) conta
+anche le cifre dette a parole, da sole o miste a cifre: "tre" vale una cifra,
+"dodici" e "trentatré" due. Da 9 cifre di fila il messaggio è un telefono,
+come per le cifre. Si divide solo su spazi, virgole e trattini, quindi date
+("12.11.2026") e frasi normali ("vengo alle tre, porto due scale") passano.
+Vale per il sito e per il server, e per i segnali dell'admin.
+
+**Verifica**: casi nuovi in `apps/api/src/admin/user-signals.test.ts`
+(numero a parole, misto, con decine, frasi normali, testo lunghissimo).

@@ -132,7 +132,51 @@ export function chatContactKind(text: string): ChatContactKind | null {
       separators = 0;
     }
   }
-  return null;
+  return spelledDigits(lower) >= 9 ? "PHONE" : null;
+}
+
+const DIGIT_WORDS = new Set(["zero", "uno", "una", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove"]);
+const TEEN_WORDS = new Set(["dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"]);
+const TENS_PREFIXES = ["venti", "vent", "trenta", "trent", "quaranta", "quarant", "cinquanta", "cinquant", "sessanta", "sessant", "settanta", "settant", "ottanta", "ottant", "novanta", "novant"];
+
+/** Quante cifre detta una parola ("tre" 1, "trentatre" 2, "333" 3), 0 se non è un numero. */
+function wordDigits(word: string): number {
+  if (/^\d+$/.test(word)) return word.length;
+  if (DIGIT_WORDS.has(word)) return 1;
+  if (TEEN_WORDS.has(word)) return 2;
+  for (const prefix of TENS_PREFIXES) {
+    if (word === prefix && prefix.endsWith("a")) return 2;
+    if (word.startsWith(prefix) && DIGIT_WORDS.has(word.slice(prefix.length))) return 2;
+  }
+  return 0;
+}
+
+/**
+ * Il numero più lungo dettato in lettere, anche misto a cifre ("tre tre tre
+ * uno due tre..."), per non aggirare il blocco scrivendo il telefono a parole
+ * (decisione di Luca del 26/11/2026, docs/changelog/2026-11-26-foto-cancellate-alla-chiusura.md).
+ */
+function spelledDigits(lower: string): number {
+  // Si divide solo su spazi, virgole e trattini: "12.11.2026" resta una parola sola e non conta,
+  // e una fila di sole cifre la controlla già chatContactKind (date e prezzi esclusi).
+  const words = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[\s,;:\-–]+/);
+  let run = 0;
+  let spelled = false;
+  let longest = 0;
+  for (const raw of words) {
+    const word = raw.replace(/^[(.!?"']+|[).!?"']+$/g, "");
+    if (!word) continue;
+    const count = wordDigits(word);
+    if (count === 0) {
+      run = 0;
+      spelled = false;
+      continue;
+    }
+    run += count;
+    spelled ||= !/^\d+$/.test(word);
+    if (spelled && run > longest) longest = run;
+  }
+  return longest;
 }
 
 export function messageHasContacts(text: string): boolean {
