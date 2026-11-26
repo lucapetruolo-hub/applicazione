@@ -279,7 +279,31 @@ export type PlatformInvoiceView = PlatformInvoiceSummary & {
   vatRecoverable: boolean | null;
   /** Quanto ha pagato online il cliente nel mese (solo trattenute), per la percentuale. */
   onlinePaidEurCents: number | null;
+  /** "Carta Visa che finisce con 4242"; null se non la conosciamo (fatture vecchie, pacchetti). */
+  paymentCard?: string | null;
 };
+
+/** Carta con cui è stata pagata una nostra fattura (docs/changelog/2026-11-26-pdf-puliti.md). */
+export type InvoicePaymentCard = { brand: string; last4: string };
+
+const CARD_BRAND_LABEL: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  maestro: "Maestro",
+  discover: "Discover",
+  diners: "Diners Club",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+  cartes_bancaires: "Cartes Bancaires",
+};
+
+/** "Carta Visa che finisce con 4242", come nelle ricevute di Stripe ma in italiano. */
+export function invoicePaymentCardLabel(brand: string | null | undefined, last4: string | null | undefined): string | null {
+  if (!last4 || !/^\d{4}$/.test(last4)) return null;
+  const name = brand ? (CARD_BRAND_LABEL[brand.toLowerCase()] ?? null) : null;
+  return `Carta ${name ? `${name} ` : ""}che finisce con ${last4}`;
+}
 
 /**
  * Residenza fiscale fuori dall'Italia (collaudo dell'08/11/2026, E5-04): le

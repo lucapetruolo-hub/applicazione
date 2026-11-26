@@ -84,7 +84,7 @@ const invoices: Invoice[] = [
   ),
   invoice(
     "03-fattura-abbonamento-ABB",
-    { number: "ABB/2026/0001", source: "SUBSCRIPTION", creditNote: false, periodMonth: null, issuedAt: "2026-11-15T09:30:00Z", totalEurCents: 7198, lines: [{ description: "Abbonamento Plus, mensile", detail: "dal 15/11/2026 al 14/12/2026", taxableEurCents: 5900 }], relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: null },
+    { number: "ABB/2026/0001", source: "SUBSCRIPTION", creditNote: false, periodMonth: null, issuedAt: "2026-11-15T09:30:00Z", totalEurCents: 7198, lines: [{ description: "Abbonamento Plus, mensile", detail: "dal 15/11/2026 al 14/12/2026", taxableEurCents: 5900 }], relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: null, paymentCard: "Carta Visa che finisce con 4242" },
     { xmlType: "TD01", payment: "MP08", related: null, causale: ["Abbonamento mensile al servizio, pagato con carta."] },
   ),
   // Passaggio a un livello superiore (decisione di Luca del 25/11/2026,
@@ -92,7 +92,7 @@ const invoices: Invoice[] = [
   // livello e mese nuovo da quel giorno, quindi una normale fattura dell'abbonamento.
   invoice(
     "04-fattura-passaggio-a-pro-ABB",
-    { number: "ABB/2026/0002", source: "SUBSCRIPTION", creditNote: false, periodMonth: null, issuedAt: "2026-11-20T16:10:00Z", totalEurCents: 12078, lines: [{ description: "Abbonamento Pro mensile", detail: "dal 20/11/2026 al 19/12/2026", taxableEurCents: 9900 }], relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: null },
+    { number: "ABB/2026/0002", source: "SUBSCRIPTION", creditNote: false, periodMonth: null, issuedAt: "2026-11-20T16:10:00Z", totalEurCents: 12078, lines: [{ description: "Abbonamento Pro mensile", detail: "dal 20/11/2026 al 19/12/2026", taxableEurCents: 9900 }], relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: null, paymentCard: "Carta Mastercard che finisce con 5772" },
     { xmlType: "TD01", payment: "MP08", related: null, causale: ["Abbonamento mensile al servizio (passaggio al livello Pro), pagato con carta."] },
   ),
   // Rimborso dell'abbonamento dalla Dashboard di Stripe: nota di credito della serie ABB

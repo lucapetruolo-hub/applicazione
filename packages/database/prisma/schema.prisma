@@ -2914,6 +2914,10 @@ model Invoice {
   dedupeKey             String?          @unique
   stripeInvoiceId       String?
   stripePaymentIntentId String?
+  /// Carta del pagamento (marca e ultime 4 cifre), per "Pagamento" nel PDF
+  /// della fattura (docs/changelog/2026-11-26-pdf-puliti.md).
+  paymentCardBrand      String?
+  paymentCardLast4      String?
   sdiStatus             InvoiceSdiStatus @default(NOT_SENT)
   sdiId                 String?
   sdiMessage            String?

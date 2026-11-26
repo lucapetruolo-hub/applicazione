@@ -9,6 +9,7 @@ import {
 import { buildFatturaPaXml, xmlAmount, type FatturaPaIssuer, type FatturaPaParty } from "./invoice-xml";
 import type { SdiCompany } from "./sdi-provider";
 import { romeDayIso } from "./accounting-dates";
+import { EMAIL_BRAND } from "../email/email-brand";
 
 /** I nostri dati fotografati sulla fattura. */
 export type IssuerSnapshot = {
@@ -181,6 +182,8 @@ export function issuerParty(i: IssuerSnapshot): InvoiceParty {
       i.reaOffice && i.reaNumber ? `REA ${i.reaOffice} ${i.reaNumber}` : null,
       i.shareCapital ? `Capitale sociale ${shareCapitalCents(i.shareCapital) !== null ? formatEurCents(shareCapitalCents(i.shareCapital)!) : i.shareCapital}` : null,
       i.pecEmail ? `PEC ${i.pecEmail}` : null,
+      // Dove scriverci, come nelle fatture di Claude (docs/changelog/2026-11-26-pdf-puliti.md).
+      `Assistenza ${EMAIL_BRAND.supportEmail}`,
     ].filter((line): line is string => !!line),
   };
 }

@@ -43,10 +43,30 @@ MP08/MP22, REA, capitale, PEC, ritenuta del 20%, frase sul bollo.
 
 **Voci di Claude lasciate fuori**: subtotale e "totale senza IVA" ripetuti,
 due documenti separati (fattura e ricevuta: in Italia basta la fattura),
-"Paga online" (è già pagata), ultime 4 cifre della carta (non le salviamo con
-la fattura: servirebbe una colonna nuova, proposta a parte).
+"Paga online" (è già pagata). Le ultime 4 cifre della carta sono arrivate nel
+secondo giro, qui sotto.
 
 **Verifica**: test dei PDF (`documents-pdf-sdi.test.ts`,
 `job-documents.test.ts` aggiornati ai titoli nuovi), tsc, eslint; pacchetto per
 il commercialista e anteprime degli altri PDF rigenerati e guardati uno per
 uno (anteprime in `anteprime/pdf-pulite/` della cartella del progetto).
+
+## Secondo giro: carta ed email dell'assistenza
+
+**Richiesta** (Luca, 26/11/2026): sì a "Carta Visa che finisce con 4242" nella
+sezione "Pagamento" e sì all'email dell'assistenza sotto i dati della società;
+no ai riquadri crema di estratto e riepiloghi trasformati in righe; logo nel
+riquadro verde appena è deciso il nome.
+
+**Decisione**:
+- colonne `paymentCardBrand` e `paymentCardLast4` su `invoices` (migrazione
+  additiva `20261126190000_carta_in_fattura`), scritte da `invoice.paid` con la
+  carta dell'abbonamento in quel momento (`BillingService.savedCard`, la stessa
+  delle email di pagamento); `invoicePaymentCardLabel` in
+  `packages/shared/src/accounting.ts`. Senza carta nota (fatture vecchie,
+  pacchetti, recupero dei pagamenti persi) resta "Carta";
+- `issuerParty` aggiunge "Assistenza <email>" (`EMAIL_BRAND.supportEmail`), solo
+  nel PDF e nella pagina, non nell'XML.
+
+**Verifica**: test in `documents-pdf-sdi.test.ts` (etichetta della carta e riga
+dell'assistenza), test di accounting e billing, tsc, eslint.

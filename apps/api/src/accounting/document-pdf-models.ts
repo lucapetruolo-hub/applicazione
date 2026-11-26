@@ -116,7 +116,7 @@ export function invoicePdfModel(invoice: PlatformInvoiceView): PdfDocumentModel 
           { label: "Data", width: 30 },
           { label: "Importo", width: 26, align: "right" },
         ],
-        rows: [{ cells: [jobFees ? "Trattenuto dai pagamenti online" : "Carta", date, total] }],
+        rows: [{ cells: [jobFees ? "Trattenuto dai pagamenti online" : (invoice.paymentCard ?? "Carta"), date, total] }],
       },
     );
   }
