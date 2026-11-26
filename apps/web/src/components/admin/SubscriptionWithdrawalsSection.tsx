@@ -45,7 +45,7 @@ export function SubscriptionWithdrawalsSection({ token }: { token: string }) {
         Recessi dall&apos;abbonamento
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
-        Professionisti senza partita IVA che recedono entro 14 giorni dal pagamento. Il rimborso proposto è quanto pagato meno la parte usata (giorni o
+        Chi lavora senza partita IVA può recedere per 14 giorni dopo aver pagato. Il rimborso proposto è quanto pagato meno la parte usata (giorni o
         lavori, la più alta). Approvando si chiude l&apos;abbonamento e parte il rimborso sulla carta.
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
