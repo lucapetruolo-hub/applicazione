@@ -23,6 +23,17 @@ export const MONTHLY_COST_LINES_MAX = 30;
 
 export type MonthlyCostLine = { label: string; monthlyEurCents: number };
 
+export type MonthlyAccountsSubscriberRow = {
+  userId: string;
+  businessName: string;
+  city: string | null;
+  phone: string | null;
+  tier: "BASE" | "PLUS" | "PRO";
+  /** Nei mesi gratis con la carta. */
+  free: boolean;
+  requests: number;
+};
+
 /**
  * Le voci della stima del 25/11/2026 (scenario medio, 10.878 € l'anno),
  * proposte con un clic quando l'elenco è vuoto. Da correggere con le
@@ -73,6 +84,8 @@ export type AdminMonthlyAccounts = {
     total: number;
     /** Abbonati senza nessuna richiesta nel mese. */
     withoutRequests: number;
+    /** Gli abbonati uno per uno, prima chi ne ha ricevute meno (si apre con un clic). */
+    list: MonthlyAccountsSubscriberRow[];
   };
   revenue: {
     subscriptionsEurCents: number;

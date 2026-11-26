@@ -28,3 +28,10 @@ società.
 ## Verifica
 
 Tipi e lint di API e sito; Playwright di Conti del mese da telefono e computer.
+
+**Aggiunta (26/11, richiesta di Luca):** nella scheda "Richieste agli abbonati" i
+numeri si cliccano. "Vedi i N abbonati" apre l'elenco di tutti; "N abbonati senza
+richieste" apre solo quelli a zero. Ogni riga ha nome e città (link alla scheda
+utente), telefono, livello (con "mesi gratis") e richieste del mese, dai meno
+seguiti in su, così si sa chi chiamare. Verifica: prova e2e con l'elenco aperto
+(axe senza errori), foto in anteprime/conti-del-mese/elenco-abbonati-*.png.

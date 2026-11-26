@@ -6,6 +6,7 @@ import {
   payingNeededFor,
   splitVatEurCents,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
   type SaveMonthlyCostsInput,
   type SaveProfitTargetInput,
@@ -50,6 +51,7 @@ export class MonthlyAccountsService {
         where: { professionalProfile: COUNTED_PROFILE },
         select: {
           professionalProfileId: true,
+          professionalProfile: { select: { userId: true, businessName: true, city: true, user: { select: { phone: true } } } },
           plan: true,
           status: true,
           trialEndsAt: true,
@@ -92,6 +94,7 @@ export class MonthlyAccountsService {
     let freeMonthsEnded = 0;
     let stayed = 0;
     const subscriberIds: string[] = [];
+    const subscriberRows: Omit<MonthlyAccountsSubscriberRow, "requests">[] = [];
     for (const sub of subscriptions) {
       const state = subscriptionState(sub, now);
       const tier = tierOfPlan(sub.plan);
@@ -105,7 +108,11 @@ export class MonthlyAccountsService {
       }
       const freeWithCard = free && (state === "ACTIVE" || state === "PAST_DUE") && Boolean(sub.stripeSubscriptionId);
       if (freeWithCard) inFreeMonths += 1;
-      if (isPaying || freeWithCard) subscriberIds.push(sub.professionalProfileId);
+      if ((isPaying || freeWithCard) && tier) {
+        subscriberIds.push(sub.professionalProfileId);
+        const profile = sub.professionalProfile;
+        subscriberRows.push({ userId: profile.userId, businessName: profile.businessName, city: profile.city, phone: profile.user.phone, tier, free: freeWithCard });
+      }
       const ended = sub.cardAddedAt && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime() && (!from || sub.trialEndsAt.getTime() >= from.getTime());
       if (ended) {
         freeMonthsEnded += 1;
@@ -123,6 +130,10 @@ export class MonthlyAccountsService {
         })
       : [];
     const requestsTotal = leadsBySubscriber.reduce((sum, row) => sum + row._count._all, 0);
+    const requestsOf = new Map(leadsBySubscriber.map((row) => [row.professionalProfileId, row._count._all]));
+    const subscriberList: MonthlyAccountsSubscriberRow[] = subscriberRows
+      .map((row, index) => ({ ...row, requests: requestsOf.get(subscriberIds[index]!) ?? 0 }))
+      .sort((a, b) => a.requests - b.requests || a.businessName.localeCompare(b.businessName, "it"));
 
     // Ricavi del mese, IVA esclusa.
     const excludedIds = new Set(excluded.map((p) => p.id));
@@ -161,7 +172,7 @@ export class MonthlyAccountsService {
         stayedAfterFreeMonths: stayed,
       },
       canceledInMonth,
-      requests: { subscribers: subscriberIds.length, total: requestsTotal, withoutRequests: subscriberIds.length - leadsBySubscriber.length },
+      requests: { subscribers: subscriberIds.length, total: requestsTotal, withoutRequests: subscriberIds.length - leadsBySubscriber.length, list: subscriberList },
       revenue: { subscriptionsEurCents, visibilityEurCents, jobFeesEurCents, totalEurCents: revenueTotal },
       variableCosts: { jobCardEurCents, connectEurCents, subscriptionStripeEurCents, invoicesEurCents, whatsappEurCents, totalEurCents: variableTotal },
       fixedCosts: { lines, totalEurCents: fixedTotal },

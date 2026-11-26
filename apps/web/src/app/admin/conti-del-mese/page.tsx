@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ESTIMATED_MONTHLY_COSTS,
   MONTHLY_COST_LINES_MAX,
@@ -312,8 +313,14 @@ function Accounts({
  * professionista senza richieste è il primo che non rinnova.
  */
 function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
-  const { subscribers, total, withoutRequests } = data.requests;
+  const { subscribers, total, withoutRequests, list } = data.requests;
   const month = monthLabelIt(data.month);
+  // Un clic sui numeri apre l'elenco di chi c'è dietro (richiesta di Luca del 26/11).
+  const [open, setOpen] = useState<"none" | "all" | null>(null);
+  const rows = open === "none" ? list.filter((row) => row.requests === 0) : open === "all" ? list : [];
+  const toggle = (which: "none" | "all") => setOpen((current) => (current === which ? null : which));
+  const average = subscribers > 0 ? (total / subscribers).toLocaleString("it-IT", { maximumFractionDigits: 1 }) : "0";
+
   return (
     <AdminCard>
       <YStack gap="2">
@@ -325,15 +332,58 @@ function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
         ) : (
           <>
             <Text color={brand.grafite}>
-              {`In ${month} ogni abbonato ha ricevuto in media ${(total / subscribers).toLocaleString("it-IT", { maximumFractionDigits: 1 })} richieste (${total} in tutto, ${subscribers} abbonati).`}
+              {`In ${month} ogni abbonato ha ricevuto in media ${average} richieste (${total} in tutto). `}
+              <button type="button" className="admin-link-button" aria-expanded={open === "all"} onClick={() => toggle("all")}>
+                {subscribers === 1 ? "Vedi l'abbonato" : `Vedi i ${subscribers} abbonati`}
+              </button>
             </Text>
-            <Text color={withoutRequests > 0 ? brand.urgenza : brand.verificato}>
-              {withoutRequests > 0
-                ? `${withoutRequests} ${withoutRequests === 1 ? "abbonato non ha ricevuto" : "abbonati non hanno ricevuto"} nessuna richiesta: ${withoutRequests === 1 ? "è il primo" : "sono i primi"} che rischiano di non rinnovare.`
-                : "Tutti gli abbonati hanno ricevuto almeno una richiesta."}
-            </Text>
+            {withoutRequests > 0 ? (
+              <Text color={brand.urgenza}>
+                <button type="button" className="admin-link-button" aria-expanded={open === "none"} onClick={() => toggle("none")}>
+                  {withoutRequests === 1 ? "1 abbonato" : `${withoutRequests} abbonati`}
+                </button>
+                {withoutRequests === 1
+                  ? " senza richieste: rischia di non rinnovare."
+                  : " senza richieste: rischiano di non rinnovare."}
+              </Text>
+            ) : (
+              <Text color={brand.verificato}>Tutti gli abbonati hanno ricevuto almeno una richiesta.</Text>
+            )}
           </>
         )}
+        {rows.length > 0 ? (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <caption className="sr-only">{open === "none" ? `Abbonati senza richieste in ${month}` : `Abbonati e richieste di ${month}`}</caption>
+              <thead>
+                <tr>
+                  <th>Professionista</th>
+                  <th>Telefono</th>
+                  <th>Livello</th>
+                  <th>Richieste</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.userId}>
+                    <td className="admin-cell-main">
+                      <Link href={`/admin/utenti/${row.userId}`}>{row.businessName}</Link>
+                      {row.city ? (
+                        <>
+                          <br />
+                          <span style={{ color: brand.grafite70, fontSize: 13 }}>{row.city}</span>
+                        </>
+                      ) : null}
+                    </td>
+                    <td data-label="Telefono">{row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : "—"}</td>
+                    <td data-label="Livello">{row.free ? `${subscriptionTierInfo(row.tier).label}, mesi gratis` : subscriptionTierInfo(row.tier).label}</td>
+                    <td data-label="Richieste">{row.requests}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
         <Text fontSize={14} color={brand.grafite70}>
           Contano gli abbonati di oggi, paganti e nei mesi gratis con la carta.
         </Text>

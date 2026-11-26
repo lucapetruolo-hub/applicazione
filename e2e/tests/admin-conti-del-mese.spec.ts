@@ -90,7 +90,10 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
 
   // Richieste agli abbonati del mese (26/11): nessuna richiesta finta, quindi chi non ne ha.
   await expect(page.getByText("Richieste agli abbonati")).toBeVisible();
-  await expect(page.getByText(/nessuna richiesta/)).toBeVisible();
+  await expect(page.getByText(/senza richieste: rischia/)).toBeVisible();
+  // Un clic sul numero apre l'elenco, con il link alla scheda.
+  await page.getByRole("button", { name: /^\d+ abbonat/ }).click();
+  await expect(page.getByRole("link", { name: `Conti 0 ${stamp}` })).toBeVisible();
 
   // Traguardo scritto dall'admin: resta dopo il ricaricamento.
   await page.getByRole("button", { name: "Cambia il traguardo" }).click();
@@ -110,6 +113,10 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
 
   await page.getByText("Vedi i numeri").click();
   await expect(page.getByRole("cell", { name: "Abbonamenti e passaggi di livello" })).toBeVisible();
+
+  // Elenco completo aperto: lo controllano anche axe e la foto.
+  await page.getByRole("button", { name: /^Vedi (i \d+ abbonati|l'abbonato)$/ }).click();
+  await expect(page.getByRole("table", { name: /^Abbonati e richieste di / })).toBeVisible();
 
   await page.evaluate(() => document.querySelectorAll("*").forEach((el) => ((el as HTMLElement).style.transition = "none")));
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
