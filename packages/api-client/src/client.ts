@@ -126,6 +126,8 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  AdminSubscriptionWithdrawal,
+  SubscriptionWithdrawalOption,
   FounderSpots,
   AdminSubscriptionOffer,
   AdminProfessionalWithoutCard,
@@ -740,6 +742,8 @@ export type AdminOverview = {
   nextBankDisputeDueBy: string | null;
   /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
   sdiRejectedInvoices: number;
+  /** Recessi dall'abbonamento da decidere (docs/changelog/2026-11-26-recesso-abbonamento.md). */
+  pendingSubscriptionWithdrawals?: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -2612,6 +2616,16 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    /** Recesso entro 14 giorni (docs/changelog/2026-11-26-recesso-abbonamento.md): null se non si può chiedere. */
+    getSubscriptionWithdrawal: (token: string) =>
+      request<{ withdrawal: SubscriptionWithdrawalOption | null }>("/professionals/me/subscription/withdrawal", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    requestSubscriptionWithdrawal: (token: string, reason?: string) =>
+      request<{ withdrawal: SubscriptionWithdrawalOption }>("/professionals/me/subscription/withdrawal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: reason || undefined }),
+      }),
+
     /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
     createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
       requestWithNetworkMessage<SubscriptionCheckoutResult>(PAYMENT_NETWORK_ERROR_MESSAGE, "/billing/subscription/checkout", {
@@ -2822,6 +2836,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Richieste di recesso dall'abbonamento, col rimborso calcolato (docs/changelog/2026-11-26-recesso-abbonamento.md). */
+    adminSubscriptionWithdrawals: (token: string) =>
+      request<AdminSubscriptionWithdrawal[]>("/admin/subscription-withdrawals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminApproveSubscriptionWithdrawal: (token: string, id: string, input: { refundEurCents?: number; note?: string }) =>
+      request<AdminSubscriptionWithdrawal[]>(`/admin/subscription-withdrawals/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminRejectSubscriptionWithdrawal: (token: string, id: string, note: string) =>
+      request<AdminSubscriptionWithdrawal[]>(`/admin/subscription-withdrawals/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
 
     /** Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): la cambia solo il super admin. */
     /** Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */

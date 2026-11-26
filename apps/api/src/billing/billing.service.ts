@@ -72,6 +72,17 @@ export function checkoutMessage(freeUntil: Date | null, plan: SubscriptionTier):
   return `Oggi non paghi nulla: è gratis fino al ${day}. Poi ${subscriptionTierInfo(plan).label} a ${price} € + IVA al mese, in automatico; ti avvisiamo una settimana prima e annulli quando vuoi dal sito. ${invoice}`;
 }
 
+/** Livello e rinnovo di un prezzo Stripe dell'abbonamento, dalle variabili d'ambiente. */
+export function subscriptionPriceOf(priceId: string | undefined): { tier: SubscriptionTier; interval: BillingInterval } | null {
+  if (!priceId) return null;
+  for (const tier of Object.keys(SUBSCRIPTION_PRICE_ENV) as SubscriptionTier[]) {
+    for (const interval of ["MONTH", "YEAR"] as const) {
+      if (process.env[SUBSCRIPTION_PRICE_ENV[tier][interval]] === priceId) return { tier, interval };
+    }
+  }
+  return null;
+}
+
 function tierRank(tier: SubscriptionTier): number {
   return SUBSCRIPTION_TIERS.findIndex((t) => t.tier === tier);
 }
@@ -387,13 +398,7 @@ export class BillingService implements OnModuleInit {
   }
 
   private priceOf(priceId: string | undefined): { tier: SubscriptionTier; interval: BillingInterval } | null {
-    if (!priceId) return null;
-    for (const tier of Object.keys(SUBSCRIPTION_PRICE_ENV) as SubscriptionTier[]) {
-      for (const interval of ["MONTH", "YEAR"] as const) {
-        if (process.env[SUBSCRIPTION_PRICE_ENV[tier][interval]] === priceId) return { tier, interval };
-      }
-    }
-    return null;
+    return subscriptionPriceOf(priceId);
   }
 
   private requirePrice(plan: SubscriptionTier, interval: BillingInterval): string {

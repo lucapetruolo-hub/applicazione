@@ -147,6 +147,8 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   }
   // Pagamento ricevuto: porta dove c'è la fattura (collaudo E-13).
   if (type === "SUBSCRIPTION_PAID") return "/dashboard/documenti";
+  if (type === "SUBSCRIPTION_WITHDRAWAL_RECEIVED" || type === "SUBSCRIPTION_WITHDRAWAL_DONE" || type === "SUBSCRIPTION_WITHDRAWAL_REJECTED") return "/dashboard/abbonamento";
+  if (type === "ADMIN_SUBSCRIPTION_WITHDRAWAL") return "/admin/pagamenti";
   if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
   if (type === "TERMS_CHANGED") return "/termini#versioni";
   // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a
@@ -167,7 +169,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_CLAIMED_CASES_DUE") return "/admin?chi=mie";
   if (type === "ADMIN_SUSPICIOUS_ACCOUNTS") return "/admin/account-sospetti";
   // Documenti contabili (docs/CHANGELOG.md §378).
-  if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
+  if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX" || type === "WITHHOLDING_CERTIFICATES_REMINDER") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION" || type === "ADMIN_SUBSCRIPTION_DUPLICATE") return "/admin/finanza";
   if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" || type === "ADMIN_JOB_ISSUE_APPEAL") return "/admin/problemi";
   // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.

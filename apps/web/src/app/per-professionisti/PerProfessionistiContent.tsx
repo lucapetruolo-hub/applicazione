@@ -164,7 +164,8 @@ function SectionTitle({ children, lead }: { children: ReactNode; lead?: string }
  */
 function heroPoints(offerMonths: number | null): string[] {
   const base = SUBSCRIPTION_TIERS.find((tier) => tier.tier === "BASE");
-  const price = base ? `${formatEur(base.priceEurCents)} + IVA al mese` : null;
+  // Con il totale IVA inclusa (decisione di Luca del 26/11/2026, docs/changelog/2026-11-26-recesso-abbonamento.md).
+  const price = base ? `${formatEur(base.priceEurCents)} + IVA al mese (${formatEur(withVatEurCents(base.priceEurCents))} IVA inclusa)` : null;
   const months = offerMonths === 1 ? "1 mese gratis" : `${offerMonths} mesi gratis`;
   return [
     "Nessun costo per contatto",
@@ -688,7 +689,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                     <Text color={brand.grafite70}>{offerMonths === 1 ? "per 1 mese" : `per ${offerMonths} mesi`}</Text>
                   </XStack>
                   <Text color={brand.grafite70} fontSize={13}>
-                    poi {formatEur(periodPrice)} {per} + IVA, in automatico
+                    poi {formatEur(periodPrice)} {per} + IVA ({formatEur(withVatEurCents(periodPrice))} IVA inclusa), in automatico
                   </Text>
                 </YStack>
               ) : (

@@ -476,7 +476,16 @@ export class SubscriptionsService {
   }
 
   async getMySubscription(userId: string): Promise<MySubscription> {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, verified: true, identityExpiredAt: true, ...PUBLIC_VISIBILITY_SELECT } });
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        verified: true,
+        identityExpiredAt: true,
+        ...PUBLIC_VISIBILITY_SELECT,
+        fiscalProfile: { select: { ...PUBLIC_VISIBILITY_SELECT.fiscalProfile.select, entityType: true } },
+      },
+    });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato. Completa prima il tuo profilo.");
     const now = new Date();
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
@@ -525,6 +534,8 @@ export class SubscriptionsService {
       checkoutAvailable: paymentsActive(),
       fiscalDataNeeded: publicVisibilityMissing(profile),
       identityVerificationNeeded: identityVerificationNeeded(profile),
+      // Senza partita IVA è un consumatore: prezzi IVA inclusa (docs/changelog/2026-11-26-recesso-abbonamento.md).
+      pricesWithVat: profile.fiscalProfile?.entityType === "PRIVATE_INDIVIDUAL",
     };
   }
 

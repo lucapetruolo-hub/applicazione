@@ -4171,3 +4171,33 @@ model PlatformAccountsSettings {
 
   @@map("platform_accounts_settings")
 }
+
+/// Recesso dall'abbonamento entro 14 giorni, chiesto da chi lavora senza
+/// partita IVA (docs/changelog/2026-11-26-recesso-abbonamento.md): il
+/// rimborso è calcolato alla richiesta, l'admin lo approva o lo rifiuta.
+model SubscriptionWithdrawal {
+  id                     String    @id @default(uuid())
+  professionalProfileId  String
+  /// PENDING | APPROVED | REJECTED
+  status                 String    @default("PENDING")
+  reason                 String?
+  tierLabel              String
+  paidEurCents           Int
+  paidAt                 DateTime
+  stripeInvoiceId        String
+  stripePaymentIntentId  String?
+  daysUsed               Int
+  periodDays             Int
+  jobsUsed               Int
+  jobsLimit              Int?
+  proposedRefundEurCents Int
+  refundEurCents         Int?
+  decidedAt              DateTime?
+  decidedByUserId        String?
+  decisionNote           String?
+  createdAt              DateTime  @default(now())
+
+  @@index([professionalProfileId])
+  @@index([status, createdAt])
+  @@map("subscription_withdrawals")
+}

@@ -1614,6 +1614,17 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  // Richiesta di recesso da approvare (docs/changelog/2026-11-26-recesso-abbonamento.md).
+  ADMIN_SUBSCRIPTION_WITHDRAWAL: (payload) => ({
+    kind: "notification",
+    subject: "Richiesta di recesso dall'abbonamento",
+    title: "Recesso da approvare",
+    paragraphs: [
+      `${str(payload.businessName) ?? "Un professionista"} ha chiesto il recesso dall'abbonamento entro 14 giorni.`,
+      typeof payload.refundEurCents === "number" ? `Rimborso calcolato: **${formatEur(payload.refundEurCents)}**. Approvalo o rifiutalo in Pagamenti.` : "Approvalo o rifiutalo in Pagamenti.",
+    ],
+    cta: { label: "Apri Pagamenti", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
   // Secondo abbonamento dello stesso professionista (due schede): annullato, addebito da rimborsare (E3-01).
   ADMIN_SUBSCRIPTION_DUPLICATE: (payload) => ({
     kind: "notification",
@@ -1856,6 +1867,36 @@ const BUILDERS: Record<string, Builder> = {
       ],
       details: rows.length > 0 ? rows.map(({ label, value }) => ({ label, value })) : undefined,
       cta: onlyMissing ? { label: "Apri le richieste", url: `${frontendUrl()}/dashboard/richieste` } : { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
+  // Il 15 gennaio (docs/changelog/2026-11-26-recesso-abbonamento.md, risposta del commercialista):
+  // al professionista senza partita IVA, le aziende che hanno trattenuto la ritenuta l'anno prima,
+  // a cui chiedere la Certificazione Unica (la danno entro il 16 marzo).
+  WITHHOLDING_CERTIFICATES_REMINDER: (payload, ctx) => {
+    const rows = Array.isArray(payload.customers)
+      ? payload.customers.flatMap((c) => {
+          if (!c || typeof c !== "object") return [];
+          const d = c as Record<string, unknown>;
+          if (typeof d.name !== "string") return [];
+          const amount = typeof d.withholdingEurCents === "number" ? `Ritenuta ${formatEur(d.withholdingEurCents)}` : "Ritenuta trattenuta";
+          return [{ label: typeof d.taxId === "string" ? `${d.name} (${d.taxId})` : d.name, value: amount }];
+        })
+      : [];
+    const year = typeof payload.year === "number" ? payload.year : new Date().getFullYear() - 1;
+    return {
+      kind: "notification",
+      subject: rows.length === 1 ? `Chiedi la Certificazione Unica ${year} a un'azienda` : `Chiedi la Certificazione Unica ${year} alle aziende`,
+      greeting: ctx.name,
+      title: "Certificazione Unica da chiedere",
+      paragraphs: [
+        rows.length === 1
+          ? `Nel ${year} un'azienda ti ha pagato trattenendo la ritenuta d'acconto del 20%.`
+          : `Nel ${year} ${rows.length > 0 ? `${rows.length} aziende` : "alcune aziende"} ti hanno pagato trattenendo la ritenuta d'acconto del 20%.`,
+        `Devono darti la Certificazione Unica entro il 16 marzo ${year + 1}: se non arriva, chiedila. Ti serve per la dichiarazione dei redditi, dove la ritenuta già versata si scala dalle tasse.`,
+        "Dalla al tuo commercialista insieme al riepilogo dell'anno.",
+      ],
+      details: rows.length > 0 ? rows : undefined,
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
     };
   },
   // Al cliente (docs/CHANGELOG.md §387): il professionista ha scaricato la
@@ -2754,6 +2795,47 @@ const BUILDERS: Record<string, Builder> = {
       after: subscriptionManageNote(payload),
     };
   },
+  // Recesso entro 14 giorni (docs/changelog/2026-11-26-recesso-abbonamento.md).
+  SUBSCRIPTION_WITHDRAWAL_RECEIVED: (payload, ctx) => ({
+    kind: "account",
+    subject: "Abbiamo ricevuto la tua richiesta di recesso",
+    greeting: ctx.name,
+    title: "Richiesta di recesso ricevuta",
+    paragraphs: [
+      `Abbiamo ricevuto la tua richiesta di recesso dall'abbonamento ${str(payload.tierLabel) ?? ""}. La guardiamo entro 2 giorni lavorativi e ti scriviamo.`.replace(/\s+/g, " "),
+      typeof payload.refundEurCents === "number" && payload.refundEurCents > 0
+        ? `Il rimborso previsto è di **${formatEur(payload.refundEurCents)}**, IVA compresa: quanto hai pagato meno la parte già usata.`
+        : "Hai già usato tutto il periodo pagato: l'abbonamento si chiude senza rimborso.",
+      "Fino alla nostra risposta l'abbonamento resta attivo.",
+    ],
+    cta: subscriptionPage(),
+  }),
+  SUBSCRIPTION_WITHDRAWAL_DONE: (payload, ctx) => ({
+    kind: "account",
+    subject: "Recesso fatto: abbonamento chiuso",
+    greeting: ctx.name,
+    title: "Recesso fatto",
+    paragraphs: [
+      `Il recesso dall'abbonamento ${str(payload.tierLabel) ?? ""} è fatto: l'abbonamento è chiuso e il tuo profilo non compare più nelle ricerche.`.replace(/\s+/g, " "),
+      typeof payload.refundEurCents === "number" && payload.refundEurCents > 0
+        ? `Ti rimborsiamo **${formatEur(payload.refundEurCents)}** sulla carta: arrivano in 5-10 giorni lavorativi. La nota di credito la trovi in Fatture e documenti.`
+        : "Non c'è nulla da rimborsare: il periodo pagato era già stato usato.",
+      "Puoi scegliere di nuovo un livello quando vuoi dalla pagina Abbonamento.",
+    ],
+    cta: subscriptionPage(),
+  }),
+  SUBSCRIPTION_WITHDRAWAL_REJECTED: (payload, ctx) => ({
+    kind: "account",
+    subject: "La tua richiesta di recesso non è stata accolta",
+    greeting: ctx.name,
+    title: "Richiesta di recesso non accolta",
+    paragraphs: [
+      `Abbiamo guardato la tua richiesta di recesso dall'abbonamento ${str(payload.tierLabel) ?? ""} e non possiamo accoglierla.`.replace(/\s+/g, " "),
+      ...(str(payload.reason) ? [`Motivo: ${str(payload.reason)}`] : []),
+      "L'abbonamento resta attivo. Puoi annullare il rinnovo quando vuoi dalla pagina Abbonamento. Se non sei d'accordo, rispondi a questa email.",
+    ],
+    cta: subscriptionPage(),
+  }),
   SUBSCRIPTION_ENDING: (payload, ctx) => {
     const tier = str(payload.tierLabel) ?? "";
     const date = formatDay(str(payload.date));
