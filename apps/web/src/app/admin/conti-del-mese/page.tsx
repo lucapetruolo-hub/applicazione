@@ -10,6 +10,7 @@ import {
   monthLabelIt,
   subscriptionTierInfo,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsNotStayedRow,
   type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
 } from "@professionisti/shared";
@@ -127,6 +128,8 @@ function Accounts({
   const needed = target.payingNeeded;
   const reached = needed !== null && today.paying >= needed;
   const yearProfit = data.profitEurCents * 12;
+  const [notStayedOpen, setNotStayedOpen] = useState(false);
+  const notStayedCount = today.notStayed.length;
 
   return (
     <>
@@ -154,12 +157,19 @@ function Accounts({
                 ? `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}, troppo pochi per fidarsi`
                 : `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}`}
           </span>
+          {notStayedCount > 0 ? (
+            <button type="button" className="admin-link-button" aria-expanded={notStayedOpen} onClick={() => setNotStayedOpen((v) => !v)}>
+              Vedi i nomi
+            </button>
+          ) : null}
         </div>
         <div className={`admin-kpi${data.profitEurCents < 0 ? " is-urgent" : ""}`}>
           <span className="admin-kpi-value">{formatEurCents(data.profitEurCents)}</span>
           <span className="admin-kpi-label">Utile stimato di {monthLabelIt(data.month)}, prima delle tasse</span>
         </div>
       </div>
+
+      {notStayedOpen && notStayedCount > 0 ? <NotStayedCard rows={today.notStayed} /> : null}
 
       <AdminCard>
         <YStack gap="2">
@@ -321,8 +331,67 @@ function tierLabel(row: MonthlyAccountsSubscriberRow): string {
   const label = subscriptionTierInfo(row.tier).label;
   if (!row.free) return label;
   if (!row.freeUntil) return `${label}, mesi gratis`;
-  const day = new Date(row.freeUntil).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
-  return `${label}, gratis fino al ${day}`;
+  return `${label}, gratis fino al ${romeDay(row.freeUntil)}`;
+}
+
+/** Giorno GG/MM/AAAA nell'ora di Roma. */
+function romeDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** Chi ha finito i mesi gratis e non paga: le persone da chiamare (Luca, 26/11). */
+function NotStayedCard({ rows: all }: { rows: MonthlyAccountsNotStayedRow[] }) {
+  const [shown, setShown] = useState(LIST_PAGE);
+  const rows = all.slice(0, shown);
+  const hidden = all.length - rows.length;
+  return (
+    <AdminCard>
+      <YStack gap="2">
+        <Text fontWeight="700" color={brand.grafite}>
+          Non rimasti dopo i mesi gratis
+        </Text>
+        <Text color={brand.grafite}>Hanno finito i mesi gratis e oggi non pagano. Sono le persone da chiamare.</Text>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <caption className="sr-only">Non rimasti dopo i mesi gratis</caption>
+            <thead>
+              <tr>
+                <th>Professionista</th>
+                <th>Telefono</th>
+                <th>Mesi gratis finiti il</th>
+                <th>Perché</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.userId}>
+                  <td className="admin-cell-main">
+                    <Link href={`/admin/utenti/${row.userId}`}>{row.businessName}</Link>
+                    {row.city ? (
+                      <>
+                        <br />
+                        <span style={{ color: brand.grafite70, fontSize: 13 }}>{row.city}</span>
+                      </>
+                    ) : null}
+                  </td>
+                  <td data-label="Telefono">{row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : "—"}</td>
+                  <td data-label="Mesi gratis finiti il">{romeDay(row.freeEndedAt)}</td>
+                  <td data-label="Perché">{row.reason === "CANCELED" ? "Ha disdetto" : "Non ha pagato"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {hidden > 0 ? (
+          <XStack>
+            <Button variant="secondary" size="3" onPress={() => setShown((n) => n + LIST_PAGE)}>
+              {`Mostra altri ${Math.min(hidden, LIST_PAGE)} (ne restano ${hidden})`}
+            </Button>
+          </XStack>
+        ) : null}
+      </YStack>
+    </AdminCard>
+  );
 }
 
 function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {

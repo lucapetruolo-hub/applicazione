@@ -6,6 +6,7 @@ import {
   payingNeededFor,
   splitVatEurCents,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsNotStayedRow,
   type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
   type SaveMonthlyCostsInput,
@@ -95,6 +96,7 @@ export class MonthlyAccountsService {
     let stayed = 0;
     const subscriberIds: string[] = [];
     const subscriberRows: Omit<MonthlyAccountsSubscriberRow, "requests">[] = [];
+    const notStayed: MonthlyAccountsNotStayedRow[] = [];
     for (const sub of subscriptions) {
       const state = subscriptionState(sub, now);
       const tier = tierOfPlan(sub.plan);
@@ -117,6 +119,17 @@ export class MonthlyAccountsService {
       if (ended) {
         freeMonthsEnded += 1;
         if (isPaying) stayed += 1;
+        else {
+          const profile = sub.professionalProfile;
+          notStayed.push({
+            userId: profile.userId,
+            businessName: profile.businessName,
+            city: profile.city,
+            phone: profile.user.phone,
+            freeEndedAt: sub.trialEndsAt!.toISOString(),
+            reason: state === "CANCELED" ? "CANCELED" : "UNPAID",
+          });
+        }
       }
     }
 
@@ -133,7 +146,7 @@ export class MonthlyAccountsService {
     const requestsOf = new Map(leadsBySubscriber.map((row) => [row.professionalProfileId, row._count._all]));
     const subscriberList: MonthlyAccountsSubscriberRow[] = subscriberRows
       .map((row, index) => ({ ...row, requests: requestsOf.get(subscriberIds[index]!) ?? 0 }))
-      .sort((a, b) => a.requests - b.requests || byFreeUntil(a.freeUntil, b.freeUntil) || a.businessName.localeCompare(b.businessName, "it"));
+      .sort((a, b) => a.requests - b.requests || a.businessName.localeCompare(b.businessName, "it"));
 
     // Ricavi del mese, IVA esclusa.
     const excludedIds = new Set(excluded.map((p) => p.id));
@@ -170,6 +183,7 @@ export class MonthlyAccountsService {
         monthlyRecurringEurCents: recurring,
         freeMonthsEnded,
         stayedAfterFreeMonths: stayed,
+        notStayed: notStayed.sort((a, b) => (a.freeEndedAt < b.freeEndedAt ? 1 : a.freeEndedAt > b.freeEndedAt ? -1 : 0)),
       },
       canceledInMonth,
       requests: { subscribers: subscriberIds.length, total: requestsTotal, withoutRequests: subscriberIds.length - leadsBySubscriber.length, list: subscriberList },
@@ -222,12 +236,4 @@ export class MonthlyAccountsService {
     });
     return { yearEurCents: input.yearEurCents };
   }
-}
-
-/** Prima chi finisce prima i mesi gratis, poi chi già paga. */
-function byFreeUntil(a: string | null, b: string | null): number {
-  if (a === b) return 0;
-  if (a === null) return 1;
-  if (b === null) return -1;
-  return a < b ? -1 : 1;
 }

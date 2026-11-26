@@ -23,6 +23,18 @@ export const MONTHLY_COST_LINES_MAX = 30;
 
 export type MonthlyCostLine = { label: string; monthlyEurCents: number };
 
+/** Chi ha finito i mesi gratis con la carta e oggi non paga: da chiamare (Luca, 26/11). */
+export type MonthlyAccountsNotStayedRow = {
+  userId: string;
+  businessName: string;
+  city: string | null;
+  phone: string | null;
+  /** Fine dei mesi gratis (ISO). */
+  freeEndedAt: string;
+  /** CANCELED = ha disdetto; UNPAID = non ha pagato. */
+  reason: "CANCELED" | "UNPAID";
+};
+
 export type MonthlyAccountsSubscriberRow = {
   userId: string;
   businessName: string;
@@ -74,6 +86,8 @@ export type AdminMonthlyAccounts = {
     freeMonthsEnded: number;
     /** Di questi, pagano ancora. */
     stayedAfterFreeMonths: number;
+    /** Gli altri, uno per uno, dai più recenti (si apre con un clic). */
+    notStayed: MonthlyAccountsNotStayedRow[];
   };
   /** Abbonamenti chiusi nel mese scelto. */
   canceledInMonth: number;

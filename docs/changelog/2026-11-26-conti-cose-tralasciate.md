@@ -36,7 +36,14 @@ utente), telefono, livello (con "mesi gratis") e richieste del mese, dai meno
 seguiti in su, così si sa chi chiamare. Verifica: prova e2e con l'elenco aperto
 (axe senza errori), foto in anteprime/conti-del-mese/elenco-abbonati-*.png.
 
-**Poi (26/11, Luca):** chi è nei mesi gratis mostra "gratis fino al GG/MM/AAAA" e,
-a parità di richieste, viene prima chi scade prima. L'elenco mostra 20 righe per
+**Poi (26/11, Luca):** chi è nei mesi gratis mostra "gratis fino al GG/MM/AAAA" (solo
+come informazione: chi sta per scadere può rinnovare l'ultimo giorno). L'elenco mostra 20 righe per
 volta con il pulsante "Mostra altri" (con centinaia di abbonati la pagina resta
 corta).
+
+**Non rimasti (26/11, Luca: "meglio chiamare chi gli è scaduto"):** sotto
+"Restano dopo i mesi gratis" il pulsante "Vedi i nomi" apre l'elenco di chi ha
+finito i mesi gratis con la carta e oggi non paga: nome, telefono, giorno di fine
+e motivo ("Ha disdetto" o "Non ha pagato"), dai più recenti, 20 righe per volta.
+Prima non c'era da nessuna parte (Numeri professionisti mescola chi non ha mai
+avuto l'abbonamento con chi se n'è andato).
