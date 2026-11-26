@@ -1,4 +1,4 @@
-/* "Dì ai clienti di domani verso che ora passi" in Oggi (docs/changelog/2026-11-11-fasce-ampie.md). */
+/* "Dì ai clienti di domani verso che ora passi" in Oggi (docs/changelog/2026-11-11-fasce-ampie.md, 2026-11-26-ore-gia-date-in-oggi.md). */
 .card {
   margin-top: 12px;
   padding: 16px;
@@ -27,6 +27,12 @@
 .done {
   color: #0e7a4c;
   font-weight: 600;
+}
+.legend {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5e5a54;
 }
 .band {
   display: flex;

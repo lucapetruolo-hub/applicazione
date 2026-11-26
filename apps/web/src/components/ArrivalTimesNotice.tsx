@@ -45,6 +45,23 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
   const [done, setDone] = useState(false);
   if (shown.length === 0) return null;
 
+  // Online il professionista non passa, contatta (docs/changelog/2026-11-26-ore-gia-date-in-oggi.md).
+  const all = shown.flatMap((band) => band.bookings);
+  const online = all.filter((b) => b.serviceMode === "ONLINE").length;
+  const verb = online === 0 ? "passi" : online === all.length ? "li contatti" : "passi o li contatti";
+  const sample = online === 0 ? '"Arrivo tra le … e le …"' : online === all.length ? '"Ti contatta tra le … e le …"' : '"Arrivo tra le … e le …" (online "Ti contatta")';
+  /** Ora scelta per gli altri clienti della stessa fascia: chi l'ha già, per il pallino. */
+  const takenBy = (band: Band, bookingId: string) => {
+    const taken = new Map<string, string>();
+    for (const other of band.bookings) {
+      if (other.id === bookingId) continue;
+      const time = values[other.id] ?? other.arrivalTime ?? "";
+      if (time && !taken.has(time)) taken.set(time, other.clientName ?? "un altro cliente");
+    }
+    return taken;
+  };
+  const anyTaken = shown.some((band) => band.bookings.some((b) => takenBy(band, b.id).size > 0));
+
   async function save() {
     setError(null);
     const changes: { booking: ProfessionalBooking; time: string }[] = [];
@@ -80,7 +97,7 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
   return (
     <section className={styles.card} aria-labelledby="arrival-times-title">
       <h2 id="arrival-times-title" className={styles.title}>
-        <Clock size={18} aria-hidden /> Dì ai clienti di domani verso che ora passi
+        <Clock size={18} aria-hidden /> Dì ai clienti di domani verso che ora {verb}
       </h2>
       {done ? (
         <p className={styles.done} role="status">
@@ -88,7 +105,12 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
         </p>
       ) : (
         <>
-          <p className={styles.text}>Così non ti aspettano tutto il giorno. Ricevono &quot;Arrivo tra le … e le …&quot;, un&apos;ora dall&apos;orario che scegli.</p>
+          <p className={styles.text}>Così non ti aspettano tutto il giorno. Ricevono {sample}, un&apos;ora dall&apos;orario che scegli.</p>
+          {anyTaken ? (
+            <p className={styles.legend}>
+              <span className="week-slots-dot" aria-hidden /> Ora già data a un altro cliente della stessa fascia
+            </p>
+          ) : null}
           {shown.map((band) => (
             <div key={band.key} className={styles.band}>
               <span className={styles.bandHead}>
@@ -96,6 +118,7 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
               </span>
               {band.bookings.map((booking) => {
                 const value = values[booking.id] ?? booking.arrivalTime ?? "";
+                const taken = takenBy(band, booking.id);
                 return (
                   <div key={booking.id} className={styles.row}>
                     <span className={styles.who}>
@@ -111,9 +134,12 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
                           type="button"
                           role="radio"
                           aria-checked={value === time}
+                          aria-label={taken.has(time) ? `${time}, già data a ${taken.get(time)}` : time}
                           className={`slot-pill${value === time ? " is-on" : ""}`}
                           onClick={() => setValues((prev) => ({ ...prev, [booking.id]: value === time ? "" : time }))}
                         >
+                          {/* Pallino sull'ora già data a un altro cliente: si può scegliere lo stesso, ma lo vedi (docs/changelog/2026-11-26-ore-gia-date-in-oggi.md). */}
+                          {taken.has(time) ? <span className="week-slots-dot" aria-hidden /> : null}
                           {time}
                         </button>
                       ))}
