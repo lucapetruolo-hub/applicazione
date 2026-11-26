@@ -14,8 +14,9 @@ trattenuto la ritenuta.
   `entityType = PRIVATE_INDIVIDUAL`) e `subscriptionPriceLabel` in
   `packages/shared/src/plans.ts`: "23,18 € IVA inclusa" invece di "19 € + IVA"
   nella pagina Abbonamento, nel riquadro del limite di lavori, nel banner di
-  pausa e nei passi di "Completa il profilo". Le pagine pubbliche per i
-  professionisti restano "+ IVA" (lì non si sa ancora chi legge).
+  pausa e nei passi di "Completa il profilo". Sulla pagina pubblica
+  /per-professionisti resta "+ IVA" con accanto il totale "IVA inclusa" anche nel
+  primo schermo e dopo i mesi gratis (Luca: solo il totale, senza dire per chi).
 - **Recesso**: tabella nuova `subscription_withdrawals` (migrazione solo
   additiva). Si può chiedere entro 14 giorni dal primo pagamento di un livello
   (dopo i mesi gratis o passando a un livello superiore), letto da Stripe: un
