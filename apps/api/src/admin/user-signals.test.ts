@@ -145,6 +145,7 @@ describe("controlli in più (02/11/2026)", () => {
     expect(messageHasContacts("uno due tre quattro cinque sei sette otto")).toBe(false);
     expect(messageHasContacts("tre stanze, vengo il 12.11.2026 10.30 con due persone")).toBe(false);
     expect(messageHasContacts(`${"tre ".repeat(20_000)}`)).toBe(true);
+    expect(messageHasContacts(`tre${"!".repeat(50_000)}x`)).toBe(false);
   });
 
   it("contatti in chat: un segnale per persona con quanti messaggi; per il professionista Da guardare, per il cliente niente", () => {

@@ -151,6 +151,17 @@ function wordDigits(word: string): number {
   return 0;
 }
 
+const PUNCTUATION = new Set(["(", ")", ".", "!", "?", '"', "'"]);
+
+/** Toglie la punteggiatura ai due lati, senza espressioni regolari (lente su "!!!!..."). */
+function trimPunctuation(word: string): string {
+  let start = 0;
+  let end = word.length;
+  while (start < end && PUNCTUATION.has(word[start]!)) start += 1;
+  while (end > start && PUNCTUATION.has(word[end - 1]!)) end -= 1;
+  return word.slice(start, end);
+}
+
 /**
  * Il numero più lungo dettato in lettere, anche misto a cifre ("tre tre tre
  * uno due tre..."), per non aggirare il blocco scrivendo il telefono a parole
@@ -164,7 +175,7 @@ function spelledDigits(lower: string): number {
   let spelled = false;
   let longest = 0;
   for (const raw of words) {
-    const word = raw.replace(/^[(.!?"']+|[).!?"']+$/g, "");
+    const word = trimPunctuation(raw);
     if (!word) continue;
     const count = wordDigits(word);
     if (count === 0) {
