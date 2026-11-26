@@ -6,6 +6,8 @@ import {
   payingNeededFor,
   splitVatEurCents,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsNotStayedRow,
+  type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
   type SaveMonthlyCostsInput,
   type SaveProfitTargetInput,
@@ -49,6 +51,8 @@ export class MonthlyAccountsService {
       this.prisma.subscription.findMany({
         where: { professionalProfile: COUNTED_PROFILE },
         select: {
+          professionalProfileId: true,
+          professionalProfile: { select: { userId: true, businessName: true, city: true, user: { select: { phone: true } } } },
           plan: true,
           status: true,
           trialEndsAt: true,
@@ -90,6 +94,9 @@ export class MonthlyAccountsService {
     let inFreeMonths = 0;
     let freeMonthsEnded = 0;
     let stayed = 0;
+    const subscriberIds: string[] = [];
+    const subscriberRows: Omit<MonthlyAccountsSubscriberRow, "requests">[] = [];
+    const notStayed: MonthlyAccountsNotStayedRow[] = [];
     for (const sub of subscriptions) {
       const state = subscriptionState(sub, now);
       const tier = tierOfPlan(sub.plan);
@@ -101,13 +108,45 @@ export class MonthlyAccountsService {
         byTier.set(tier, (byTier.get(tier) ?? 0) + 1);
         recurring += monthlyPriceEurCents(tier, sub.billingInterval);
       }
-      if (free && (state === "ACTIVE" || state === "PAST_DUE") && sub.stripeSubscriptionId) inFreeMonths += 1;
+      const freeWithCard = free && (state === "ACTIVE" || state === "PAST_DUE") && Boolean(sub.stripeSubscriptionId);
+      if (freeWithCard) inFreeMonths += 1;
+      if ((isPaying || freeWithCard) && tier) {
+        subscriberIds.push(sub.professionalProfileId);
+        const profile = sub.professionalProfile;
+        subscriberRows.push({ userId: profile.userId, businessName: profile.businessName, city: profile.city, phone: profile.user.phone, tier, free: freeWithCard, freeUntil: freeWithCard && sub.trialEndsAt ? sub.trialEndsAt.toISOString() : null });
+      }
       const ended = sub.cardAddedAt && sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime() && (!from || sub.trialEndsAt.getTime() >= from.getTime());
       if (ended) {
         freeMonthsEnded += 1;
         if (isPaying) stayed += 1;
+        else {
+          const profile = sub.professionalProfile;
+          notStayed.push({
+            userId: profile.userId,
+            businessName: profile.businessName,
+            city: profile.city,
+            phone: profile.user.phone,
+            freeEndedAt: sub.trialEndsAt!.toISOString(),
+            reason: state === "CANCELED" ? "CANCELED" : "UNPAID",
+          });
+        }
       }
     }
+
+    // Richieste arrivate nel mese agli abbonati di oggi (dal lancio, §395).
+    const requestsFrom = from && from.getTime() > range.from.getTime() ? from : range.from;
+    const leadsBySubscriber = subscriberIds.length
+      ? await this.prisma.lead.groupBy({
+          by: ["professionalProfileId"],
+          where: { professionalProfileId: { in: subscriberIds }, createdAt: { gte: requestsFrom, lt: range.to } },
+          _count: { _all: true },
+        })
+      : [];
+    const requestsTotal = leadsBySubscriber.reduce((sum, row) => sum + row._count._all, 0);
+    const requestsOf = new Map(leadsBySubscriber.map((row) => [row.professionalProfileId, row._count._all]));
+    const subscriberList: MonthlyAccountsSubscriberRow[] = subscriberRows
+      .map((row, index) => ({ ...row, requests: requestsOf.get(subscriberIds[index]!) ?? 0 }))
+      .sort((a, b) => a.requests - b.requests || a.businessName.localeCompare(b.businessName, "it"));
 
     // Ricavi del mese, IVA esclusa.
     const excludedIds = new Set(excluded.map((p) => p.id));
@@ -144,8 +183,10 @@ export class MonthlyAccountsService {
         monthlyRecurringEurCents: recurring,
         freeMonthsEnded,
         stayedAfterFreeMonths: stayed,
+        notStayed: notStayed.sort((a, b) => (a.freeEndedAt < b.freeEndedAt ? 1 : a.freeEndedAt > b.freeEndedAt ? -1 : 0)),
       },
       canceledInMonth,
+      requests: { subscribers: subscriberIds.length, total: requestsTotal, withoutRequests: subscriberIds.length - leadsBySubscriber.length, list: subscriberList },
       revenue: { subscriptionsEurCents, visibilityEurCents, jobFeesEurCents, totalEurCents: revenueTotal },
       variableCosts: { jobCardEurCents, connectEurCents, subscriptionStripeEurCents, invoicesEurCents, whatsappEurCents, totalEurCents: variableTotal },
       fixedCosts: { lines, totalEurCents: fixedTotal },

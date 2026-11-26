@@ -23,6 +23,31 @@ export const MONTHLY_COST_LINES_MAX = 30;
 
 export type MonthlyCostLine = { label: string; monthlyEurCents: number };
 
+/** Chi ha finito i mesi gratis con la carta e oggi non paga: da chiamare (Luca, 26/11). */
+export type MonthlyAccountsNotStayedRow = {
+  userId: string;
+  businessName: string;
+  city: string | null;
+  phone: string | null;
+  /** Fine dei mesi gratis (ISO). */
+  freeEndedAt: string;
+  /** CANCELED = ha disdetto; UNPAID = non ha pagato. */
+  reason: "CANCELED" | "UNPAID";
+};
+
+export type MonthlyAccountsSubscriberRow = {
+  userId: string;
+  businessName: string;
+  city: string | null;
+  phone: string | null;
+  tier: "BASE" | "PLUS" | "PRO";
+  /** Nei mesi gratis con la carta. */
+  free: boolean;
+  /** Ultimo istante dei mesi gratis (ISO), solo se free. */
+  freeUntil: string | null;
+  requests: number;
+};
+
 /**
  * Le voci della stima del 25/11/2026 (scenario medio, 10.878 € l'anno),
  * proposte con un clic quando l'elenco è vuoto. Da correggere con le
@@ -61,9 +86,23 @@ export type AdminMonthlyAccounts = {
     freeMonthsEnded: number;
     /** Di questi, pagano ancora. */
     stayedAfterFreeMonths: number;
+    /** Gli altri, uno per uno, dai più recenti (si apre con un clic). */
+    notStayed: MonthlyAccountsNotStayedRow[];
   };
   /** Abbonamenti chiusi nel mese scelto. */
   canceledInMonth: number;
+  /**
+   * Richieste arrivate nel mese agli abbonati di oggi (paganti e nei mesi
+   * gratis): chi non ne riceve è il primo che se ne va (decisione di Luca del 26/11).
+   */
+  requests: {
+    subscribers: number;
+    total: number;
+    /** Abbonati senza nessuna richiesta nel mese. */
+    withoutRequests: number;
+    /** Gli abbonati uno per uno, prima chi ne ha ricevute meno (si apre con un clic). */
+    list: MonthlyAccountsSubscriberRow[];
+  };
   revenue: {
     subscriptionsEurCents: number;
     visibilityEurCents: number;
@@ -123,3 +162,10 @@ export function monthLabelIt(month: string): string {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 15));
   return date.toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "UTC" });
 }
+
+/**
+ * Sotto questi abbonati con i mesi gratis finiti la percentuale di chi resta
+ * cambia troppo da un professionista all'altro per fidarsi: prima di spendere
+ * in pubblicità si aspettano almeno 20 professionisti (decisione di Luca del 26/11).
+ */
+export const STAYED_RELIABLE_FROM = 20;

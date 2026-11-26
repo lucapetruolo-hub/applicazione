@@ -37,6 +37,8 @@ test.beforeAll(async () => {
     { plan: "BASE" as const, status: "ACTIVE" as const, gross: 2318, free: false },
     { plan: "PLUS" as const, status: "ACTIVE" as const, gross: 7198, free: false },
     { plan: "BASE" as const, status: "ACTIVE" as const, gross: 0, free: true },
+    // Ha finito i mesi gratis e ha disdetto: va nell'elenco dei non rimasti.
+    { plan: "BASE" as const, status: "CANCELED" as const, gross: 0, free: false, ended: true },
   ];
   for (const [index, row] of plans.entries()) {
     const profile = await createProfessional(prisma, `Conti ${index} ${stamp}`);
@@ -47,7 +49,7 @@ test.beforeAll(async () => {
         status: row.status,
         stripeSubscriptionId: `sub_conti_${stamp}_${index}`,
         cardAddedAt: new Date(),
-        trialEndsAt: row.free ? new Date(Date.now() + 30 * 24 * 3600_000) : null,
+        trialEndsAt: row.free ? new Date(Date.now() + 30 * 24 * 3600_000) : "ended" in row ? new Date(Date.now() - 2 * 24 * 3600_000) : null,
       },
     });
     if (row.gross > 0) {
@@ -88,6 +90,13 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
   await expect(page.getByText("Abbonati che pagano oggi")).toBeVisible();
   await expect(page.getByText(/Traguardo: 12\.000/)).toBeVisible();
 
+  // Richieste agli abbonati del mese (26/11): nessuna richiesta finta, quindi chi non ne ha.
+  await expect(page.getByText("Richieste agli abbonati")).toBeVisible();
+  await expect(page.getByText(/senza richieste: rischia/)).toBeVisible();
+  // Un clic sul numero apre l'elenco, con il link alla scheda.
+  await page.getByRole("button", { name: /^\d+ abbonat/ }).click();
+  await expect(page.getByRole("link", { name: `Conti 0 ${stamp}` })).toBeVisible();
+
   // Traguardo scritto dall'admin: resta dopo il ricaricamento.
   await page.getByRole("button", { name: "Cambia il traguardo" }).click();
   await page.getByRole("textbox", { name: "Utile all'anno, in euro" }).fill("20000");
@@ -106,6 +115,17 @@ test("Conti del mese: abbonati, traguardo e costi fissi", async ({ browser }, te
 
   await page.getByText("Vedi i numeri").click();
   await expect(page.getByRole("cell", { name: "Abbonamenti e passaggi di livello" })).toBeVisible();
+
+  // Chi ha finito i mesi gratis e non paga, con il motivo.
+  await page.getByRole("button", { name: "Vedi i nomi" }).click();
+  const notStayed = page.getByRole("table", { name: "Non rimasti dopo i mesi gratis" });
+  await expect(notStayed.getByRole("link", { name: `Conti 3 ${stamp}` })).toBeVisible();
+  await expect(notStayed.getByRole("cell", { name: "Ha disdetto" }).first()).toBeVisible();
+
+  // Elenco completo aperto: lo controllano anche axe e la foto.
+  await page.getByRole("button", { name: /^Vedi (i \d+ abbonati|l'abbonato)$/ }).click();
+  await expect(page.getByRole("table", { name: /^Abbonati e richieste di / })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /^Base, gratis fino al \d{2}\/\d{2}\/\d{4}$/ }).first()).toBeVisible();
 
   await page.evaluate(() => document.querySelectorAll("*").forEach((el) => ((el as HTMLElement).style.transition = "none")));
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

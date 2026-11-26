@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ESTIMATED_MONTHLY_COSTS,
   MONTHLY_COST_LINES_MAX,
+  STAYED_RELIABLE_FROM,
   formatEurCents,
   monthLabelIt,
   subscriptionTierInfo,
   type AdminMonthlyAccounts,
+  type MonthlyAccountsNotStayedRow,
+  type MonthlyAccountsSubscriberRow,
   type MonthlyCostLine,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -124,6 +128,8 @@ function Accounts({
   const needed = target.payingNeeded;
   const reached = needed !== null && today.paying >= needed;
   const yearProfit = data.profitEurCents * 12;
+  const [notStayedOpen, setNotStayedOpen] = useState(false);
+  const notStayedCount = today.notStayed.length;
 
   return (
     <>
@@ -145,16 +151,25 @@ function Accounts({
         <div className="admin-kpi">
           <span className="admin-kpi-value">{percent(today.stayedAfterFreeMonths, today.freeMonthsEnded)}</span>
           <span className="admin-kpi-label">
-            {today.freeMonthsEnded > 0
-              ? `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}`
-              : "Restano dopo i mesi gratis · ancora nessuno li ha finiti"}
+            {today.freeMonthsEnded === 0
+              ? "Restano dopo i mesi gratis · ancora nessuno li ha finiti"
+              : today.freeMonthsEnded < STAYED_RELIABLE_FROM
+                ? `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}, troppo pochi per fidarsi`
+                : `Restano dopo i mesi gratis · ${today.stayedAfterFreeMonths} su ${today.freeMonthsEnded}`}
           </span>
+          {notStayedCount > 0 ? (
+            <button type="button" className="admin-link-button" aria-expanded={notStayedOpen} onClick={() => setNotStayedOpen((v) => !v)}>
+              Vedi i nomi
+            </button>
+          ) : null}
         </div>
         <div className={`admin-kpi${data.profitEurCents < 0 ? " is-urgent" : ""}`}>
           <span className="admin-kpi-value">{formatEurCents(data.profitEurCents)}</span>
           <span className="admin-kpi-label">Utile stimato di {monthLabelIt(data.month)}, prima delle tasse</span>
         </div>
       </div>
+
+      {notStayedOpen && notStayedCount > 0 ? <NotStayedCard rows={today.notStayed} /> : null}
 
       <AdminCard>
         <YStack gap="2">
@@ -196,6 +211,8 @@ function Accounts({
           </Text>
         </YStack>
       </AdminCard>
+
+      <RequestsCard data={data} />
 
       <ShowNumbers>
         <YStack gap="4">
@@ -299,6 +316,174 @@ function Accounts({
 
       <CostsEditor key={fixedCosts.lines.map((l) => `${l.label}:${l.monthlyEurCents}`).join("|")} lines={fixedCosts.lines} token={token} saved={saved} onSaved={onSaved} />
     </>
+  );
+}
+
+/**
+ * Richieste agli abbonati nel mese (decisione di Luca del 26/11): un
+ * professionista senza richieste è il primo che non rinnova.
+ */
+/** Righe dell'elenco abbonati mostrate per volta. */
+const LIST_PAGE = 20;
+
+/** "Base", oppure "Base, gratis fino al 12/02/2027" nei mesi gratis. */
+function tierLabel(row: MonthlyAccountsSubscriberRow): string {
+  const label = subscriptionTierInfo(row.tier).label;
+  if (!row.free) return label;
+  if (!row.freeUntil) return `${label}, mesi gratis`;
+  return `${label}, gratis fino al ${romeDay(row.freeUntil)}`;
+}
+
+/** Giorno GG/MM/AAAA nell'ora di Roma. */
+function romeDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** Chi ha finito i mesi gratis e non paga: le persone da chiamare (Luca, 26/11). */
+function NotStayedCard({ rows: all }: { rows: MonthlyAccountsNotStayedRow[] }) {
+  const [shown, setShown] = useState(LIST_PAGE);
+  const rows = all.slice(0, shown);
+  const hidden = all.length - rows.length;
+  return (
+    <AdminCard>
+      <YStack gap="2">
+        <Text fontWeight="700" color={brand.grafite}>
+          Non rimasti dopo i mesi gratis
+        </Text>
+        <Text color={brand.grafite}>Hanno finito i mesi gratis e oggi non pagano. Sono le persone da chiamare.</Text>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <caption className="sr-only">Non rimasti dopo i mesi gratis</caption>
+            <thead>
+              <tr>
+                <th>Professionista</th>
+                <th>Telefono</th>
+                <th>Mesi gratis finiti il</th>
+                <th>Perché</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.userId}>
+                  <td className="admin-cell-main">
+                    <Link href={`/admin/utenti/${row.userId}`}>{row.businessName}</Link>
+                    {row.city ? (
+                      <>
+                        <br />
+                        <span style={{ color: brand.grafite70, fontSize: 13 }}>{row.city}</span>
+                      </>
+                    ) : null}
+                  </td>
+                  <td data-label="Telefono">{row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : "—"}</td>
+                  <td data-label="Mesi gratis finiti il">{romeDay(row.freeEndedAt)}</td>
+                  <td data-label="Perché">{row.reason === "CANCELED" ? "Ha disdetto" : "Non ha pagato"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {hidden > 0 ? (
+          <XStack>
+            <Button variant="secondary" size="3" onPress={() => setShown((n) => n + LIST_PAGE)}>
+              {`Mostra altri ${Math.min(hidden, LIST_PAGE)} (ne restano ${hidden})`}
+            </Button>
+          </XStack>
+        ) : null}
+      </YStack>
+    </AdminCard>
+  );
+}
+
+function RequestsCard({ data }: { data: AdminMonthlyAccounts }) {
+  const { subscribers, total, withoutRequests, list } = data.requests;
+  const month = monthLabelIt(data.month);
+  // Un clic sui numeri apre l'elenco di chi c'è dietro (richiesta di Luca del 26/11).
+  const [open, setOpen] = useState<"none" | "all" | null>(null);
+  const [shown, setShown] = useState(LIST_PAGE);
+  const allRows = open === "none" ? list.filter((row) => row.requests === 0) : open === "all" ? list : [];
+  const rows = allRows.slice(0, shown);
+  const hidden = allRows.length - rows.length;
+  const toggle = (which: "none" | "all") => {
+    setShown(LIST_PAGE);
+    setOpen((current) => (current === which ? null : which));
+  };
+  const average = subscribers > 0 ? (total / subscribers).toLocaleString("it-IT", { maximumFractionDigits: 1 }) : "0";
+
+  return (
+    <AdminCard>
+      <YStack gap="2">
+        <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
+          Richieste agli abbonati
+        </Text>
+        {subscribers === 0 ? (
+          <Text color={brand.grafite70}>Ancora nessun abbonato.</Text>
+        ) : (
+          <>
+            <Text color={brand.grafite}>
+              {`In ${month} ogni abbonato ha ricevuto in media ${average} richieste (${total} in tutto). `}
+              <button type="button" className="admin-link-button" aria-expanded={open === "all"} onClick={() => toggle("all")}>
+                {subscribers === 1 ? "Vedi l'abbonato" : `Vedi i ${subscribers} abbonati`}
+              </button>
+            </Text>
+            {withoutRequests > 0 ? (
+              <Text color={brand.urgenza}>
+                <button type="button" className="admin-link-button" aria-expanded={open === "none"} onClick={() => toggle("none")}>
+                  {withoutRequests === 1 ? "1 abbonato" : `${withoutRequests} abbonati`}
+                </button>
+                {withoutRequests === 1
+                  ? " senza richieste: rischia di non rinnovare."
+                  : " senza richieste: rischiano di non rinnovare."}
+              </Text>
+            ) : (
+              <Text color={brand.verificato}>Tutti gli abbonati hanno ricevuto almeno una richiesta.</Text>
+            )}
+          </>
+        )}
+        {rows.length > 0 ? (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <caption className="sr-only">{open === "none" ? `Abbonati senza richieste in ${month}` : `Abbonati e richieste di ${month}`}</caption>
+              <thead>
+                <tr>
+                  <th>Professionista</th>
+                  <th>Telefono</th>
+                  <th>Livello</th>
+                  <th>Richieste</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.userId}>
+                    <td className="admin-cell-main">
+                      <Link href={`/admin/utenti/${row.userId}`}>{row.businessName}</Link>
+                      {row.city ? (
+                        <>
+                          <br />
+                          <span style={{ color: brand.grafite70, fontSize: 13 }}>{row.city}</span>
+                        </>
+                      ) : null}
+                    </td>
+                    <td data-label="Telefono">{row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : "—"}</td>
+                    <td data-label="Livello">{tierLabel(row)}</td>
+                    <td data-label="Richieste">{row.requests}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        {hidden > 0 ? (
+          <XStack>
+            <Button variant="secondary" size="3" onPress={() => setShown((n) => n + LIST_PAGE)}>
+              {`Mostra altri ${Math.min(hidden, LIST_PAGE)} (ne restano ${hidden})`}
+            </Button>
+          </XStack>
+        ) : null}
+        <Text fontSize={14} color={brand.grafite70}>
+          Contano gli abbonati di oggi, paganti e nei mesi gratis con la carta.
+        </Text>
+      </YStack>
+    </AdminCard>
   );
 }
 
