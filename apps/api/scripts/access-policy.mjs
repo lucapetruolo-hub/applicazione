@@ -345,6 +345,8 @@ const owned = {
   "GET /documents/jobs/:bookingId/copy/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingCompleted }) },
   // Riepilogo dei pagamenti in PDF: solo il cliente; il preventivo in PDF: cliente e professionista (05/11/2026).
   "GET /documents/jobs/:bookingId/payments/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingCompleted }) },
+  // Avviso della nostra trattenuta in PDF: solo il professionista (docs/changelog/2026-11-26-avviso-trattenuta.md).
+  "GET /documents/jobs/:bookingId/fees/pdf": { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingOnline }) },
   "GET /documents/quotes/:quoteId/pdf": { kind: "owned", owners: BOTH, params: (f) => ({ quoteId: f.quoteA }) },
   "GET /documents/courtesy/:bookingId/pdf": courtesy,
   "PUT /documents/courtesy/:bookingId/details": { ...courtesy, body: () => ({ customerName: "Cliente A" }) },

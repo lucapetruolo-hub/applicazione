@@ -150,6 +150,25 @@ async function seed() {
     data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, receiptNumber: "1/2026", customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
   });
 
+  // Lavoro pagato online con la nostra trattenuta: l'avviso di trattenuta in PDF è solo di proA
+  // (docs/changelog/2026-11-26-avviso-trattenuta.md).
+  const requestOnline = await prisma.guidedRequest.create({
+    data: { clientId: users.clientA.id, categoryId: category.id, description: "Presa elettrica da sostituire", city: "Latina" },
+  });
+  await prisma.lead.create({ data: { guidedRequestId: requestOnline.id, professionalProfileId: profileA.id, priceEurCents: 0, status: "CONVERTED" } });
+  const quoteOnline = await prisma.quote.create({
+    data: { guidedRequestId: requestOnline.id, professionalProfileId: profileA.id, estimatedStartDate: start, status: "ACCEPTED" },
+  });
+  const bookingOnline = await prisma.booking.create({
+    data: { quoteId: quoteOnline.id, clientId: users.clientA.id, professionalProfileId: profileA.id, scheduledAt: start, status: "CONFIRMED", finalAmountEurCents: 10000, city: "Latina" },
+  });
+  const paymentOnline = await prisma.jobPayment.create({
+    data: { bookingId: bookingOnline.id, paymentMethod: "MANOVIA", grossAmountEurCents: 10000, netAmountEurCents: 10000, depositEurCents: 3000, depositPaidAt: new Date(), paidEurCents: 3000 },
+  });
+  await prisma.platformFeeEntry.create({
+    data: { professionalProfileId: profileA.id, jobPaymentId: paymentOnline.id, kind: "HOLD", grossEurCents: 256, taxableEurCents: 210, vatEurCents: 46, paymentEurCents: 3000, description: "Trattenuta sull'acconto" },
+  });
+
   // Fattura delle trattenute di proA (§378).
   const invoiceA = await prisma.invoice.create({
     data: {
@@ -198,6 +217,7 @@ async function seed() {
       recurringA: recurringA.id,
       reviewA: reviewA.id,
       bookingCompleted: bookingCompleted.id,
+      bookingOnline: bookingOnline.id,
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,
