@@ -156,8 +156,7 @@ export class CloudinaryService {
       // il piano, timeout di rete) non deve mai risultare in un generico
       // "Internal Server Error" lato client — stesso principio "errore
       // chiaro invece di crash" già usato per Stripe/Google in questo file.
-      const message = error instanceof Error ? error.message : "Errore sconosciuto.";
-      throw new BadRequestException(`Caricamento immagine non riuscito: ${message}`);
+      throw new BadRequestException(uploadFailureMessage(error, "image"));
     } finally {
       await removeTemporaryFile(file);
     }
@@ -314,8 +313,15 @@ export class CloudinaryService {
     // separato (`fl_attachment`, approccio precedente) per portare avanti
     // il nome: `extractAttachmentFilename` lo rilegge direttamente
     // dall'ultimo segmento del percorso, vedi sotto.
+    // Per un documento "raw" Cloudinary non usa `format`: l'estensione
+    // dell'URL è quella scritta nel `public_id` (provato dal vivo il 25/11,
+    // docs/changelog/2026-11-25-parti-lasciate-fuori-sicurezza.md: senza, un
+    // PDF arrivava come ".../283cf7d78f96-fattura" e il sito non lo
+    // riconosceva come documento). Estensione sempre dal contenuto vero.
     const rawPublicId =
-      resourceType === "raw" ? `${randomBytes(6).toString("hex")}-${sanitizeAttachmentFilename(file.originalname)}` : undefined;
+      resourceType === "raw" && rawExtension
+        ? `${randomBytes(6).toString("hex")}-${sanitizeAttachmentFilename(file.originalname)}.${rawExtension}`
+        : undefined;
 
     try {
       return await new Promise<string>((resolve, reject) => {
@@ -325,7 +331,6 @@ export class CloudinaryService {
             resource_type: resourceType,
             ...(resourceType === "image" ? { allowed_formats: [...ALLOWED_IMAGE_FORMATS] } : resourceType === "raw" ? { allowed_formats: [...ALLOWED_DOCUMENT_FORMATS] } : {}),
             ...(transformation ? { transformation } : {}),
-            ...(rawExtension ? { format: rawExtension } : {}),
             ...(rawPublicId ? { public_id: rawPublicId } : {}),
           },
           (error, result) => {
@@ -355,8 +360,7 @@ export class CloudinaryService {
         sendFile(file, uploadStream, reject);
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Errore sconosciuto.";
-      throw new BadRequestException(`Caricamento non riuscito: ${message}`);
+      throw new BadRequestException(uploadFailureMessage(error, resourceType));
     } finally {
       await removeTemporaryFile(file);
     }
@@ -500,6 +504,23 @@ const UNIQUE_ID_PREFIX = /^[0-9a-f]{12}-/;
  * `attachmentFileName`) perché backend e frontend non condividono un
  * package per una funzione così piccola.
  */
+/**
+ * Messaggio per chi carica quando Cloudinary rifiuta il file. Cloudinary
+ * risponde con un oggetto semplice (`{ message, http_code }`), non un
+ * `Error`: prima il messaggio diventava "Errore sconosciuto". Un 400 di
+ * Cloudinary vuol dire file non valido o formato non ammesso
+ * (`allowed_formats`): si dice cosa caricare, senza il testo inglese.
+ */
+export function uploadFailureMessage(error: unknown, resourceType: "image" | "video" | "raw"): string {
+  const httpCode = typeof error === "object" && error !== null && "http_code" in error ? Number((error as { http_code: unknown }).http_code) : undefined;
+  if (httpCode === 400) {
+    if (resourceType === "raw") return "Il file non è un PDF, un documento Word o un foglio Excel.";
+    if (resourceType === "video") return "Il video non si può caricare: prova con un file MP4 o MOV.";
+    return NOT_AN_IMAGE_MESSAGE;
+  }
+  return "Caricamento non riuscito, riprova tra poco.";
+}
+
 function extractAttachmentFilename(url: string): string {
   const clean = url.split("?")[0] ?? "";
   const legacyMatch = /\/fl_attachment:([^/,]+)/.exec(clean);
