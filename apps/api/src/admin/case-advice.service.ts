@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -111,6 +112,25 @@ export const MONEY_RULES = `Regole del sito sui soldi e sui problemi dei lavori:
 - Saldo non pagato: il cliente non ha pagato il resto online entro 7 giorni dalla fine del lavoro. Si chiude il saldo solo se dalla chat risulta che ha pagato il professionista in altro modo o che il professionista ci rinuncia; altrimenti si aspetta.
 - Con meno di 24 ore di preavviso l'acconto pagato sul sito non si rimborsa se il cliente annulla.
 - Non dire mai "i nostri professionisti" e non promettere soldi che le regole non prevedono.`;
+
+/**
+ * Le istruzioni di sistema con le regole approvate in Admin
+ * (docs/changelog/2026-11-27-il-sito-impara.md): ogni regola nuova entra solo
+ * con "Approva" su una proposta già provata sul banco.
+ */
+export function adviceSystemPrompt(extraRules: readonly string[]): string {
+  const rules = extraRules.map((r) => r.trim()).filter(Boolean);
+  if (rules.length === 0) return CASE_ADVICE_RULES;
+  return `${CASE_ADVICE_RULES}\n\nRegole aggiunte dall'amministratore dopo casi veri (valgono come le altre):\n${rules.map((r) => `- ${r}`).join("\n")}`;
+}
+
+/** Impronta delle istruzioni dell'Admin: cambia se cambiano le regole scritte nel codice o quelle approvate. */
+export function adviceInstructionsHash(extraRules: readonly string[]): string {
+  return createHash("sha256").update([adviceSystemPrompt(extraRules), MONEY_RULES, SITE_GUIDE].join("\n")).digest("hex").slice(0, 12);
+}
+
+/** Quanto restano in memoria le regole approvate prima di rileggerle. */
+const RULES_TTL_MS = 60_000;
 
 const groundCodes = MODERATION_GROUNDS.map((g) => g.code) as [string, ...string[]];
 
@@ -334,6 +354,7 @@ export class CaseAdviceService {
   private client: Anthropic | null = null;
   private running: Promise<number> | null = null;
   private lastRunAt = 0;
+  private rules: { list: string[]; at: number } | null = null;
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -433,7 +454,19 @@ export class CaseAdviceService {
       if (!answer.ok) return answer;
       await this.prisma.adminCaseAdvice.upsert({
         where: { kind_caseId: { kind: c.kind, caseId: c.caseId } },
-        create: { kind: c.kind, caseId: c.caseId, model: MODEL, decision: answer.answer.decision, reason: answer.answer.reason, ground: answer.answer.ground ?? null, note: answer.answer.note ?? null, draft: answer.answer.draft ?? null },
+        create: {
+          kind: c.kind,
+          caseId: c.caseId,
+          model: MODEL,
+          decision: answer.answer.decision,
+          reason: answer.answer.reason,
+          ground: answer.answer.ground ?? null,
+          note: answer.answer.note ?? null,
+          draft: answer.answer.draft ?? null,
+          // Per il banco di prova, se l'admin decide diversamente (docs/changelog/2026-11-27-il-sito-impara.md).
+          caseText: c.text.slice(0, 4000),
+          allowed: [...c.allowed],
+        },
         update: {},
       });
       return { ok: true };
@@ -668,14 +701,37 @@ export class CaseAdviceService {
     };
   }
 
-  private async ask(c: AdviceCase): Promise<{ ok: true; answer: Answer } | { ok: false; error: string }> {
+  /** Le regole approvate in Admin, rilette al massimo ogni minuto (valgono per tutte le copie dell'API). */
+  async approvedRules(): Promise<string[]> {
+    if (this.rules && Date.now() - this.rules.at < RULES_TTL_MS) return this.rules.list;
+    const rows = await this.prisma.aiRule.findMany({ where: { removedAt: null }, orderBy: { createdAt: "asc" }, select: { text: true } });
+    this.rules = { list: rows.map((r) => r.text), at: Date.now() };
+    return this.rules.list;
+  }
+
+  /** Dopo "Aggiungi la regola" o "Togli": la prossima proposta usa subito le regole nuove. */
+  forgetRules(): void {
+    this.rules = null;
+  }
+
+  /**
+   * Una risposta di prova per il banco, con le regole indicate al posto di
+   * quelle approvate: niente si salva. Null se l'IA non risponde.
+   */
+  async tryCase(c: AdviceCase, rules: readonly string[]): Promise<string | null> {
+    const answer = await this.ask(c, rules);
+    return answer.ok ? answer.answer.decision : null;
+  }
+
+  private async ask(c: AdviceCase, rules?: readonly string[]): Promise<{ ok: true; answer: Answer } | { ok: false; error: string }> {
     this.client ??= new Anthropic({ maxRetries: 1 });
     try {
+      const system = adviceSystemPrompt(rules ?? (await this.approvedRules()));
       const response = await this.client.messages.parse(
         {
           model: MODEL,
           max_tokens: 4000,
-          system: [{ type: "text", text: CASE_ADVICE_RULES, cache_control: { type: "ephemeral" } }],
+          system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: `${adviceInstructions(c)}\n\n<caso>\n${c.text}\n</caso>` }],
           output_config: { format: zodOutputFormat(answerSchema(c.kind)), effort: "low" },
         },

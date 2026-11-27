@@ -24,6 +24,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { CategoriesService } from "../categories/categories.service";
 import { AdminService } from "../admin/admin.service";
+import { CaseAdviceService } from "../admin/case-advice.service";
 import { ProblemExamplesService } from "../problem-match/problem-examples.service";
 import { ProblemMatchAdminService } from "../problem-match/problem-match-admin.service";
 import { GeneralRequestsService } from "../general-requests/general-requests.service";
@@ -39,6 +40,7 @@ import {
   PROFILE_REMINDER_MAX_DAYS,
   PROFILE_REMINDER_MIN_DAYS,
   categoryChangeWordCandidates,
+  NO_SUGGESTION,
   categoryLabel,
   contactFaqSwaps,
   dictionaryWordCandidates,
@@ -101,6 +103,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
     private readonly generalRequestsService: GeneralRequestsService,
     private readonly identityVerificationService: IdentityVerificationService,
     private readonly contactFaqService: ContactFaqService,
+    private readonly caseAdviceService: CaseAdviceService,
   ) {}
 
   /** All'avvio (Render riparte spesso): un calcolo poco dopo, per non lasciare la Home vuota fino a notte. */
@@ -251,6 +254,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
       case "DICTIONARY_WORD":
       case "DICTIONARY_SERVICE_WORD":
       case "CATEGORY_CHANGE_WORD":
+      case "NO_RESULT_WORD":
         await this.problemMatchAdminService.teachWord(adminUserId, {
           word: String(d.word),
           categorySlug: String(d.categorySlug),
@@ -279,6 +283,15 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         const recipients = (d.recipients as { userId: string; requests: number }[]) ?? [];
         for (const r of recipients) await this.notificationsService.notify(r.userId, "AWAY_SUGGESTED", { requests: r.requests });
         return sentLabel(recipients.length, recipients.length);
+      }
+      case "AI_RULE": {
+        // Si aggiunge alle istruzioni dell'IA dell'Admin (docs/changelog/2026-11-27-il-sito-impara.md).
+        const rule = await this.prisma.aiRule.create({
+          data: { text: String(d.text), before: Number(d.before) || 0, after: Number(d.after) || 0, total: Number(d.total) || 0, approvedById: adminUserId },
+        });
+        this.caseAdviceService.forgetRules();
+        await this.auditLogService.record({ entityType: "AiRule", entityId: rule.id, fieldName: "text", newValue: rule.text, changedByUserId: adminUserId, reason: "Regola aggiunta alle istruzioni dell'IA" });
+        return null;
       }
       case "CONTACT_FAQ":
         await this.saveContactFaq(adminUserId, d.audience as FaqAudience, (d.faqIds as string[]) ?? [], c.title);
@@ -394,6 +407,9 @@ export class AdminProposalsService implements OnApplicationBootstrap {
       case "GENERAL_REQUESTS_REOPEN":
       case "GENERAL_REQUESTS_CLOSE":
         return (await this.generalRequests()).filter((c) => c.kind === kind);
+      case "NO_RESULT_WORD":
+      case "AI_RULE":
+        return this.storedProposals(kind);
       case "CONTACT_FAQ":
         return this.contactFaq(now);
     }
@@ -403,6 +419,27 @@ export class AdminProposalsService implements OnApplicationBootstrap {
   // -------------------------------------------------------------------------
   // Domande in Contatti (docs/changelog/2026-11-16-domande-frequenti.md)
   // -------------------------------------------------------------------------
+
+  /**
+   * Proposte preparate di notte dal "sito che impara" (docs/changelog/2026-11-27-il-sito-impara.md):
+   * chiedono all'IA, quindi non si ricalcolano qui; restano finché valgono.
+   * Una parola senza risultato insegnata nel frattempo non vale più.
+   */
+  private async storedProposals(kind: "NO_RESULT_WORD" | "AI_RULE"): Promise<Candidate[]> {
+    const [rows, taught] = await Promise.all([
+      this.prisma.adminProposal.findMany({ where: { kind, status: { in: ["PENDING", "SNOOZED", "APPROVING"] } } }),
+      kind === "NO_RESULT_WORD" ? this.prisma.problemWord.findMany({ select: { word: true } }) : Promise.resolve([]),
+    ]);
+    const words = taught.map((t) => t.word.trim()).filter(Boolean);
+    return rows.flatMap((row) => {
+      const p = row.payload as unknown as StoredPayload;
+      if (kind === "NO_RESULT_WORD") {
+        const word = String(p.data?.word ?? "");
+        if (!word || words.some((t) => word.startsWith(t) || t.startsWith(word))) return [];
+      }
+      return [{ key: row.key, kind, score: row.score, title: p.title, why: p.why, preview: p.preview, data: p.data ?? {} }];
+    });
+  }
 
   private async contactFaq(now: Date): Promise<Candidate[]> {
     const [current, votes] = await Promise.all([this.contactFaqService.picks(), this.contactFaqService.votes(now)]);
@@ -497,25 +534,37 @@ export class AdminProposalsService implements OnApplicationBootstrap {
    */
   private async categoryChangeWords(): Promise<Candidate[]> {
     const from = countingFrom();
-    const [requests, taught] = await Promise.all([
+    const [requests, searches, taught] = await Promise.all([
       this.prisma.guidedRequest.findMany({
         where: { suggestedCategorySlug: { not: null }, client: COUNTED_USER, ...(from ? { createdAt: { gte: from } } : {}) },
         select: { description: true, suggestedCategorySlug: true, category: { select: { slug: true } } },
       }),
+      // Anche le ricerche: mestiere toccato diverso dal primo, o nessun mestiere trovato e poi uno scelto
+      // (docs/changelog/2026-11-27-il-sito-impara.md, miglioria 1 scelta da Luca).
+      this.prisma.problemDescription.findMany({
+        where: { chosenCategory: { not: null }, ...(from ? { createdAt: { gte: from } } : {}) },
+        select: { text: true, categories: true, chosenCategory: true },
+      }),
       this.prisma.problemWord.findMany({ select: { word: true } }),
     ]);
-    const rows = requests.map((r) => ({ text: r.description, suggested: r.suggestedCategorySlug!, chosen: r.category.slug }));
+    const rows = [
+      ...requests.map((r) => ({ text: r.description, suggested: r.suggestedCategorySlug!, chosen: r.category.slug })),
+      ...searches.map((d) => ({ text: d.text, suggested: d.categories[0] ?? NO_SUGGESTION, chosen: d.chosenCategory! })),
+    ];
     return categoryChangeWordCandidates(rows, taught.map((t) => t.word))
       .slice(0, 5)
       .map((w) => {
-        const fromLabel = categoryLabel(w.from);
+        const none = w.from === NO_SUGGESTION;
+        const fromLabel = none ? "nessun mestiere" : categoryLabel(w.from);
         const toLabel = categoryLabel(w.to);
         return {
           key: `CATEGORY_CHANGE_WORD:${w.stem}`,
           kind: "CATEGORY_CHANGE_WORD",
           score: 520 + Math.min(w.changes, 99),
           title: `Con «${w.example}» suggerisci ${toLabel}`,
-          why: `${w.changes} clienti hanno scritto «${w.example}» e hanno cambiato ${fromLabel} con ${toLabel}. Su ${w.total} richieste con questa parola, ${w.chosenTo} hanno scelto ${toLabel}. Insegnandola, il sito suggerisce subito il mestiere giusto.`,
+          why: none
+            ? `${w.changes} clienti hanno scritto «${w.example}», il sito non ha trovato nessun mestiere e loro hanno scelto ${toLabel}. Su ${w.total} ricerche e richieste con questa parola, ${w.chosenTo} sono finite su ${toLabel}. Insegnandola, il sito suggerisce subito il mestiere giusto.`
+            : `${w.changes} clienti hanno scritto «${w.example}» e hanno cambiato ${fromLabel} con ${toLabel}. Su ${w.total} ricerche e richieste con questa parola, ${w.chosenTo} sono finite su ${toLabel}. Insegnandola, il sito suggerisce subito il mestiere giusto.`,
           preview: {
             type: "lines",
             lines: [

@@ -3548,6 +3548,12 @@ a.admin-kpi:hover {
   gap: 12px;
   align-items: start;
 }
+/* Banco di prova in Proposte dell'IA (docs/changelog/2026-11-27-il-sito-impara.md). */
+.ai-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
 .admin-table-numbers td:not(:first-child),
 .admin-table-numbers th:not(:first-child) {
   font-variant-numeric: tabular-nums;

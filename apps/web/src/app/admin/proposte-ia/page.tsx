@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminPageHeader, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { AiLearningPanel } from "@/components/admin/AiLearningPanel";
 
 const decisionLabel = (d: string) => CASE_ADVICE_DECISION_LABEL[d as CaseAdviceDecision] ?? d;
 
@@ -71,7 +72,7 @@ export default function AdminProposteIaPage() {
 
       {disagreements.length > 0 ? (
         <YStack gap="2">
-          <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
+          <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
             Ultime volte che hai deciso diversamente
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
@@ -103,6 +104,17 @@ export default function AdminProposteIaPage() {
           </div>
         </YStack>
       ) : null}
+
+      {/* Il sito impara (docs/changelog/2026-11-27-il-sito-impara.md). */}
+      <YStack gap="2" paddingTop="4" borderTopWidth={1} borderColor={brand.filetto}>
+        <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+          Cosa impara l&apos;IA
+        </Text>
+        <Text fontSize="3" color={brand.grafite70}>
+          Impara dai tuoi cambi e dagli errori veri, ma niente cambia senza il tuo ok.
+        </Text>
+      </YStack>
+      <AiLearningPanel />
     </YStack>
   );
 }

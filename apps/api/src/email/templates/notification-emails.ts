@@ -1969,20 +1969,23 @@ const BUILDERS: Record<string, Builder> = {
     const proposalsLine = proposals
       ? `**${proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`}** in Da fare: sono già pronte, basta un clic. Ci vogliono circa ${Math.max(1, Math.ceil(proposals / 2))} ${Math.ceil(proposals / 2) > 1 ? "minuti" : "minuto"}.`
       : null;
+    // "Il sito impara" (docs/changelog/2026-11-27-il-sito-impara.md): righe già scritte dall'API.
+    const learning = Array.isArray(payload.learning) ? payload.learning.filter((l): l is string => typeof l === "string" && l.length > 0).slice(0, 6) : [];
+    const learningBlock = learning.length ? ["**Il sito impara.** Cosa è cambiato questa settimana:", ...learning] : [];
     if (items.length === 0) {
       return {
         kind: "notification",
-        subject: proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`,
-        title: "Da approvare",
-        paragraphs: [proposalsLine ?? "Niente da approvare."],
-        cta: { label: "Apri Da approvare", url: `${frontendUrl()}/admin#da-approvare` },
+        subject: proposals === 0 ? "Cosa ha imparato il sito questa settimana" : proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`,
+        title: proposals === 0 ? "Il sito impara" : "Da approvare",
+        paragraphs: [...(proposalsLine ? [proposalsLine] : []), ...learningBlock],
+        cta: proposals === 0 ? { label: "Apri Proposte dell'IA", url: `${frontendUrl()}/admin/proposte-ia` } : { label: "Apri Da approvare", url: `${frontendUrl()}/admin#da-approvare` },
       };
     }
     return {
       kind: "notification",
       subject: items.length === 1 ? "Una cosa da fare questa settimana" : `${items.length} cose da fare questa settimana`,
       title: "Cosa fare questa settimana",
-      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items, ...(proposalsLine ? [proposalsLine] : [])],
+      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items, ...(proposalsLine ? [proposalsLine] : []), ...learningBlock],
       cta: { label: "Vedi i consigli", url: `${frontendUrl()}/admin/andamento` },
     };
   },

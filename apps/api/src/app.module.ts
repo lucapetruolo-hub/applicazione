@@ -49,6 +49,7 @@ import { ProfessionalVerificationModule } from "./professional-verification/prof
 import { ClientInvoiceRequestsModule } from "./client-invoice-requests/client-invoice-requests.module";
 import { AccountingModule } from "./accounting/accounting.module";
 import { AdminProposalsModule } from "./admin-proposals/admin-proposals.module";
+import { AiLearningModule } from "./ai-learning/ai-learning.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
@@ -151,6 +152,7 @@ import { RequestBoardModule } from "./request-board/request-board.module";
     IdentityVerificationModule,
     GeneralRequestsAdminModule,
     AdminProposalsModule,
+    AiLearningModule,
     UrgencyMetricsModule,
     WhatsAppModule,
   ],

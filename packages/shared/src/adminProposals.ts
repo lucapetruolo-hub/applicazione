@@ -21,6 +21,8 @@ export const ADMIN_PROPOSAL_KINDS = [
   "GENERAL_REQUESTS_REOPEN",
   "GENERAL_REQUESTS_CLOSE",
   "CONTACT_FAQ",
+  "NO_RESULT_WORD",
+  "AI_RULE",
 ] as const;
 export type AdminProposalKind = (typeof ADMIN_PROPOSAL_KINDS)[number];
 
@@ -110,6 +112,19 @@ export const ADMIN_PROPOSAL_KINDS_INFO: Record<AdminProposalKind, AdminProposalK
     scope: "MODERATION",
     approveLabel: "Cambia la domanda",
     undo: { label: "Si rimettono quelle di partenza da Andamento", href: "/admin/andamento" },
+  },
+  // Il sito impara (docs/changelog/2026-11-27-il-sito-impara.md).
+  NO_RESULT_WORD: {
+    label: "Ricerche senza risultato",
+    scope: "MODERATION",
+    approveLabel: "Insegna la parola",
+    undo: { label: "Si toglie da Mestieri richiesti", href: "/admin/mestieri-richiesti" },
+  },
+  AI_RULE: {
+    label: "Regola nuova per l'IA",
+    scope: "SUPER",
+    approveLabel: "Aggiungi la regola",
+    undo: { label: "Si toglie da Proposte dell'IA", href: "/admin/proposte-ia#regole" },
   },
 };
 
