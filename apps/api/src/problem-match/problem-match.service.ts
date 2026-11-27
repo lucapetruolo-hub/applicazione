@@ -568,6 +568,34 @@ export class ProblemMatchService {
     return { classified: result, ai: { ms, outcome: "ok" } };
   }
 
+  /**
+   * Il banco di prova (docs/changelog/2026-11-27-il-sito-impara.md): la stessa
+   * strada della ricerca (parole insegnate, dizionario, IA) senza le risposte
+   * in memoria e senza salvare niente in "Mestieri richiesti". Usa lo stesso
+   * tetto giornaliero dell'IA: a tetto raggiunto risponde il dizionario e il
+   * caso conta come "non provato" (null).
+   */
+  async classifyFresh(description: string): Promise<{ categories: string[]; source: string } | null> {
+    const dictionary = matchProblem(description);
+    const taught = await this.taughtMatch(description, dictionary);
+    if (taught) return { categories: taught.categories, source: taught.source };
+    if (dictionary.confident || !aiProvider()) {
+      const d = this.fromDictionary(dictionary);
+      return { categories: d.categories, source: d.source };
+    }
+    if (!(await this.budget.take())) return null;
+    const catalog = await this.serviceCatalog.catalog();
+    const answer = await this.askAi(anonymizeProblemText(description), catalog);
+    if (!answer) return null;
+    const result = this.combine(dictionary, answer, catalog);
+    return { categories: result.categories, source: result.source };
+  }
+
+  /** Impronta delle istruzioni della ricerca (senza il catalogo, che cambia da solo con i profili). */
+  instructionsHash(): string {
+    return createHash("sha256").update([MODEL, aiProvider() ?? "nessuna", systemPrompt([]), photoInstructions("")].join("\n")).digest("hex").slice(0, 12);
+  }
+
   /** Una parola insegnata in admin vince sul dizionario e sull'intelligenza artificiale; la sicurezza resta. */
   private async taughtMatch(description: string, dictionary: ProblemMatch): Promise<ProblemMatchResult | null> {
     const words = await this.taughtWords();

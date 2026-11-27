@@ -103,6 +103,7 @@ export * from "./adminQueue";
 export * from "./siteHealth";
 export * from "./caseAdvice";
 export * from "./adminProposals";
+export * from "./aiLearning";
 export * from "./adminProposalsSchemas";
 export * from "./adminSignals";
 export * from "./adminNames";

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { loadNotificationOptOuts } from "../notifications/opt-outs";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
+  aiLearningWeeklyLines,
   CHURN_KINDS,
   CHURN_REASONS,
   FAQ,
@@ -40,6 +41,7 @@ import {
   buildPopularJobsAdminView,
   popularJobsFromRows,
 } from "@professionisti/shared";
+import { aiLearningWeekly } from "../ai-learning/ai-learning-summary";
 import { PRISMA } from "../prisma/prisma.module";
 import { uncoveredBoardRequests } from "../request-board/board-coverage";
 import { boardUncoveredAdvice } from "./site-stats";
@@ -532,10 +534,16 @@ export class SiteStatsService {
     const advice = uncovered.length > 0 ? [...siteAdvice, boardUncoveredAdvice(uncovered)] : siteAdvice;
     // Proposte da approvare in Da fare (docs/changelog/2026-11-03-automazioni-admin.md): l'email ne dice il numero.
     const proposals = await this.prisma.adminProposal.count({ where: { OR: [{ status: "PENDING" }, { status: "SNOOZED", snoozedUntil: { lte: now } }] } });
-    if (advice.length === 0 && proposals === 0) return advice;
+    // "Il sito impara" (docs/changelog/2026-11-27-il-sito-impara.md): parole nuove, banco, regole per l'IA, misura del mese.
+    const learning = await aiLearningWeekly(this.prisma, now).catch((error: unknown) => {
+      this.logger.warn(`Riquadro "Il sito impara" non calcolato: ${String(error)}`);
+      return null;
+    });
+    const learningLines = aiLearningWeeklyLines(learning);
+    if (advice.length === 0 && proposals === 0 && learningLines.length === 0) return advice;
     this.logger.log(`Consigli della settimana: ${advice.map((a) => a.key).join(", ")}; proposte da approvare: ${proposals}`);
     const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
-    const payload = { advice: advice.map((a) => ({ level: a.level, title: a.title, todo: a.todo })), proposals };
+    const payload = { advice: advice.map((a) => ({ level: a.level, title: a.title, todo: a.todo })), proposals, learning: learningLines };
     for (const admin of admins) {
       const roles = admin.adminRoles ?? [];
       if (roles.length === 0 || roles.includes("SUPER")) {

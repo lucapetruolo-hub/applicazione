@@ -3965,6 +3965,11 @@ model AdminCaseAdvice {
   adminDecision  String?
   adminDecidedAt DateTime?
   agrees         Boolean?
+  /// Il caso com'era quando l'IA l'ha letto (già senza contatti) e le decisioni
+  /// possibili: se l'admin decide diversamente, il caso entra nel banco di prova
+  /// (docs/changelog/2026-11-27-il-sito-impara.md).
+  caseText       String?
+  allowed        String[]  @default([])
 
   @@unique([kind, caseId])
   @@index([kind, adminDecidedAt])
@@ -4204,4 +4209,66 @@ model SubscriptionWithdrawal {
   @@index([professionalProfileId])
   @@index([status, createdAt])
   @@map("subscription_withdrawals")
+}
+
+// Il sito impara (docs/changelog/2026-11-27-il-sito-impara.md): banco di prova
+// fatto di errori veri dell'IA. Un caso entra da solo ogni notte (cliente che
+// cambia mestiere, admin che decide diversamente); si toglie da Admin se è
+// sbagliato. Testi già senza contatti; si cancellano dopo un anno, come le
+// descrizioni di "Mestieri richiesti".
+model AiBankCase {
+  id          String    @id @default(uuid())
+  /// RICERCA o ADMIN (`AiBankArea`).
+  area        String
+  /// Da dove viene, unico: "gr:<richiesta>", "pd:<descrizione>", "advice:<proposta>".
+  sourceKey   String    @unique
+  /// CATEGORIA_CAMBIATA, NESSUN_RISULTATO, SCELTO_ALTRO, ADMIN_DIVERSO (`AiBankOrigin`).
+  origin      String
+  /// Per ADMIN: il tipo di caso (`CaseAdviceKind`).
+  kind        String?
+  input       String
+  withPhoto   Boolean   @default(false)
+  /// Per ADMIN: le decisioni che si potevano scegliere.
+  allowed     String[]  @default([])
+  aiAnswer    String
+  expected    String
+  createdAt   DateTime  @default(now())
+  removedAt   DateTime?
+  removedById String?
+
+  @@index([area, createdAt])
+  @@map("ai_bank_cases")
+}
+
+/// Un giro del banco: quante risposte giuste con le istruzioni di quel momento.
+model AiBankRun {
+  id               String   @id @default(uuid())
+  area             String
+  /// Impronta delle istruzioni dell'IA usate nel giro.
+  instructionsHash String
+  total            Int
+  correct          Int
+  /// Id dei casi sbagliati, per vedere cosa è cambiato tra un giro e l'altro.
+  wrongIds         String[] @default([])
+  ranAt            DateTime @default(now())
+
+  @@index([area, ranAt])
+  @@map("ai_bank_runs")
+}
+
+/// Regole aggiunte alle istruzioni dell'IA dell'Admin, solo con "Approva".
+model AiRule {
+  id           String    @id @default(uuid())
+  text         String
+  /// Giuste sul banco senza e con la regola, provate prima di proporla.
+  before       Int
+  after        Int
+  total        Int
+  createdAt    DateTime  @default(now())
+  approvedById String?
+  removedAt    DateTime?
+  removedById  String?
+
+  @@index([removedAt])
+  @@map("ai_rules")
 }

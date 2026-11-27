@@ -317,6 +317,14 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     expect(email.text).toContain("/admin/account-sospetti");
   });
 
+  it("lunedì: il riquadro \"Il sito impara\" anche senza consigli (docs/changelog/2026-11-27-il-sito-impara.md)", () => {
+    const email = renderEmail(notificationEmail("ADMIN_WEEKLY_ADVICE", { advice: [], proposals: 0, learning: ["Un errore vero dell'IA è entrato nel banco di prova."] }, ctx)!);
+    expect(email.subject).toBe("Cosa ha imparato il sito questa settimana");
+    expect(email.text).toContain("Il sito impara.");
+    expect(email.text).toContain("Un errore vero dell'IA è entrato nel banco di prova.");
+    expect(email.text).toContain("/admin/proposte-ia");
+  });
+
   it("consigli della settimana: cosa fare, una riga per consiglio (§372)", () => {
     const email = renderEmail(
       notificationEmail(

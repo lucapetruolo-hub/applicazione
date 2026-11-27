@@ -49,6 +49,10 @@ jobs:
             echo "::warning file=docs/CHANGELOG.md::Voce nuova in fondo a docs/CHANGELOG.md: spostala in un file suo in docs/changelog/ (docs/changelog/README.md), così le PR non vanno in conflitto tra loro."
           fi
           echo "Changelog in ordine"
+      # Istruzioni dell'IA cambiate = banco di prova da rifare, si unisce solo se
+      # non scende (docs/changelog/2026-11-27-il-sito-impara.md, docs/banco-ia/README.md).
+      - name: Banco di prova dell'IA rifatto
+        run: node scripts/controlla-banco-ia.mjs
       # CLAUDE.md si rilegge a ogni messaggio di Claude Code: avvisa se torna
       # sopra i 25 KB (docs/changelog/2026-11-10-riordino-file.md). I dettagli
       # vanno in docs/ o nei CLAUDE.md delle cartelle.

@@ -139,6 +139,8 @@ import type {
   SiteNoteInput,
   SiteHealth,
   CaseAdviceOverview,
+  AiLearningOverview,
+  AiBankArea,
   CaseAdvice,
   CaseAdviceKind,
   SiteDeadline,
@@ -2799,6 +2801,15 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md), solo super admin. */
     adminCaseAdvice: (token: string) =>
       request<CaseAdviceOverview>("/admin/case-advice", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Il sito impara: banco di prova, regole approvate, misura mese per mese (docs/changelog/2026-11-27-il-sito-impara.md). */
+    adminAiLearning: (token: string) =>
+      request<AiLearningOverview>("/admin/ai-learning", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminRemoveAiBankCase: (token: string, id: string) =>
+      request<void>(`/admin/ai-learning/cases/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminRemoveAiRule: (token: string, id: string) =>
+      request<void>(`/admin/ai-learning/rules/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminRunAiBank: (token: string) =>
+      request<{ area: AiBankArea; total: number; correct: number }[]>("/admin/ai-learning/run", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminApproveCaseAdvice: (token: string, kind: CaseAdviceKind, caseId: string) =>
       request<unknown>(`/admin/case-advice/${kind}/${encodeURIComponent(caseId)}/approve`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminAskCaseAdvice: (token: string, kind: CaseAdviceKind, caseId: string) =>

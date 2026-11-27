@@ -3,6 +3,7 @@ import type { ServiceNamesAdminOverview } from "@professionisti/shared";
 import {
   CONTACT_FAQ_MIN_NO,
   categoryChangeWordCandidates,
+  NO_SUGGESTION,
   contactFaqSwaps,
   dictionaryWordCandidates,
   serviceWordCandidates,
@@ -43,6 +44,11 @@ describe("parola dalle categorie cambiate", () => {
     const rows = places.slice(0, 5).map((place) => req(`Pergolato da sistemare: ${place}`, "tuttofare", "falegname"));
     const list = categoryChangeWordCandidates(rows, []);
     expect(list.find((w) => w.example === "pergolato")).toMatchObject({ from: "tuttofare", to: "falegname", changes: 5, chosenTo: 5, total: 5 });
+  });
+
+  it("anche dalle ricerche senza nessun mestiere in cui il cliente ne ha scelto uno (docs/changelog/2026-11-27-il-sito-impara.md)", () => {
+    const rows = places.slice(0, 5).map((place) => req(`Pergolato da sistemare: ${place}`, NO_SUGGESTION, "falegname"));
+    expect(categoryChangeWordCandidates(rows, []).find((w) => w.example === "pergolato")).toMatchObject({ from: NO_SUGGESTION, to: "falegname", changes: 5 });
   });
 
   it("niente con 4 cambi, se meno di 9 su 10 scelgono quel mestiere, se già insegnata o generica", () => {
@@ -202,7 +208,7 @@ describe("decisioni", () => {
     const audit = { record: vi.fn() };
     const examplesService = { adminList: vi.fn().mockResolvedValue({ custom: true, examples }), add: vi.fn() };
     const categories = { getPopularity: vi.fn().mockResolvedValue({ scope: "ALL", counts: [] }) };
-    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, categories as never, {} as never, examplesService as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, categories as never, {} as never, examplesService as never, {} as never, {} as never, {} as never, {} as never, { forgetRules: vi.fn() } as never);
     return { prisma, audit, examplesService, service };
   }
 
@@ -348,7 +354,7 @@ describe("domande in Contatti: Approva e Rimetti", () => {
       adminProposal: { findUnique: vi.fn().mockResolvedValue(row), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     };
     const audit = { record: vi.fn() };
-    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, contactFaq as never);
+    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, contactFaq as never, {} as never);
     return { contactFaq, audit, service };
   }
 

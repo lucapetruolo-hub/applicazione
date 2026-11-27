@@ -17,6 +17,6 @@ import { RequestBoardModule } from "../request-board/request-board.module";
   controllers: [ProblemMatchController, ServiceNamesController, AdminProblemMatchController],
   providers: [ServiceCatalogService, ProblemMatchService, ProblemMatchAdminService, ProblemTakeoverService, ProblemExamplesService],
   // Le proposte da approvare in Admin usano gli stessi servizi dei pulsanti di "Mestieri richiesti".
-  exports: [ServiceNamesModule, ProblemExamplesService, ProblemMatchAdminService],
+  exports: [ServiceNamesModule, ProblemExamplesService, ProblemMatchAdminService, ProblemMatchService],
 })
 export class ProblemMatchModule {}

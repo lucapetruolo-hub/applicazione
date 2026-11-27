@@ -38,6 +38,6 @@ import { MonthlyAccountsService } from "./monthly-accounts.service";
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella
   // già in uso su AdminController.
   // AdminService: le proposte da approvare eliminano gli account di prova con lo stesso servizio del pulsante.
-  exports: [AdminGuard, AdminService],
+  exports: [AdminGuard, AdminService, CaseAdviceService],
 })
 export class AdminModule {}

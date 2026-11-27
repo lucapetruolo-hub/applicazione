@@ -211,13 +211,19 @@ export function serviceWordCandidates(
  */
 export const CHANGE_WORD_MIN_CHANGES = 5;
 
+/**
+ * "Il sito non trovava nessuno": una ricerca senza mestiere in cui il cliente
+ * ne ha poi scelto uno (docs/changelog/2026-11-27-il-sito-impara.md).
+ */
+export const NO_SUGGESTION = "nessuno";
+
 export type SuggestionRow = { text: string; suggested: string; chosen: string };
 
 export type ChangeWordCandidate = {
   stem: string;
   example: string;
-  /** Il mestiere che il sito suggeriva (il più frequente tra i cambi). */
-  from: ProfessionalCategorySlug;
+  /** Il mestiere che il sito suggeriva (il più frequente tra i cambi), o NO_SUGGESTION. */
+  from: ProfessionalCategorySlug | typeof NO_SUGGESTION;
   /** Il mestiere che i clienti hanno scelto. */
   to: ProfessionalCategorySlug;
   /** Richieste cambiate da `from` a `to` con questa parola. */
@@ -258,13 +264,13 @@ export function categoryChangeWordCandidates(rows: SuggestionRow[], taughtWords:
     const best = [...stat.pairs.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
     if (!best || best[1] < CHANGE_WORD_MIN_CHANGES) continue;
     const [from, to] = best[0].split(">") as [string, string];
-    if (!isProfessionalCategorySlug(from) || !isProfessionalCategorySlug(to)) continue;
+    if (!isProfessionalCategorySlug(to) || (from !== NO_SUGGESTION && !isProfessionalCategorySlug(from))) continue;
     const chosenTo = stat.chosen.get(to) ?? 0;
     if (chosenTo / stat.total < WORD_MIN_SHARE) continue;
     if (taught.some((t) => stem.startsWith(t) || t.startsWith(stem))) continue;
     const example = [...stat.variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]![0];
     if (matchProblem(example).categories[0]?.slug === to) continue;
-    result.push({ stem, example, from, to, changes: best[1], chosenTo, total: stat.total });
+    result.push({ stem, example, from: from as ChangeWordCandidate["from"], to, changes: best[1], chosenTo, total: stat.total });
   }
   return result.sort((a, b) => b.changes - a.changes || a.stem.localeCompare(b.stem));
 }
